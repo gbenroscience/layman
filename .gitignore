@@ -8,7 +8,5 @@
 /.idea/dataSources/
 /.idea/dataSources.local.xml
 go.mod
-easylogin.html
-profile.html
-index.html
+*.html
 
