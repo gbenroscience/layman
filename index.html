@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <style>
+        div#div1{
+            background-color: rebeccapurple;
+        }
+        span{
+            color: wheat;
+            font-weight: bold;
+        }
+        div#card-1{
+            background-color: darkgreen;
+        }
+        div#card-2{
+            background-color: midnightblue;
+        }
+
+        div#card-1 > span{
+            color: wheat;
+        }
+        div#card-2 > span{
+             color: wheat;
+         }
+
+    </style>
+
+    <script src="weblay.js"></script>
+
+
+</head>
+<body>
+
+<div id="div1" data-const="w: 100%, h:120px, ms:0px, mt:0px, ss: parent, tt: parent">
+    <span id="p1"
+       data-const="w:100px, h:32px, ss: parent, tt: parent, bb: parent, ms: 16px">
+        WebLayer
+    </span>
+
+    <div id="card-1" data-const="w: 120px, h: parent,es: card-2, cy: card-2, me:12px">
+        <span id="card-span-1" data-const="w:wrap_content, h:wrap_content, cx: parent, cy: parent">
+            CARD 1
+        </span>
+    </div>
+    <div id="card-2" data-const="w: 120px, h: parent,ee: parent, cy: parent">
+        <span id="card-span-2" data-const="w:wrap_content, h:wrap_content, cx: parent, cy: parent">
+            CARD 2
+        </span>
+    </div>
+
+    <div id="guide-1" data-guide="..." data-const="orient:vertical, guide-pct:0.65"></div>
+
+    <input id="full-name" type="text" placeholder="Full Name" data-const="w:72px, h: wrap_content, es: guide-1, cy: parent, me: 4px">
+    <input id="pwd" type="password" placeholder="Password" data-const="w:full-name, h: full-name, se: guide-1, cy: parent, ms: 4px">
+
+</div>
+
+
+
+</body>
+</html>
