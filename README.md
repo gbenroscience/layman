@@ -48,6 +48,22 @@ All **_layman.js_** needs to work with your html layouts are two data attributes
 
 ## NOTE: The `data-guide-color` must be specified on the body tag alone. It applies to the whole page.
 
+**For example:**
+
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="layman.js"></script>
+</head>
+<body data-guide-color="#f00">
+</body>
+</html>
+```
+If `data-guide-color` is absent on the `body` tag, then all Guidelines are rendered using a transparent color.
 ### Dive deeper into data-const
 
 #### Syntax

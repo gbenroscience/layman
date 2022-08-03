@@ -73,11 +73,12 @@ function Page(rootNode) {
         updateOrCreateSelectorInStyleSheet(styleSheet, styleObj);
 
        let color = document.body.getAttribute(attrKeys.layout_constraintGuideColor);
-       if(color){
-           let style = new Style('.'+GUIDE_CLASS, []);
-           style.addStyleElement('background-color', color);
-           updateOrCreateSelectorInStyleSheet(styleSheet, style);
+        let style = new Style('.'+GUIDE_CLASS, []);
+       if(!color){
+           color = 'transparent';
        }
+        style.addStyleElement('background-color', color);
+        updateOrCreateSelectorInStyleSheet(styleSheet, style);
 
     }
 }
