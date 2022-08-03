@@ -28,11 +28,11 @@
 
     </style>
 
-    <script src="weblay.js"></script>
+    <script src="layman.js"></script>
 
 
 </head>
-<body>
+<body data-guide-color="#fff">
 
 <div id="div1" data-const="w: 100%, h:120px, ms:0px, mt:0px, ss: parent, tt: parent">
     <span id="p1"
@@ -51,10 +51,15 @@
         </span>
     </div>
 
-    <div id="guide-1" data-guide="..." data-const="orient:vertical, guide-pct:0.65"></div>
 
-    <input id="full-name" type="text" placeholder="Full Name" data-const="w:72px, h: wrap_content, es: guide-1, cy: parent, me: 4px">
-    <input id="pwd" type="password" placeholder="Password" data-const="w:full-name, h: full-name, se: guide-1, cy: parent, ms: 4px">
+    <div id="guide" data-guide="true" data-const="orient:vertical, guide-pct:50%"></div>
+
+    <div id="guide-1" data-guide="true" data-const="orient:vertical, guide-pct:65%"></div>
+    <div id="guide-2" data-guide="true" data-const="orient:vertical, guide-begin:200px"></div>
+    <div id="guide-3" data-guide="true" data-const="orient:vertical, guide-end:200px"></div>
+
+    <input id="fullname" type="text" placeholder="Full Name" data-const="w:72px, h: wrap_content, es: guide-1, cy: parent, me: 20">
+    <input id="pwd" type="password" placeholder="Password" data-const="w:fullname.width, h: fullname, se: guide-1, cy: parent, ms: 4px">
 
 </div>
 

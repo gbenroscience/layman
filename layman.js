@@ -1,4 +1,5 @@
 let BODY_ID = 'sys_main';
+let GUIDE_CLASS = 'guideline';
 
 let urls = getUrls();
 
@@ -70,6 +71,14 @@ function Page(rootNode) {
         styleObj.addStyleElement('margin', '0');
         updateOrCreateSelectorInStyleSheet(styleSheet, generalStyle);
         updateOrCreateSelectorInStyleSheet(styleSheet, styleObj);
+
+       let color = document.body.getAttribute(attrKeys.layout_constraintGuideColor);
+       if(color){
+           let style = new Style('.'+GUIDE_CLASS, []);
+           style.addStyleElement('background-color', color);
+           updateOrCreateSelectorInStyleSheet(styleSheet, style);
+       }
+
     }
 }
 
@@ -97,7 +106,8 @@ Page.prototype.layout = function (node) {
     }
 
     if (root.nodeName !== '#text' && root.nodeName !== '#comment') {
-        let constraints = root.getAttribute('data-const');
+        let constraints = root.getAttribute(attrKeys.layout_constraint);
+        root.removeAttribute(attrKeys.layout_constraint);
         if (!constraints) {
             if (root === document.body) {
                 constraints = 'w:match_parent,h:match_parent,ss:parent,ee:parent,tt:parent,bb:parent'
@@ -130,10 +140,15 @@ Page.prototype.layout = function (node) {
                 view = new View(this, root, refIds, root.parentNode.id);
             }
         } else {
-            //The next 2 lines forces the Guidelines size to be determined by our code. Take control from the user.
-            refIds.set(attrKeys.layout_width, sizes.WRAP_CONTENT);
-            refIds.set(attrKeys.layout_height, sizes.WRAP_CONTENT);
-            view = new Guideline(this, root, refIds, root.parentNode.id);
+            if(attr === 'true'){
+                //The next 2 lines forces the Guidelines size to be determined by our code. Take control from the user.
+                refIds.set(attrKeys.layout_width, sizes.WRAP_CONTENT);
+                refIds.set(attrKeys.layout_height, sizes.WRAP_CONTENT);
+                view = new Guideline(this, root, refIds, root.parentNode.id);
+            }else{
+                throw 'Invalid value for data-guide'
+            }
+
         }
 
         if (root.hasChildNodes()) {
@@ -1148,7 +1163,7 @@ View.prototype.layoutChildren = function (page) {
                 attr2: 'centerY',    // see AutoLayout.Attribute
                 constant: child.margins.top - child.margins.bottom,
                 multiplier: 1,
-                priority: verBias
+                priority: priority
             });
         }
     }
@@ -3163,6 +3178,7 @@ function Guideline(page, node, refIds, parentId) {
     if(h !== sizes.WRAP_CONTENT){
         this.refIds.set(attrKeys.layout_height, sizes.WRAP_CONTENT);
     }
+    addClass(node, GUIDE_CLASS);
 
 
 }
@@ -3210,6 +3226,7 @@ Guideline.prototype.layoutGuide = function (constraints) {
             if (isNaN(val = parseFloat(guidePct))) {
                 throw 'Please specify a floating point number between 0 and 1 to signify 0 - 100% of width';
             }
+            val = val > 1 ? val/100.0 : val;
         } else if (isNaN(val = parseFloat(guidePct))) {
             throw 'Please specify a floating point number between 0 and 1 to signify 0 - 100% of width';
         } else {
@@ -3911,7 +3928,7 @@ const attrKeys = {
     layout_minWidth: "minW",
     layout_minHeight: "minH",
 
-    layout_margin: "margin",
+    layout_margin: "m",
     layout_marginStart: "ms",
     layout_marginEnd: "me",
     layout_marginTop: "mt",
@@ -3929,13 +3946,15 @@ const attrKeys = {
     layout_constraintBottom_toTopOf: "bt",
     layout_constraintCenterXAlign: "cx",
     layout_constraintCenterYAlign: "cy",
+    layout_constraint: "data-const",
     layout_constraintGuide: "data-guide",
+    layout_constraintGuideColor: "data-guide-color",
     layout_constraintGuide_percent: "guide-pct",
     layout_constraintGuide_begin: "guide-begin",
     layout_constraintGuide_end: "guide-end",
-    layout_horizontalBias: "horBias",// a floating point bumber between 0 and 1 specifying the priority of the horizontal constraint attributes
-    layout_verticalBias: "verBias",// a floating point bumber between 0 and 1 specifying the priority of the vertical constraint attributes
-    dimension_ratio: "dimRatio",
+    layout_horizontalBias: "hor-bias",// a floating point bumber between 0 and 1 specifying the priority of the horizontal constraint attributes
+    layout_verticalBias: "ver-bias",// a floating point bumber between 0 and 1 specifying the priority of the vertical constraint attributes
+    dimension_ratio: "dim-ratio",
     orientation: "orient", //
 };
 
@@ -4675,12 +4694,115 @@ Style.prototype.getValue = function (attr) {
 
 };
 
+
+
+/**
+ * Credits to http://www.alexandre-gomes.com/?p=115
+ * @return {number}
+ */
+function getScrollBarWidth() {
+    let inner = document.createElement('p');
+    inner.style.width = "100%";
+    inner.style.height = "200px";
+
+    let outer = document.createElement('div');
+    outer.style.position = "absolute";
+    outer.style.top = "0px";
+    outer.style.left = "0px";
+    outer.style.visibility = "hidden";
+    outer.style.width = "200px";
+    outer.style.height = "150px";
+    outer.style.overflow = "hidden";
+    outer.appendChild(inner);
+
+    document.body.appendChild(outer);
+    let w1 = inner.offsetWidth;
+    outer.style.overflow = 'scroll';
+    let w2 = inner.offsetWidth;
+    if (w1 === w2) {
+        w2 = outer.clientWidth;
+    }
+
+    document.body.removeChild(outer);
+
+    return (w1 - w2);
+}
+
+
+/**
+ * Parses a number and unit string into the number and the units.
+ * @param val e.g 22px or 22%
+ * @param {Boolean} seeNoUnitsAsPx If true, then if the supplied string is a number without units, the function
+ * will assume that the units is in px. If false, it will assume it is a wrong input.
+ * If either the number or the units is not a number or a unit, it returns null for both fields
+ * @return the number and the units
+ */
+function parseNumberAndUnitsNoValidation(val, seeNoUnitsAsPx) {
+    if (typeof val === 'number') {
+        val = val + "";
+    }
+    if (typeof val !== "string") {
+        return {number: null, units: null};
+    }
+    if (isNumber(val)) {
+        if (seeNoUnitsAsPx && seeNoUnitsAsPx === true) {
+            return {number: val, units: "px"};
+        } else {
+            return {number: null, units: null};
+        }
+    }
+
+    let number = '';
+    let i = val.length - 1;
+    for (; i >= 0; i--) {
+        let token = val.substring(i, i + 1);
+        if (token !== '0' && token !== '1' && token !== '2' && token !== '3' && token !== '4' && token !== '5' &&
+            token !== '6' && token !== '7' && token !== '8' && token !== '9') {
+            // units = token + units;
+        } else {
+            number = val.substring(0, i + 1);
+            break;
+        }
+    }
+    let units = val.substring(i + 1);
+    if (CssSizeUnitsValues.indexOf(units) === -1) {
+        return {number: null, units: null};
+    }
+    if (!isNumber(number)) {
+        return {number: null, units: null};
+    }
+    return {number: number, units: units};
+}
+
+
+function getUrls() {
+    let scripts = document.getElementsByTagName('script');
+    for (let i = 0; i < scripts.length; i++) {
+        let script = scripts[i];
+        let src = script.src;
+        let ender = 'layman.js';
+        let fullLen = src.length;
+        let endLen = ender.length;
+        //check if script.src ends with layit.js
+        if (src.lastIndexOf(ender) === fullLen - endLen) {
+            let scriptsURL = src.substring(0, fullLen - endLen);
+
+            //let projectURL = scriptsURL.substring(0, scriptsURL.length - "layit/".length);
+            let projectURL = scriptsURL.substring(0, scriptsURL.lastIndexOf("/", scriptsURL.length - 2) + 1);
+            return [projectURL, scriptsURL];
+        }
+    }
+    return null;
+}
+
+
 ////////
 
 //resize sensor js
 'use strict';
-
+// ResizeSensor.js from https://github.com/marcj/css-element-queries/
 /**
+ * @link https://github.com/marcj/css-element-queries/
  * Copyright Marc J. Schmidt. See the LICENSE file at the top-level
  * directory of this distribution and at
  * https://github.com/marcj/css-element-queries/blob/master/LICENSE.
@@ -4782,7 +4904,6 @@ Style.prototype.getValue = function (attr) {
 
     /**
      * Class for dimension change detection.
-     *
      * @param {Element|Element[]|Elements|jQuery} element
      * @param {Function} callback
      *
@@ -5053,110 +5174,10 @@ Style.prototype.getValue = function (attr) {
 }));
 
 
-///
 
+////////////////////// ULID/javascript
 /**
- * Credits to http://www.alexandre-gomes.com/?p=115
- * @return {number}
- */
-function getScrollBarWidth() {
-    let inner = document.createElement('p');
-    inner.style.width = "100%";
-    inner.style.height = "200px";
-
-    let outer = document.createElement('div');
-    outer.style.position = "absolute";
-    outer.style.top = "0px";
-    outer.style.left = "0px";
-    outer.style.visibility = "hidden";
-    outer.style.width = "200px";
-    outer.style.height = "150px";
-    outer.style.overflow = "hidden";
-    outer.appendChild(inner);
-
-    document.body.appendChild(outer);
-    let w1 = inner.offsetWidth;
-    outer.style.overflow = 'scroll';
-    let w2 = inner.offsetWidth;
-    if (w1 === w2) {
-        w2 = outer.clientWidth;
-    }
-
-    document.body.removeChild(outer);
-
-    return (w1 - w2);
-}
-
-
-/**
- * Parses a number and unit string into the number and the units.
- * @param val e.g 22px or 22%
- * @param {Boolean} seeNoUnitsAsPx If true, then if the supplied string is a number without units, the function
- * will assume that the units is in px. If false, it will assume it is a wrong input.
- * If either the number or the units is not a number or a unit, it returns null for both fields
- * @return the number and the units
- */
-function parseNumberAndUnitsNoValidation(val, seeNoUnitsAsPx) {
-    if (typeof val === 'number') {
-        val = val + "";
-    }
-    if (typeof val !== "string") {
-        return {number: null, units: null};
-    }
-    if (isNumber(val)) {
-        if (seeNoUnitsAsPx && seeNoUnitsAsPx === true) {
-            return {number: val, units: "px"};
-        } else {
-            return {number: null, units: null};
-        }
-    }
-
-    let number = '';
-    let i = val.length - 1;
-    for (; i >= 0; i--) {
-        let token = val.substring(i, i + 1);
-        if (token !== '0' && token !== '1' && token !== '2' && token !== '3' && token !== '4' && token !== '5' &&
-            token !== '6' && token !== '7' && token !== '8' && token !== '9') {
-            // units = token + units;
-        } else {
-            number = val.substring(0, i + 1);
-            break;
-        }
-    }
-    let units = val.substring(i + 1);
-    if (CssSizeUnitsValues.indexOf(units) === -1) {
-        return {number: null, units: null};
-    }
-    if (!isNumber(number)) {
-        return {number: null, units: null};
-    }
-    return {number: number, units: units};
-}
-
-
-function getUrls() {
-    let scripts = document.getElementsByTagName('script');
-    for (let i = 0; i < scripts.length; i++) {
-        let script = scripts[i];
-        let src = script.src;
-        let ender = 'weblay.js';
-        let fullLen = src.length;
-        let endLen = ender.length;
-        //check if script.src ends with layit.js
-        if (src.lastIndexOf(ender) === fullLen - endLen) {
-            let scriptsURL = src.substring(0, fullLen - endLen);
-
-            //let projectURL = scriptsURL.substring(0, scriptsURL.length - "layit/".length);
-            let projectURL = scriptsURL.substring(0, scriptsURL.lastIndexOf("/", scriptsURL.length - 2) + 1);
-            return [projectURL, scriptsURL];
-        }
-    }
-    return null;
-}
-
-
-/**
- * https://github.com/ulid/javascript
+ * @link https://github.com/ulid/javascript
  * @param {Object} global
  * @param {Object} factory
  * @returns {undefined}
@@ -5357,6 +5378,7 @@ function getUrls() {
  * AutoLayout.js is licensed under the MIT license. If a copy of the
  * MIT-license was not distributed with this file, You can obtain one at:
  * http://opensource.org/licenses/mit-license.html.
+ * @link https://github.com/lume/autolayout
  *
  * @author: Hein Rutjes (IjzerenHein)
  * @license MIT
