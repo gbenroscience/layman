@@ -7,7 +7,7 @@
 
 What problem does **_layman_** solve?
 
-**_layit_** is a robust library that generates html code from android style xml files, and use viewcontrollers and workspaces to give the developer a lot of flexibility in writing
+**_layit_** is a robust library that generates html code from android style xml files, and uses viewcontrollers and workspaces to give the developer a lot of flexibility in writing
 structured code. All of this comes at a cost. Page load speed.
 
 **_layman_** allows the user to work directly with their own html pages and constrain the elements to their heart's content without having to create additional xml files, or having to learn the syntax of android xml.
@@ -207,4 +207,8 @@ This is used when the data-guide attribute is set also on this html element.
 It specifies the distance in pixels of a horizontal Guideline from the bottom of its parent
 and the distance in pixels of a vertical Guideline from the right of its parent
 You may set it as such: `guide-end: 65px` or `guide-end: 65`
+
+### Examples
+
+
 
