@@ -56,6 +56,15 @@ function Page(rootNode) {
 
 
     if(!rootNode){
+
+        let htmlBodyStyle = new Style('html,body', []);
+        htmlBodyStyle.addFromOptions({
+            width: '100%',
+            height: '100%',
+            padding: '0',
+            margin: '0'
+        });
+
         let generalStyle = new Style("*", []);
         generalStyle.addFromOptions({
             'margin': '0',
@@ -68,16 +77,17 @@ function Page(rootNode) {
         let styleObj = new Style('.abs', []);
         styleObj.addStyleElement('position', 'absolute');
         styleObj.addStyleElement('padding', '0');
-        styleObj.addStyleElement('margin', '0');
+        styleObj.addStyleElement('margin', '0');;
+        updateOrCreateSelectorInStyleSheet(styleSheet, htmlBodyStyle);
         updateOrCreateSelectorInStyleSheet(styleSheet, generalStyle);
-        updateOrCreateSelectorInStyleSheet(styleSheet, styleObj);
+        updateOrCreateSelectorInStyleSheet(styleSheet, styleObj)
 
        let color = document.body.getAttribute(attrKeys.layout_constraintGuideColor);
         let style = new Style('.'+GUIDE_CLASS, []);
-       if(!color){
-           color = 'transparent';
-       }
-        style.addStyleElement('background-color', color);
+        style.addFromOptions({
+            'background-color' : (!color ? 'transparent' : color),
+            'visibility' : (!color ? 'hidden' : 'visible')
+        });
         updateOrCreateSelectorInStyleSheet(styleSheet, style);
 
     }

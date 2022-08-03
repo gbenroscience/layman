@@ -8,6 +8,10 @@
         div#div1{
             background-color: rebeccapurple;
         }
+        div#div2{
+            background-color: red;
+        }
+
         span{
             color: wheat;
             font-weight: bold;
@@ -32,7 +36,7 @@
 
 
 </head>
-<body >
+<body data-guide-color="#fff">
 
 <div id="div1" data-const="w: 100%, h:120px, ms:0px, mt:0px, ss: parent, tt: parent">
     <span id="p1"
@@ -62,6 +66,8 @@
     <input id="pwd" type="password" placeholder="Password" data-const="w:fullname.width, h: fullname, se: guide-1, cy: parent, ms: 4px">
 
 </div>
+
+<div id="div2" data-const="w: 80, h: 80, cx: div1, cy: div1"></div>
 
 
 

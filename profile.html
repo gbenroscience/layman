@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+
+    <style>
+        div#main{
+            background-color: #ddd;
+        }
+        span#account-label{
+            color: black;
+            font-weight: bold;
+            font-size: 1.45em;
+        }
+        span#profile-label-info{
+            color: darkred;
+            font-style: italic;
+            font-size: 0.8em;
+        }
+        span#fname, span#lname, span#email, span#password{
+            font-size: 0.85em;
+            font-weight: bold;
+        }
+        input[type="text"],input[type="email"],input[type="password"]{
+            padding: 6px;
+            border: 1.4px solid darkgray;
+            border-radius: 4px;
+            font-size: 0.85em;
+        }
+
+        input[type="button"]{
+            padding: 2px;
+            font-weight: bold;
+            color: white;
+            background-color: midnightblue;
+            border: none;
+            border-radius: 4px;
+        }
+
+        input[type="button"]:hover{
+            cursor: pointer;
+            background-color: navy;
+            color: wheat;
+        }
+
+
+    </style>
+
+    <script src="layman.js"></script>
+
+
+</head>
+<body data-guide-color="#fff">
+
+<div id="main" data-const="w:60%,h:60%,cx:parent, cy: parent">
+
+  <span id="account-label" data-const="w: wrap_content, h: wrap_content, ss: parent, tt: parent, ms: 5%, mt: 16">
+      Account
+  </span>
+    <span id="profile-label" data-const="w: wrap_content, h: wrap_content, ss: account-label, tb: account-label, mt: 24">
+      Profile
+   </span>
+    <span id="profile-label-info" data-const="w: wrap_content, h: wrap_content, ss: account-label, tb: profile-label, mt: 12">
+      This information will be publicly available, so be careful what you supply here...
+    </span>
+
+    <span id="fname" data-const="w: wrap_content, h: wrap_content, ss: account-label, tb: profile-label-info, mt: 32">
+      First Name
+    </span>
+    <input type="text" id="fname-field" data-const="w: 44%, h: wrap_content, ss: fname, tb: fname, mt: 12" placeholder="First Name">
+
+
+    <span id="lname" data-const="w: wrap_content, h: wrap_content, ss: lname-field, tt: fname">
+      Last Name
+    </span>
+    <input type="text" id="lname-field" data-const="w: fname-field, h: wrap_content, ee: parent, tb: lname, mt: 12, me: 5%" placeholder="Last Name">
+
+    <span id="email" data-const="w: wrap_content, h: wrap_content, ss: account-label, tb: fname-field, mt: 32">
+      Email
+    </span>
+    <input type="email" id="email-field" data-const="w: fname-field, h: wrap_content, ss: email, tb: email, mt: 12" placeholder="Email">
+
+
+    <span id="password" data-const="w: wrap_content, h: wrap_content, ss: lname-field, tt: email">
+      Password
+    </span>
+    <input type="password" id="pwd-field" data-const="w: fname-field, h: wrap_content, ee: parent, tb: password, mt: 12, me: 5%" placeholder="Password">
+
+    <input id="send_btn" type="button" value="SEND" title="Send Information" data-const="w: 0, h: pwd-field, tb: email-field, ss: email-field, ee: pwd-field, mt: 32">
+
+</div>
+
+
+
+
+</body>
+</html>
