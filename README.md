@@ -3,12 +3,13 @@
 ### Introduction
 **_layman_** is a constraint layout library for html pages. 
 
+Some example pages designed using `layman` can be [found here](https://gbenroscience.github.io/layman/easylogin.html)
+and [also here](https://gbenroscience.github.io/layman/easylogin.html)
+
 **_layman_** is an offshoot of **_layit_** (by the same author) and uses basically the same layout engine as **_layit_**.
 
 What problem does **_layman_** solve?
 
-**_layit_** is a robust library that generates html code from android style xml files, and uses viewcontrollers and workspaces to give the developer a lot of flexibility in writing
-structured code. All of this comes at a cost. Page load speed.
 
 **_layman_** allows the user to work directly with their own html pages and constrain the elements to their heart's content without having to create additional xml files, or having to learn the syntax of android xml.
 In **_layman_**, no new xml files are created.
