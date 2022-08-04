@@ -36,14 +36,21 @@ Page.prototype.loadLibrary = function (callback) {
     }
 };
 
-window.onload = function (ev) {
+function docReady(fn) {
+    // see if DOM is already available
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+        fn();
+        // call on next available tick
+       // setTimeout(fn, 1);
+    } else {
+        document.addEventListener("DOMContentLoaded", fn);
+    }
+}
+docReady(function () {
+   document.body.style.visibility = 'hidden';
     let page = new Page(null);
-    /*    page.loadLibrary(function () {
-            page.layout();
-        });*/
     page.layout();
-
-};
+});
 
 /**
  *
@@ -56,7 +63,6 @@ function Page(rootNode) {
 
 
     if(!rootNode){
-
         let htmlBodyStyle = new Style('html,body', []);
         htmlBodyStyle.addFromOptions({
             width: '100%',
@@ -88,8 +94,8 @@ function Page(rootNode) {
             'background-color' : (!color ? 'transparent' : color),
             'visibility' : (!color ? 'hidden' : 'visible')
         });
-        updateOrCreateSelectorInStyleSheet(styleSheet, style);
 
+        updateOrCreateSelectorInStyleSheet(styleSheet, style);
     }
 }
 
@@ -177,6 +183,7 @@ Page.prototype.layout = function (node) {
         if (view) {
             if (view.topLevel === true) {
                 this.buildUI(view);
+                document.body.style.visibility = 'visible';
             }
         }
     }
@@ -195,9 +202,7 @@ Page.prototype.buildUI = function (rootView) {
             });
         }
     };
-
     layAll(rootView, this);
-
 };
 
 /**
@@ -324,10 +329,7 @@ function autoLayout(parentElm, constraints) {
                 }
             });
         }
-
     }
-
-
     updateLayout();
     return updateLayout;
 }

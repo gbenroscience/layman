@@ -287,4 +287,4 @@ Below is the source code simple example login interface which you can
 </body>
 </html>
 ```
-
+Another example can [be seen here](https://gbenroscience.github.io/layman/easylogin.html)
