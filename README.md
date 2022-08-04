@@ -25,7 +25,7 @@ In **_layman_**, no new xml files are created.
 
 
 ### How to use
-Download the `layman.js` file and add the script to your in the head section of your html page
+Download the `layman.js` file and add the script in the head section of your html page
 page...e.g.
 
 ```html
@@ -41,7 +41,7 @@ page...e.g.
 </html>
 ```
 
-All **_layman.js_** needs to work with your html layouts are two data attributes.
+All **_layman.js_** needs to work with your html layouts are three data attributes.
 
 1. **data-const** _This attribute is used to specify the constraints on the html element._
 2. **data-guide** _Specifies that the html element is to be used as a Guideline for other html elements._
@@ -64,17 +64,15 @@ All **_layman.js_** needs to work with your html layouts are two data attributes
 </body>
 </html>
 ```
-If `data-guide-color` is absent on the `body` tag, then all Guidelines are rendered using a transparent color.
+If `data-guide-color` is absent on the `body` tag, then all Guidelines are rendered using a transparent color and hidden, just in case... lol.
 ### Dive deeper into data-const
+
 
 #### Syntax
 
 ```html
 <div id="some-div" data-const="w:100px, h:150px, ss:parent, tt: parent"></div>
 ```
-
-
-
 
 ### Layout Construction & Syntax in more detail
 The syntax of your xml file is basically same as that of Android's xml.
@@ -206,12 +204,12 @@ You may set it as such: `guide-begin: 65px` or `guide-begin: 65`
 #### guide-end
 This is used when the data-guide attribute is set also on this html element.
 It specifies the distance in pixels of a horizontal Guideline from the bottom of its parent
-and the distance in pixels of a vertical Guideline from the right of its parent
+and the distance in pixels of a vertical Guideline from the right of its parent.<br>
 You may set it as such: `guide-end: 65px` or `guide-end: 65`
 
 ### Examples
 
-Below is the source code simple example login interface which you can
+Below is the source code of a simple example login interface which you can
 [view here](https://gbenroscience.github.io/layman/easylogin.html)
 
 ```html
