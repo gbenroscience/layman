@@ -4,7 +4,7 @@
 **_layman_** is a constraint layout library for html pages. 
 
 Some example pages designed using `layman` can be [found here](https://gbenroscience.github.io/layman/easylogin.html)
-and [also here](https://gbenroscience.github.io/layman/easylogin.html)
+and [also here](https://gbenroscience.github.io/layman/profile.html)
 
 **_layman_** is an offshoot of **_layit_** (by the same author) and uses basically the same layout engine as **_layit_**.
 
