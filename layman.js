@@ -85,10 +85,62 @@ Page.prototype.findViewById = function (viewId) {
     return this.viewMap.get(viewId);
 };
 
+/**
+ * checks if the node is one of the nodes that should be ignored
+ * @param node
+ * @return {boolean}
+ */
 function shouldIgnoreNode(node) {
     let name = node.nodeName.toLowerCase();
     return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
-        || name === 'tfoot' || name === '#text' || name === '#comment' || name === 'script');
+        || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === '#text' || name === '#comment'
+        || name === 'script');
+}
+
+/**
+ * Checks if the node is a comment, a whitespace or a script node
+ * @param node
+ * @return {boolean}
+ */
+function isWhiteSpaceOrCommentNode(node) {
+    let name = node.nodeName.toLowerCase();
+    return (name === '#text' || name === '#comment');
+}
+/**
+ * Checks if the node is a comment, a whitespace or a script node
+ * @param node
+ * @return {boolean}
+ */
+function isWhiteSpaceCommentOrScriptNode(node) {
+    let name = node.nodeName.toLowerCase();
+    return (name === '#text' || name === '#comment' || name === 'script');
+}
+
+/**
+ * Checks if the node is one of the ui nodes that are children of other nodes and that need to be ignored when doing layout.
+ * E.g. li, td, th, tbody, thead, tfoot, col and colgroup are all laid out by their parents.
+ * @param node
+ * @return {boolean}
+ */
+function shouldIgnoreSpecialChildElement(node) {
+    let name = node.nodeName.toLowerCase();
+    return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
+        || name === 'tfoot' || name === 'col' || name === 'colgroup');
+}
+
+/**
+ * This layout system needs every view to have an id.
+ * We cant force developers to assign ids to things like li or td, th etc.
+ * Though we can enforce them to apply ids to their parents.
+ * So we auto-assign ids to the child elements if there are no ids on them
+ */
+function enforceIdOnChildElements(node){
+    if(shouldIgnoreSpecialChildElement(node)){
+        let id = node.getAttribute(attrKeys.id);
+        if(!id){
+            node.setAttribute(attrKeys.id, ULID.ulid());
+        }
+    }
 }
 
 /**
@@ -106,15 +158,14 @@ Page.prototype.layout = function (node) {
         if (name === 'script') {
             return;
         }
-        if (shouldIgnoreNode(node)) {
-            return;
-        }
         if (!node.id) {
-            throw 'Please supply the id for node: ' + name + ', around:\n' + node.outerHTML + ". The layout engine needs it.";
+            if(!shouldIgnoreSpecialChildElement(node)){
+                throw 'Please supply the id for node: ' + name + ', around:\n' + node.outerHTML + ". The layout engine needs it.";
+            }
         }
     }
 
-    if (root.nodeName !== '#text' && root.nodeName !== '#comment') {
+    if (!isWhiteSpaceOrCommentNode(root)) {
         let constraints = root.getAttribute(attrKeys.layout_constraint);
         root.removeAttribute(attrKeys.layout_constraint);
         if (!constraints) {
@@ -143,10 +194,12 @@ Page.prototype.layout = function (node) {
 
         let attr = root.getAttribute(attrKeys.layout_constraintGuide);
         if (!attr) {
+            enforceIdOnChildElements(root);
                 if (root === document.body) {
                     view = new View(this, root, refIds, undefined);
                 } else {
                     view = new View(this, root, refIds, root.parentNode.id);
+                    console.log(".....", root);
                 }
         } else {
             if (attr === 'true') {
@@ -164,9 +217,12 @@ Page.prototype.layout = function (node) {
             let childNodes = root.children;
             for (let j = 0; j < childNodes.length; j++) {
                 let childNode = childNodes[j];
-                if (!shouldIgnoreNode(childNode)) {
-                    let childId = childNode.getAttribute(attrKeys.id);
-                    view.childrenIds.push(childId);//register the child with the parent
+                console.log("childNode--->>>>", childNode)
+                if (!isWhiteSpaceCommentOrScriptNode(childNode)) {
+                    if (!shouldIgnoreSpecialChildElement(childNode)) {
+                        let childId = childNode.getAttribute(attrKeys.id);
+                        view.childrenIds.push(childId);//register the child with the parent
+                    }
                     this.layout(childNode);
                 }
             }//end for loop
