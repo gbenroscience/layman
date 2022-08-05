@@ -1,15 +1,8 @@
 let BODY_ID = 'sys_main';
 let GUIDE_CLASS = 'guideline';
 
-let urls = getUrls();
-
 const styleSheet = document.createElement('style');
 styleSheet.setAttribute('type', 'text/css');
-
-const PROJECT_BASE = urls[0];
-const SCRIPTS_BASE = urls[1];
-const LAYOUT_LIB_URL = SCRIPTS_BASE + "autolayout.js";
-console.log('project-url: ', PROJECT_BASE, 'scripts-url: ', SCRIPTS_BASE, "layout lib: " + LAYOUT_LIB_URL);
 
 
 function isScriptLoaded(scriptURL) {
@@ -22,19 +15,6 @@ function isScriptLoaded(scriptURL) {
     }
     return null;
 }
-
-
-Page.prototype.loadLibrary = function (callback) {
-    if (!isScriptLoaded(LAYOUT_LIB_URL)) {
-        let newScript = document.createElement("script");
-        newScript.setAttribute('src', LAYOUT_LIB_URL);
-        let head = document.getElementsByTagName('head')[0];
-        head.appendChild(newScript);
-        newScript.onload = function () {
-            callback();
-        };
-    }
-};
 
 function docReady(fn) {
     // see if DOM is already available
