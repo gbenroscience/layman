@@ -75,8 +75,9 @@ If `data-guide-color` is absent on the `body` tag, then all Guidelines are rende
 ```
 
 ### Layout Construction & Syntax in more detail
-The syntax of your xml file is basically same as that of Android's xml.
-The constraint properties with long names have been renamed to shorter forms to allow for quicker typing and other advantages, e.g:
+The syntax of the constraint definitions is similar to how 
+Android's xml constraints work.
+For convenience and to reduce verbosity, the constraint properties with long names have been renamed to shorter forms. This allows for quicker typing also. See below:
 
 ```
     layout_constraintTop_toTopOf       -> tt
