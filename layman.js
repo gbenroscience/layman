@@ -199,7 +199,6 @@ Page.prototype.layout = function (node) {
                     view = new View(this, root, refIds, undefined);
                 } else {
                     view = new View(this, root, refIds, root.parentNode.id);
-                    console.log(".....", root);
                 }
         } else {
             if (attr === 'true') {
@@ -217,7 +216,6 @@ Page.prototype.layout = function (node) {
             let childNodes = root.children;
             for (let j = 0; j < childNodes.length; j++) {
                 let childNode = childNodes[j];
-                console.log("childNode--->>>>", childNode)
                 if (!isWhiteSpaceCommentOrScriptNode(childNode)) {
                     if (!shouldIgnoreSpecialChildElement(childNode)) {
                         let childId = childNode.getAttribute(attrKeys.id);
@@ -239,7 +237,6 @@ Page.prototype.layout = function (node) {
 
 
 Page.prototype.buildUI = function (rootView) {
-    console.log(this.viewMap);
     let layAll = function (v, page) {
         if (v.childrenIds.length > 0) {
             autoLayout(v.htmlNode === document.body ? undefined : v.htmlNode, v.layoutChildren(page));
