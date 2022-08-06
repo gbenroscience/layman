@@ -208,6 +208,24 @@ It specifies the distance in pixels of a horizontal Guideline from the bottom of
 and the distance in pixels of a vertical Guideline from the right of its parent.<br>
 You may set it as such: `guide-end: 65px` or `guide-end: 65`
 
+
+### Priorities
+
+Just as the ideas for the constraints, `(ss, se, ee, es, tt, tb, bb, bt, cx, cy)`, were borrowed
+from Android ConstraintLayout's xml, we have borrowed the idea of `priorities`
+from iOS AutoLayout. The priority is a number that tells the layout engine how important that constraint is.
+
+So when designing some layouts, you may specify the priority of your layout, by ending it with
+`@priority_value`.
+<br> For example:
+```html
+<div>
+<input id="phone_input" data-const="w:wrap_content, h: 42px, ss: parent, tt: parent, ms: 10, mt: 10">
+<input id="password_input" data-const="w: phone_input, h: wrap_content, ss: phone_input@750, tb: phone_input">
+</div>
+```
+
+
 ### Examples
 
 Below is the source code of a simple example login interface which you can
