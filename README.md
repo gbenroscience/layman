@@ -215,7 +215,7 @@ Just as the ideas for the constraints, `(ss, se, ee, es, tt, tb, bb, bt, cx, cy)
 from Android ConstraintLayout's xml, we have borrowed the idea of `priorities`
 from iOS AutoLayout. The priority is a number that tells the layout engine how important that constraint is.
 
-So when designing some layouts, you may specify the priority of your layout, by ending it with
+So when designing some layouts, you may specify the priority of the constraints, by ending it with
 `@priority_value`.
 <br> For example:
 ```html

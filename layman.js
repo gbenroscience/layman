@@ -2260,6 +2260,7 @@ View.prototype.setSizeBoundariesConstraints = function (constraints, cid, maxWid
 
             if (parsedMaxWidth.number) {
                 if (parsedMaxWidth.units === 'px') {
+
                     constraints.push({
                         view1: cid,
                         attr1: 'width',    // see AutoLayout.Attribute
@@ -2611,7 +2612,7 @@ View.prototype.setSizeBoundariesConstraints = function (constraints, cid, maxWid
 
 
     }
-
+    console.log(' ...',constraints)
 };
 
 /**
