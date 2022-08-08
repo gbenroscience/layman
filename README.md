@@ -213,7 +213,7 @@ You may set it as such: `guide-end: 65px` or `guide-end: 65`
 
 Just as the ideas for the constraints, `(ss, se, ee, es, tt, tb, bb, bt, cx, cy)`, were borrowed
 from Android ConstraintLayout's xml, we have borrowed the idea of `priorities`
-from iOS AutoLayout. The priority is a number that tells the layout engine how important that constraint is.
+from iOS AutoLayout. The `priority` is a number that tells the layout engine how important that constraint is.
 
 So when designing some layouts, you may specify the priority of the constraints, by ending it with
 `@priority_value`.
@@ -306,3 +306,7 @@ Below is the source code of a simple example login interface which you can
 </html>
 ```
 Another example can [be seen here](https://gbenroscience.github.io/layman/profile.html)
+
+### `**onLayoutComplete**` 
+In case one needs to run some code after the layout is done, put your code within the `onLayoutComplete` function.
+

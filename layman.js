@@ -27,10 +27,14 @@ function docReady(fn) {
     }
 }
 
+let onLayoutComplete = function () {
+
+};
 docReady(function () {
     document.body.style.visibility = 'hidden';
     let page = new Page(null);
     page.layout();
+    onLayoutComplete();
 });
 
 /**
@@ -94,7 +98,7 @@ function shouldIgnoreNode(node) {
     let name = node.nodeName.toLowerCase();
     return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
         || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === '#text' || name === '#comment'
-        || name === 'script');
+        || name === 'script' || name === 'option' || name === 'optgroup');
 }
 
 /**
@@ -125,7 +129,7 @@ function isWhiteSpaceCommentOrScriptNode(node) {
 function shouldIgnoreSpecialChildElement(node) {
     let name = node.nodeName.toLowerCase();
     return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
-        || name === 'tfoot' || name === 'col' || name === 'colgroup');
+        || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === 'option' || name === 'optgroup');
 }
 
 /**
@@ -923,8 +927,6 @@ View.prototype.layoutSelf = function () {
     }
 
     return constraints;
-
-
 };
 
 
@@ -1045,7 +1047,7 @@ View.prototype.layoutChildren = function (page) {
                     if (ee) {
                         this.setRightAlignEE(hiddenViewForWidthId, child.margins.end, ee, AutoLayout.Priority.REQUIRED, constraints);
                     } else if (es) {
-                        this.setRightAlignES(hiddenViewForWidthId, child.margins.end, se, AutoLayout.Priority.REQUIRED, constraints);
+                        this.setRightAlignES(hiddenViewForWidthId, child.margins.end, es, AutoLayout.Priority.REQUIRED, constraints);
                     }
 
                     constraints.push({
@@ -2612,7 +2614,6 @@ View.prototype.setSizeBoundariesConstraints = function (constraints, cid, maxWid
 
 
     }
-    console.log(' ...',constraints)
 };
 
 /**
