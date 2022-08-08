@@ -1058,7 +1058,7 @@ View.prototype.layoutChildren = function (page) {
                         attr2: AutoLayout.Attribute.NOTANATTRIBUTE,    // see AutoLayout.Attribute
                         constant: 0,
                         multiplier: 1,
-                        priority: AutoLayout.Priority.DEFAULTLOW
+                        priority: 240
                     });
                     constraints.push({
                         view1: cid,
@@ -1098,9 +1098,9 @@ View.prototype.layoutChildren = function (page) {
                     }
 
                     if (bb) {
-                        this.setBottomAlignBB(hiddenViewForHeightId, child.margins.end, bb, AutoLayout.Priority.REQUIRED, constraints);
+                        this.setBottomAlignBB(hiddenViewForHeightId, child.margins.bottom, bb, AutoLayout.Priority.REQUIRED, constraints);
                     } else if (bt) {
-                        this.setBottomAlignBT(hiddenViewForHeightId, child.margins.end, bt, AutoLayout.Priority.REQUIRED, constraints);
+                        this.setBottomAlignBT(hiddenViewForHeightId, child.margins.bottom, bt, AutoLayout.Priority.REQUIRED, constraints);
                     }
 
                     constraints.push({
@@ -1111,7 +1111,7 @@ View.prototype.layoutChildren = function (page) {
                         attr2: AutoLayout.Attribute.NOTANATTRIBUTE,    // see AutoLayout.Attribute
                         constant: 0,
                         multiplier: 1,
-                        priority: AutoLayout.Priority.DEFAULTLOW
+                        priority: 240
                     });
                     constraints.push({
                         view1: cid,
@@ -3240,8 +3240,6 @@ function Guideline(page, node, refIds, parentId) {
         this.refIds.set(attrKeys.layout_height, sizes.WRAP_CONTENT);
     }
     addClass(node, GUIDE_CLASS);
-
-
 }
 
 
@@ -3308,7 +3306,7 @@ Guideline.prototype.layoutGuide = function (constraints) {
                 attr2: "height",
                 constant: 0,
                 multiplier: 1,
-                priority: 1000
+                priority: AutoLayout.Priority.REQUIRED
             });
             constraints.push({
                 view1: id,
@@ -3318,7 +3316,7 @@ Guideline.prototype.layoutGuide = function (constraints) {
                 attr2: AutoLayout.Attribute.NOTANATTRIBUTE,
                 constant: 0.1,
                 multiplier: 1,
-                priority: 1000
+                priority: AutoLayout.Priority.REQUIRED
             });
 
             let hiddenViewId = id + "_dummy_" + ULID.ulid();
@@ -3330,7 +3328,7 @@ Guideline.prototype.layoutGuide = function (constraints) {
                 attr2: 'left',    // see AutoLayout.Attribute
                 constant: 0,
                 multiplier: 1,
-                priority: 1000
+                priority: AutoLayout.Priority.REQUIRED
             });
             constraints.push({
                 view1: hiddenViewId,
@@ -3340,7 +3338,7 @@ Guideline.prototype.layoutGuide = function (constraints) {
                 attr2: 'width',    // see AutoLayout.Attribute
                 constant: 1,
                 multiplier: val,
-                priority: 1000
+                priority: AutoLayout.Priority.REQUIRED
             });
             constraints.push({
                 view1: id,
@@ -3350,7 +3348,7 @@ Guideline.prototype.layoutGuide = function (constraints) {
                 attr2: 'right',    // see AutoLayout.Attribute
                 constant: 1,
                 multiplier: 1,
-                priority: 1000
+                priority: AutoLayout.Priority.REQUIRED
             });
 
         } else if (orientation === orientations.HORIZONTAL) {
@@ -3363,7 +3361,7 @@ Guideline.prototype.layoutGuide = function (constraints) {
                 attr2: "width",
                 constant: 0,
                 multiplier: 1,
-                priority: 1000
+                priority: AutoLayout.Priority.REQUIRED
             });
             constraints.push({
                 view1: id,
@@ -3373,7 +3371,7 @@ Guideline.prototype.layoutGuide = function (constraints) {
                 attr2: AutoLayout.Attribute.NOTANATTRIBUTE,
                 constant: 0.1,
                 multiplier: 1,
-                priority: 1000
+                priority: AutoLayout.Priority.REQUIRED
             });
 
             let hiddenViewId = id + "_dummy_" + ULID.ulid();
@@ -3385,7 +3383,7 @@ Guideline.prototype.layoutGuide = function (constraints) {
                 attr2: 'top',    // see AutoLayout.Attribute
                 constant: 0,
                 multiplier: 1,
-                priority: 1000
+                priority: AutoLayout.Priority.REQUIRED
             });
             constraints.push({
                 view1: hiddenViewId,
@@ -3395,7 +3393,7 @@ Guideline.prototype.layoutGuide = function (constraints) {
                 attr2: 'height',    // see AutoLayout.Attribute
                 constant: 1,
                 multiplier: val,
-                priority: 1000
+                priority: AutoLayout.Priority.REQUIRED
             });
             constraints.push({
                 view1: id,
@@ -3403,9 +3401,9 @@ Guideline.prototype.layoutGuide = function (constraints) {
                 relation: 'equ',   // see AutoLayout.Relation
                 view2: hiddenViewId,
                 attr2: 'bottom',    // see AutoLayout.Attribute
-                constant: 1,
+                constant: 0,
                 multiplier: 1,
-                priority: 1000
+                priority: AutoLayout.Priority.REQUIRED
             });
         }
 
