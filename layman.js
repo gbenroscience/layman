@@ -1058,7 +1058,7 @@ View.prototype.layoutChildren = function (page) {
                         attr2: AutoLayout.Attribute.NOTANATTRIBUTE,    // see AutoLayout.Attribute
                         constant: 0,
                         multiplier: 1,
-                        priority: 240
+                        priority: 249
                     });
                     constraints.push({
                         view1: cid,
@@ -1111,7 +1111,7 @@ View.prototype.layoutChildren = function (page) {
                         attr2: AutoLayout.Attribute.NOTANATTRIBUTE,    // see AutoLayout.Attribute
                         constant: 0,
                         multiplier: 1,
-                        priority: 240
+                        priority: 249
                     });
                     constraints.push({
                         view1: cid,
