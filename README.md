@@ -6,6 +6,8 @@
 Some example pages designed using `layman` can be [found here](https://gbenroscience.github.io/layman/easylogin.html)
 and [also here](https://gbenroscience.github.io/layman/profile.html)
 
+Find another example [here also](https://gbenroscience.github.io/layman/onlayout.html)
+
 **_layman_** is an offshoot of **_layit_** (by the same author) and uses basically the same layout engine as **_layit_**.
 
 What problem does **_layman_** solve?
