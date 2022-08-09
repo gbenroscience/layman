@@ -311,4 +311,4 @@ Another example can [be seen here](https://gbenroscience.github.io/layman/profil
 
 ### `**onLayoutComplete**` 
 In case one needs to run some code after the layout is done, put your code within the `onLayoutComplete` function.
-
+[Here is an example that uses the callback](https://gbenroscience.github.io/layman/onlayout.html)
