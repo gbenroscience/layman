@@ -5,6 +5,7 @@ const styleSheet = document.createElement('style');
 styleSheet.setAttribute('type', 'text/css');
 
 
+let page;
 function isScriptLoaded(scriptURL) {
     let scripts = document.getElementsByTagName('script');
     for (let i = 0; i < scripts.length; i++) {
@@ -27,12 +28,24 @@ function docReady(fn) {
     }
 }
 
+
 let onLayoutComplete = function () {
 
 };
+
+/**
+ *
+ * @return {{}}
+ */
+let layoutCode = function(){
+return null;
+};
+
+
+
 docReady(function () {
     document.body.style.visibility = 'hidden';
-    let page = new Page(null);
+    page = new Page(null);
     page.layout();
     onLayoutComplete();
 });
@@ -46,7 +59,7 @@ function Page(rootNode) {
     this.rootElement = rootNode;
     this.viewMap = new Map();
 
-
+    this.layoutObj = layoutCode();
     if (!rootNode) {
         let htmlBodyStyle = new Style('html,body', []);
         htmlBodyStyle.addFromOptions({
@@ -69,12 +82,19 @@ function Page(rootNode) {
         styleObj.addStyleElement('position', 'absolute');
         styleObj.addStyleElement('padding', '0');
         styleObj.addStyleElement('margin', '0');
-        ;
+
         updateOrCreateSelectorInStyleSheet(styleSheet, htmlBodyStyle);
         updateOrCreateSelectorInStyleSheet(styleSheet, generalStyle);
         updateOrCreateSelectorInStyleSheet(styleSheet, styleObj)
 
         let color = document.body.getAttribute(attrKeys.layout_constraintGuideColor);
+        if(!color){
+            if(this.layoutObj){
+                if(this.layoutObj.body){
+                    color = this.layoutObj.body['data-guide-color'];
+                }
+            }
+        }
         let style = new Style('.' + GUIDE_CLASS, []);
         style.addFromOptions({
             'background-color': (!color ? 'transparent' : color),
@@ -83,6 +103,7 @@ function Page(rootNode) {
 
         updateOrCreateSelectorInStyleSheet(styleSheet, style);
     }
+
 }
 
 Page.prototype.findViewById = function (viewId) {
@@ -147,11 +168,110 @@ function enforceIdOnChildElements(node){
     }
 }
 
+Page.prototype.layout = function (node){
+    let layoutObj = layoutCode();
+    if(layoutObj){
+        this.layoutFromSheet(node);
+    }else{
+        this.layoutFromTags(node);
+    }
+};
+
+Page.prototype.layoutFromSheet = function (node) {
+
+    let root = !node ? document.body : node;
+    if (root === document.body) {
+        root.id = BODY_ID;
+    }
+
+    if (node) {
+        let name = node.nodeName.toLowerCase();
+        if (name === 'script') {
+            return;
+        }
+        if (!node.id) {
+            if(!shouldIgnoreSpecialChildElement(node)){
+                throw 'Please supply the id for node: ' + name + ', around:\n' + node.outerHTML + ". The layout engine needs it.";
+            }
+        }
+    }
+
+    if (!isWhiteSpaceOrCommentNode(root)) {
+        let constraints = root === document.body ? this.layoutObj.body : (this.layoutObj.elements[root.id]);
+
+        if(constraints){
+            if (root === document.body) {
+                constraints['w'] = 'match_parent';constraints['h'] = 'match_parent';constraints['ss'] = 'parent';
+                constraints['ee'] = 'parent';constraints['tt'] = 'parent';constraints['bb'] = 'parent';
+            }
+        }
+        else {
+            if (root === document.body) {
+                constraints = {
+                    'w': 'match_parent','h': 'match_parent','ss': 'parent',
+                    'ee': 'parent','tt': 'parent','bb': 'parent'
+                };
+            } else {
+                constraints = {
+                    'w': 'match_parent','h': 'match_parent','ss': 'parent',
+                    'ee': 'parent','tt': 'parent','bb': 'parent'
+                };
+            }
+        }
+
+        let refIds = new Map();
+        Object.keys(constraints).forEach(function(key) {
+            refIds.set(key, constraints[key]);
+        });
+        let view;
+
+        let attr = constraints[attrKeys.layout_constraintGuide];
+        if (!attr) {
+            enforceIdOnChildElements(root);
+            if (root === document.body) {
+                view = new View(this, root, refIds, undefined);
+            } else {
+                view = new View(this, root, refIds, root.parentNode.id);
+            }
+        } else {
+            if (attr === 'true' || attr === true) {
+                //The next 2 lines forces the Guidelines size to be determined by our code. Take control from the user.
+                refIds.set(attrKeys.layout_width, sizes.WRAP_CONTENT);
+                refIds.set(attrKeys.layout_height, sizes.WRAP_CONTENT);
+                view = new Guideline(this, root, refIds, root.parentNode.id);
+            } else {
+                throw 'Invalid value for guide'
+            }
+
+        }
+
+        if (root.hasChildNodes()) {
+            let childNodes = root.children;
+            for (let j = 0; j < childNodes.length; j++) {
+                let childNode = childNodes[j];
+                if (!isWhiteSpaceCommentOrScriptNode(childNode)) {
+                    if (!shouldIgnoreSpecialChildElement(childNode)) {
+                        let childId = childNode.getAttribute(attrKeys.id);
+                        view.childrenIds.push(childId);//register the child with the parent
+                    }
+                    this.layoutFromSheet(childNode);
+                }
+            }//end for loop
+        }
+        if (view) {
+            if (view.topLevel === true) {
+                this.buildUI(view);
+                document.body.style.visibility = 'visible';
+            }
+        }
+    }
+};
+
 /**
  *
  * @param {HTMLElement} node
  */
-Page.prototype.layout = function (node) {
+Page.prototype.layoutFromTags = function (node) {
 
     let root = !node ? document.body : node;
     if (root === document.body) {
@@ -225,7 +345,7 @@ Page.prototype.layout = function (node) {
                         let childId = childNode.getAttribute(attrKeys.id);
                         view.childrenIds.push(childId);//register the child with the parent
                     }
-                    this.layout(childNode);
+                    this.layoutFromTags(childNode);
                 }
             }//end for loop
         }
@@ -1113,6 +1233,7 @@ View.prototype.layoutChildren = function (page) {
                         multiplier: 1,
                         priority: 249
                     });
+
                     constraints.push({
                         view1: cid,
                         attr1: 'centerY',    // see AutoLayout.Attribute

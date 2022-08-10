@@ -312,3 +312,39 @@ Another example can [be seen here](https://gbenroscience.github.io/layman/profil
 ### `**onLayoutComplete**` 
 In case one needs to run some code after the layout is done, put your code within the `onLayoutComplete` function.
 [Here is an example that uses the callback](https://gbenroscience.github.io/layman/onlayout.html)
+
+### CONSTRAINTS FREE HTML
+
+If you want to keep your HTML code lean, you may override the global `layoutCode` function expression, and return a javascript
+object that defines the layout.
+The syntax is really easy.
+Make sure you override the function expression in a script tag after the script that imports `layman.js`, or you could create a separate
+script file, override it in that script and then import the script below the import statement for `layman.js`.
+This is how you override the function expression:
+
+```javascript
+layoutCode = function(){
+    return {
+       body: {
+           'data-guide-color': "#2A805F"
+       },
+       elements: {
+           "sidebar": {
+               w: "15%", h: "100%", ss: "parent", tt: "parent"
+           },
+           "app-title": {
+               w: "match_parent", h: "48px", ss: "parent", tt: "parent"
+           }
+       }
+    };
+}
+```
+
+The `body` section can be used to define the color of the guidelines using the `data-guide-color` field.
+The `elements` section will contain further sub-sections. Each of the subsections will have a key name which is the id of the
+html element that possesses the layout constraints being defined in that sub-section. So above, `sidebar` and `app-title` are both
+ids of html elements on the page.
+
+
+
+
