@@ -345,6 +345,4 @@ The `elements` section will contain further sub-sections. Each of the subsection
 html element that possesses the layout constraints being defined in that sub-section. So above, `sidebar` and `app-title` are both
 ids of html elements on the page.
 
-
-
-
+[Here is the former example that uses the `onLayoutComplete` function, but with its tags abstracted into a JS object](https://gbenroscience.github.io/layman/layoutstyles.html)
