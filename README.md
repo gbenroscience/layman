@@ -341,8 +341,8 @@ layoutCode = function(){
 ```
 
 The `body` section can be used to define the color of the guidelines using the `data-guide-color` field.
-The `elements` section will contain further sub-sections. Each of the subsections will have a key name which is the id of the
-html element that possesses the layout constraints being defined in that sub-section. So above, `sidebar` and `app-title` are both
+The `elements` section will contain further subsections. Each of the subsections will have a key name which is the id of the
+html element that possesses the layout constraints being defined in that subsection. So above, `sidebar` and `app-title` are both
 ids of html elements on the page.
 
-[Here is the former example that uses the `onLayoutComplete` function, but with its tags abstracted into a JS object](https://gbenroscience.github.io/layman/layoutstyles.html)
+[Here is the former example that uses the `onLayoutComplete` function, but with its constraints abstracted into a JS object](https://gbenroscience.github.io/layman/layoutstyles.html)
