@@ -309,7 +309,7 @@ Below is the source code of a simple example login interface which you can
 ```
 Another example can [be seen here](https://gbenroscience.github.io/layman/profile.html)
 
-### `**onLayoutComplete**` 
+### **`onLayoutComplete`** 
 In case one needs to run some code after the layout is done, put your code within the `onLayoutComplete` function.
 [Here is an example that uses the callback](https://gbenroscience.github.io/layman/onlayout.html)
 
