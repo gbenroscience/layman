@@ -1362,6 +1362,7 @@ View.prototype.layoutChildren = function (page) {
  * @param {Array} constraints The array that holds the constraints generated here
  */
 View.prototype.setLeftAlignSS = function (view1, marginLeft, view2, priority, constraints) {
+    marginLeft = (marginLeft === '0%' ? 0 : marginLeft);
     if (typeof marginLeft === 'number') {
         constraints.push({
             view1: view1,
@@ -1483,6 +1484,7 @@ View.prototype.setLeftAlignSS = function (view1, marginLeft, view2, priority, co
  * @param {Array} constraints The array that holds the constraints generated here
  */
 View.prototype.setLeftAlignSE = function (view1, marginLeft, view2, priority, constraints) {
+    marginLeft = (marginLeft === '0%' ? 0 : marginLeft);
     if (typeof marginLeft === 'number') {
         constraints.push({
             view1: view1,
@@ -1602,6 +1604,7 @@ View.prototype.setLeftAlignSE = function (view1, marginLeft, view2, priority, co
  * @param {Array} constraints The array that holds the constraints generated here
  */
 View.prototype.setRightAlignEE = function (view1, marginRight, view2, priority, constraints) {
+    marginRight = (marginRight === '0%' ? 0 : marginRight);
     if (typeof marginRight === 'number') {
         constraints.push({
             view1: view1,
@@ -1722,6 +1725,7 @@ View.prototype.setRightAlignEE = function (view1, marginRight, view2, priority, 
  * @param {Array} constraints The array that holds the constraints generated here
  */
 View.prototype.setRightAlignES = function (view1, marginRight, view2, priority, constraints) {
+    marginRight = (marginRight === '0%' ? 0 : marginRight);
     if (typeof marginRight === 'number') {
         constraints.push({
             view1: view1,
@@ -1841,6 +1845,7 @@ View.prototype.setRightAlignES = function (view1, marginRight, view2, priority, 
  * @param {Array} constraints The array that holds the constraints generated here
  */
 View.prototype.setTopAlignTT = function (view1, marginTop, view2, priority, constraints) {
+    marginTop = (marginTop === '0%' ? 0 : marginTop);
     if (typeof marginTop === 'number') {
         constraints.push({
             view1: view1,
@@ -1965,6 +1970,7 @@ View.prototype.setTopAlignTT = function (view1, marginTop, view2, priority, cons
  * @param {Array} constraints The array that holds the constraints generated here
  */
 View.prototype.setTopAlignTB = function (view1, marginTop, view2, priority, constraints) {
+    marginTop = (marginTop === '0%' ? 0 : marginTop);
     if (typeof marginTop === 'number') {
         constraints.push({
             view1: view1,
@@ -2089,6 +2095,7 @@ View.prototype.setTopAlignTB = function (view1, marginTop, view2, priority, cons
  * @param {Array} constraints The array that holds the constraints generated here
  */
 View.prototype.setBottomAlignBB = function (view1, marginBottom, view2, priority, constraints) {
+
     if (typeof marginBottom === 'number') {
         constraints.push({
             view1: view1,
@@ -2209,6 +2216,7 @@ View.prototype.setBottomAlignBB = function (view1, marginBottom, view2, priority
  * @param {Array} constraints The array that holds the constraints generated here
  */
 View.prototype.setBottomAlignBT = function (view1, marginBottom, view2, priority, constraints) {
+    marginBottom = (marginBottom === '0%' ? 0 : marginBottom);
     if (typeof marginBottom === 'number') {
         constraints.push({
             view1: view1,
