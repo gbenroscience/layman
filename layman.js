@@ -1,5 +1,6 @@
 let BODY_ID = 'sys_main';
 let GUIDE_CLASS = 'guideline';
+let MIN_BIAS = 0.0000000001;
 
 const styleSheet = document.createElement('style');
 styleSheet.setAttribute('type', 'text/css');
@@ -38,7 +39,7 @@ let onLayoutComplete = function () {
  * @return {{}}
  */
 let layoutCode = function(){
-return null;
+    return null;
 };
 
 
@@ -319,11 +320,11 @@ Page.prototype.layoutFromTags = function (node) {
         let attr = root.getAttribute(attrKeys.layout_constraintGuide);
         if (!attr) {
             enforceIdOnChildElements(root);
-                if (root === document.body) {
-                    view = new View(this, root, refIds, undefined);
-                } else {
-                    view = new View(this, root, refIds, root.parentNode.id);
-                }
+            if (root === document.body) {
+                view = new View(this, root, refIds, undefined);
+            } else {
+                view = new View(this, root, refIds, root.parentNode.id);
+            }
         } else {
             if (attr === 'true') {
                 //The next 2 lines forces the Guidelines size to be determined by our code. Take control from the user.
@@ -1097,34 +1098,47 @@ View.prototype.layoutChildren = function (page) {
             continue;
         }
 
-
+        /**
+         * horizonta bias and centering. In the underlying autolayout.js library, I fund out the hard way
+         * that when using centerX and centerY(?), one can shift the default behaviour using the multiplier, but
+         * instead of the shift applying for 0 to 1 from the left to the right, it applies for 0 to 2.
+         * Expected behaviour, assuming their own scale is different, then one would expect that:
+         * When the multiplier is 0, the view's left should be at the left of the other view,
+         * then when it is 1 the view's center should be at the center of the other view,
+         * and when it is 2, the view's right should be the right of the other view. Instead:
+         * Bug 1: when set to 0, the view's center is at the center of the other view, to correct this, I have to use a near
+         * zero value instead of zero.
+         * However unfortunately, the library's implementation is that, the view's center will be on the left of the other view!
+         * This leads to other bugs also.
+         * When the multiplier is 2(the max), the view's center is on the right side of the other view.
+         */
         if (horBias) {
             if (isNumber(horBias)) {
-                horBias = parseFloat(horBias);
-                if (horBias >= 0 && horBias <= 1) {
-                    horBias = horBias * 1000;
-                } else {
-                    throw "Invalid value set for horBias...should be between 0 and 1 view.id=" + cid
+                horBias = 2 * parseFloat(horBias);
+                if (horBias < 0 || horBias > 2) {
+                    throw "Invalid value set for horBias... should be between 0 and 1 on view.id=" + cid
                 }
+                //correct bug in underlying autolayout library
+                if(horBias === 0){ horBias = MIN_BIAS;}
             } else {
-                throw "Invalid type set for horBias...should be between 0 and 1 view.id=" + cid
+                throw "Invalid type set for horBias... should be a number between 0 and 1 view.id=" + cid
             }
         } else {
-            horBias = AutoLayout.Priority.REQUIRED;
+            horBias = 1;
         }
         if (verBias) {
             if (isNumber(verBias)) {
-                verBias = parseFloat(verBias);
-                if (verBias >= 0 && verBias <= 1) {
-                    verBias = verBias * 1000;
-                } else {
-                    throw "Invalid value set for verBias...should be between 0 and 1 view.id=" + cid
+                verBias = 2 * parseFloat(verBias);
+                if (verBias < 0 || verBias > 2) {
+                    throw "Invalid value set for verBias... should be between 0 and 1 on view.id=" + cid
                 }
+                //correct bug in underlying autolayout library
+                if(verBias === 0){ verBias = MIN_BIAS;}
             } else {
-                throw "Invalid type set for verBias...should be between 0 and 1 view.id=" + cid
+                throw "Invalid type set for verBias... should be between 0 and 1 view.id=" + cid
             }
         } else {
-            verBias = AutoLayout.Priority.REQUIRED
+            verBias = 1;
         }
 
 
@@ -1186,11 +1200,10 @@ View.prototype.layoutChildren = function (page) {
                         relation: 'equ',   // see AutoLayout.Relation
                         view2: hiddenViewForWidthId,
                         attr2: 'centerX',    // see AutoLayout.Attribute
-                        constant: 0,
-                        multiplier: 1,
+                        constant: child.margins.start - child.margins.end,
+                        multiplier: horBias,
                         priority: AutoLayout.Priority.REQUIRED
                     });
-
                 }
 
             }
@@ -1240,8 +1253,8 @@ View.prototype.layoutChildren = function (page) {
                         relation: 'equ',   // see AutoLayout.Relation
                         view2: hiddenViewForHeightId,
                         attr2: 'centerY',    // see AutoLayout.Attribute
-                        constant: 0,
-                        multiplier: 1,
+                        constant: child.margins.top - child.margins.bottom,
+                        multiplier: verBias,
                         priority: AutoLayout.Priority.REQUIRED
                     });
 
@@ -1329,7 +1342,7 @@ View.prototype.layoutChildren = function (page) {
                 view2: cx === 'parent' ? null : cx,
                 attr2: 'centerX',    // see AutoLayout.Attribute
                 constant: child.margins.start - child.margins.end,
-                multiplier: 1,
+                multiplier: horBias,
                 priority: priority
             });
         }
@@ -1344,7 +1357,7 @@ View.prototype.layoutChildren = function (page) {
                 view2: cy === 'parent' ? null : cy,
                 attr2: 'centerY',    // see AutoLayout.Attribute
                 constant: child.margins.top - child.margins.bottom,
-                multiplier: 1,
+                multiplier: verBias,
                 priority: priority
             });
         }
