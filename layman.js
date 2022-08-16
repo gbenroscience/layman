@@ -1099,7 +1099,7 @@ View.prototype.layoutChildren = function (page) {
         }
 
         /**
-         * horizonta bias and centering. In the underlying autolayout.js library, I fund out the hard way
+         * horizontal bias and centering. In the underlying autolayout.js library, I fund out the hard way
          * that when using centerX and centerY(?), one can shift the default behaviour using the multiplier, but
          * instead of the shift applying for 0 to 1 from the left to the right, it applies for 0 to 2.
          * Expected behaviour, assuming their own scale is different, then one would expect that:
@@ -1263,9 +1263,7 @@ View.prototype.layoutChildren = function (page) {
             }
         }
         this.setHeightConstraints(constraints, cid, h, priorityHei);
-
         this.setSizeBoundariesConstraints(constraints, cid, maxWid, minWid, maxHei, minHei);
-
 
         if (ss) {
             if (!hiddenViewForWidthId) {
