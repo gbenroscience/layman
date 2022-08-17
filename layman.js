@@ -7,6 +7,54 @@ styleSheet.setAttribute('type', 'text/css');
 
 
 let page;
+
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/* global PATH_TO_UI_SCRIPTS, xmlKeys, attrKeys, DISABLE_INPUT_SHADOW, PATH_TO_COMPILER_SCRIPTS, ViewController, HTMLCanvasElement, CharacterData, DocumentType, Element, IncludedView, Mustache */
+if (!Number.isNaN) {
+    Number.isNaN = Number.isNaN || function isNaN(input) {
+        return typeof input === 'number' && input !== input;
+    };
+}
+
+if (!Number.isInteger) {
+    Number.isInteger = function (x) {
+        // return (x ^ 0) === +x;
+        return +x === (+x - (+x % 1));
+    };
+}
+
+//Polyfill for constructor.name()
+(function () {
+    if (!Object.constructor.prototype.hasOwnProperty('name')) {
+        Object.defineProperty(Object.constructor.prototype, 'name', {
+            get: function () {
+                return this.toString().trim().replace(/^\S+\s+(\w+)[\S\s]+$/, '$1');
+            }
+        });
+    }
+})();
+//Polyfill for Node.remove()
+(function (arr) {
+    arr.forEach(function (item) {
+        if (item.hasOwnProperty('remove')) {
+            return;
+        }
+        Object.defineProperty(item, 'remove', {
+            configurable: true,
+            enumerable: true,
+            writable: true,
+            value: function remove() {
+                this.parentNode && this.parentNode.removeChild(this);
+            }
+        });
+    });
+})([Element.prototype, CharacterData.prototype, DocumentType.prototype].filter(Boolean));
+
 function isScriptLoaded(scriptURL) {
     let scripts = document.getElementsByTagName('script');
     for (let i = 0; i < scripts.length; i++) {
