@@ -19,7 +19,7 @@ In **_layman_**, no new xml files are created.
 
 
 #### NOTE:
-`layman-extra.js` includes a merge of original project files with the following files(**with attribution)**,
+`layman.js` includes a merge of original project files with the following files(**with attribution)**,
 
 ### 1. [ResizeSensor from marcj/css-element-queries](https://github.com/marcj/css-element-queries/)
 ### 2. [Autolayout from lume/autolayout](https://github.com/lume/autolayout)
@@ -28,7 +28,7 @@ In **_layman_**, no new xml files are created.
 
 
 ### How to use
-Download the `layman-extra.js` file and add the script in the head section of your html page
+Download the `layman.js` file and add the script in the head section of your html page
 page...e.g.
 
 ```html
@@ -37,7 +37,7 @@ page...e.g.
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-    <script src="layman-extra.js"></script>
+    <script src="layman.js"></script>
 </head>
 <body>
 </body>
@@ -60,7 +60,7 @@ All **_layman.js_** needs to work with your html layouts are three data attribut
 <head>
     <meta charset="UTF-8">
     <title>Title</title>
-    <script src="layman-extra.js"></script>
+    <script src="layman.js"></script>
 </head>
 <body data-guide-color="#f00">
 </body>
@@ -292,7 +292,7 @@ Below is the source code of a simple example login interface which you can
             text-decoration: underline;
         }
     </style>
-    <script src="layman-extra.js"></script>
+    <script src="layman.js"></script>
 </head>
 <body data-guide-color="#fff">
 
@@ -327,8 +327,8 @@ In case one needs to run some code after the layout is done, put your code withi
 If you want to keep your HTML code lean, you may override the global `layoutCode` function expression, and return a javascript
 object that defines the layout.
 The syntax is really easy.
-Make sure you override the function expression in a script tag after the script that imports `layman-extra.js`, or you could create a separate
-script file, override it in that script and then import the script below the import statement for `layman-extra.js`.
+Make sure you override the function expression in a script tag after the script that imports `layman.js`, or you could create a separate
+script file, override it in that script and then import the script below the import statement for `layman.js`.
 This is how you override the function expression:
 
 ```javascript
