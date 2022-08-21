@@ -86,10 +86,9 @@ let onLayoutComplete = function () {
  *
  * @return {{}}
  */
-let layoutCode = function(){
+let layoutCode = function () {
     return null;
 };
-
 
 
 docReady(function () {
@@ -137,9 +136,9 @@ function Page(rootNode) {
         updateOrCreateSelectorInStyleSheet(styleSheet, styleObj)
 
         let color = document.body.getAttribute(attrKeys.layout_constraintGuideColor);
-        if(!color){
-            if(this.layoutObj){
-                if(this.layoutObj.body){
+        if (!color) {
+            if (this.layoutObj) {
+                if (this.layoutObj.body) {
                     color = this.layoutObj.body['data-guide-color'];
                 }
             }
@@ -180,6 +179,7 @@ function isWhiteSpaceOrCommentNode(node) {
     let name = node.nodeName.toLowerCase();
     return (name === '#text' || name === '#comment');
 }
+
 /**
  * Checks if the node is a comment, a whitespace or a script node
  * @param node
@@ -208,20 +208,20 @@ function shouldIgnoreSpecialChildElement(node) {
  * Though we can enforce them to apply ids to their parents.
  * So we auto-assign ids to the child elements if there are no ids on them
  */
-function enforceIdOnChildElements(node){
-    if(shouldIgnoreSpecialChildElement(node)){
+function enforceIdOnChildElements(node) {
+    if (shouldIgnoreSpecialChildElement(node)) {
         let id = node.getAttribute(attrKeys.id);
-        if(!id){
+        if (!id) {
             node.setAttribute(attrKeys.id, ULID.ulid());
         }
     }
 }
 
-Page.prototype.layout = function (node){
+Page.prototype.layout = function (node) {
     let layoutObj = layoutCode();
-    if(layoutObj){
+    if (layoutObj) {
         this.layoutFromSheet(node);
-    }else{
+    } else {
         this.layoutFromTags(node);
     }
 };
@@ -239,7 +239,7 @@ Page.prototype.layoutFromSheet = function (node) {
             return;
         }
         if (!node.id) {
-            if(!shouldIgnoreSpecialChildElement(node)){
+            if (!shouldIgnoreSpecialChildElement(node)) {
                 throw 'Please supply the id for node: ' + name + ', around:\n' + node.outerHTML + ". The layout engine needs it.";
             }
         }
@@ -248,28 +248,31 @@ Page.prototype.layoutFromSheet = function (node) {
     if (!isWhiteSpaceOrCommentNode(root)) {
         let constraints = root === document.body ? this.layoutObj.body : (this.layoutObj.elements[root.id]);
 
-        if(constraints){
+        if (constraints) {
             if (root === document.body) {
-                constraints['w'] = 'match_parent';constraints['h'] = 'match_parent';constraints['ss'] = 'parent';
-                constraints['ee'] = 'parent';constraints['tt'] = 'parent';constraints['bb'] = 'parent';
+                constraints['w'] = 'match_parent';
+                constraints['h'] = 'match_parent';
+                constraints['ss'] = 'parent';
+                constraints['ee'] = 'parent';
+                constraints['tt'] = 'parent';
+                constraints['bb'] = 'parent';
             }
-        }
-        else {
+        } else {
             if (root === document.body) {
                 constraints = {
-                    'w': 'match_parent','h': 'match_parent','ss': 'parent',
-                    'ee': 'parent','tt': 'parent','bb': 'parent'
+                    'w': 'match_parent', 'h': 'match_parent', 'ss': 'parent',
+                    'ee': 'parent', 'tt': 'parent', 'bb': 'parent'
                 };
             } else {
                 constraints = {
-                    'w': 'match_parent','h': 'match_parent','ss': 'parent',
-                    'ee': 'parent','tt': 'parent','bb': 'parent'
+                    'w': 'match_parent', 'h': 'match_parent', 'ss': 'parent',
+                    'ee': 'parent', 'tt': 'parent', 'bb': 'parent'
                 };
             }
         }
 
         let refIds = new Map();
-        Object.keys(constraints).forEach(function(key) {
+        Object.keys(constraints).forEach(function (key) {
             refIds.set(key, constraints[key]);
         });
         let view;
@@ -332,7 +335,7 @@ Page.prototype.layoutFromTags = function (node) {
             return;
         }
         if (!node.id) {
-            if(!shouldIgnoreSpecialChildElement(node)){
+            if (!shouldIgnoreSpecialChildElement(node)) {
                 throw 'Please supply the id for node: ' + name + ', around:\n' + node.outerHTML + ". The layout engine needs it.";
             }
         }
@@ -416,7 +419,7 @@ Page.prototype.buildUI = function (rootView) {
             autoLayout(v.htmlNode === document.body ? undefined : v.htmlNode, v.layoutChildren(page));
             v.childrenIds.forEach(function (id) {
                 let cv = page.viewMap.get(id);
-                if(cv.hasBgImage){
+                if (cv.hasBgImage) {
                     bgEnabledViews.push(cv);
                 }
                 if (cv.childrenIds.length > 0) {
@@ -657,7 +660,6 @@ function View(page, node, refIds, parentId) {
     }
 
 
-
     if (typeof page.findViewById(zaId) !== 'undefined') {
         throw 'A view with this id(`' + zaId + '`) exists already';
     }
@@ -668,7 +670,6 @@ function View(page, node, refIds, parentId) {
     this.parentId = parentId; //(node.parentNode.getAttribute) ? node.parentNode.getAttribute(attrKeys.id).trim() : (parentId && typeof parentId === 'string' ? parentId : null);
     this.childrenIds = [];
     this.hasBgImage = refIds.get(attrKeys.mi_useAutoBg) ? true : false;
-
 
 
     if (refIds && refIds.size > 0) {
@@ -913,12 +914,12 @@ function isDimensionRatio(val) {
     return arr.length === 2 && !isNaN(arr[0]) && !isNaN(arr[1]);
 }
 
-View.prototype.makeBgImage = function(){
+View.prototype.makeBgImage = function () {
     let refIds = this.refIds;
 
-    let useAutoBg =  refIds.get(attrKeys.mi_useAutoBg);
+    let useAutoBg = refIds.get(attrKeys.mi_useAutoBg);
 
-    if(!useAutoBg){
+    if (!useAutoBg) {
         return;
     }
 
@@ -1264,7 +1265,9 @@ View.prototype.layoutChildren = function (page) {
                     throw "Invalid value set for horBias... should be between 0 and 1 on view.id=" + cid
                 }
                 //correct bug in underlying autolayout library
-                if(horBias === 0){ horBias = MIN_BIAS;}
+                if (horBias === 0) {
+                    horBias = MIN_BIAS;
+                }
             } else {
                 throw "Invalid type set for horBias... should be a number between 0 and 1 view.id=" + cid
             }
@@ -1278,7 +1281,9 @@ View.prototype.layoutChildren = function (page) {
                     throw "Invalid value set for verBias... should be between 0 and 1 on view.id=" + cid
                 }
                 //correct bug in underlying autolayout library
-                if(verBias === 0){ verBias = MIN_BIAS;}
+                if (verBias === 0) {
+                    verBias = MIN_BIAS;
+                }
             } else {
                 throw "Invalid type set for verBias... should be between 0 and 1 view.id=" + cid
             }
@@ -12461,7 +12466,7 @@ function getUrls() {
     }
 
     if (CanvasRenderingContext2D.prototype.ellipse == undefined) {
-        CanvasRenderingContext2D.prototype.ellipse = function(x, y, radiusX, radiusY, rotation, startAngle, endAngle, antiClockwise) {
+        CanvasRenderingContext2D.prototype.ellipse = function (x, y, radiusX, radiusY, rotation, startAngle, endAngle, antiClockwise) {
             this.save();
             this.translate(x, y);
             this.rotate(rotation);
@@ -12473,10 +12478,10 @@ function getUrls() {
 
     if (typeof Path2D !== 'function' ||
         typeof new Path2D().addPath !== 'function') {
-        (function() {
+        (function () {
 
             // Include the SVG path parser.
-            parser = (function() {
+            parser = (function () {
                 /*
                  * Generated by PEG.js 0.8.0.
                  *
@@ -12484,20 +12489,23 @@ function getUrls() {
                  */
 
                 function peg$subclass(child, parent) {
-                    function ctor() { this.constructor = child; }
+                    function ctor() {
+                        this.constructor = child;
+                    }
+
                     ctor.prototype = parent.prototype;
                     child.prototype = new ctor();
                 }
 
                 function SyntaxError(message, expected, found, offset, line, column) {
-                    this.message  = message;
+                    this.message = message;
                     this.expected = expected;
-                    this.found    = found;
-                    this.offset   = offset;
-                    this.line     = line;
-                    this.column   = column;
+                    this.found = found;
+                    this.offset = offset;
+                    this.line = line;
+                    this.column = column;
 
-                    this.name     = "SyntaxError";
+                    this.name = "SyntaxError";
                 }
 
                 peg$subclass(SyntaxError, Error);
@@ -12507,16 +12515,18 @@ function getUrls() {
 
                         peg$FAILED = {},
 
-                        peg$startRuleFunctions = { svg_path: peg$parsesvg_path },
-                        peg$startRuleFunction  = peg$parsesvg_path,
+                        peg$startRuleFunctions = {svg_path: peg$parsesvg_path},
+                        peg$startRuleFunction = peg$parsesvg_path,
 
                         peg$c0 = peg$FAILED,
                         peg$c1 = [],
                         peg$c2 = null,
-                        peg$c3 = function(d) { return ops; },
+                        peg$c3 = function (d) {
+                            return ops;
+                        },
                         peg$c4 = /^[Mm]/,
-                        peg$c5 = { type: "class", value: "[Mm]", description: "[Mm]" },
-                        peg$c6 = function(ch, args) {
+                        peg$c5 = {type: "class", value: "[Mm]", description: "[Mm]"},
+                        peg$c6 = function (ch, args) {
                             var moveCh = ch
                             // If this is the first move cmd then force it to be absolute.
                             if (firstSubPath) {
@@ -12524,109 +12534,131 @@ function getUrls() {
                                 firstSubPath = false;
                             }
                             ops.push({type: 'moveTo', args: makeAbsolute(moveCh, args[0])});
-                            for (var i=1; i < args.length; i++) {
+                            for (var i = 1; i < args.length; i++) {
                                 // The lineTo args are either abs or relative, depending on the
                                 // original moveto command.
                                 ops.push({type: 'lineTo', args: makeAbsolute(ch, args[i])});
                             }
                         },
-                        peg$c7 = function(one, rest) { return concatSequence(one, rest); },
+                        peg$c7 = function (one, rest) {
+                            return concatSequence(one, rest);
+                        },
                         peg$c8 = /^[Zz]/,
-                        peg$c9 = { type: "class", value: "[Zz]", description: "[Zz]" },
-                        peg$c10 = function() { ops.push({type: 'closePath', args: []}); },
+                        peg$c9 = {type: "class", value: "[Zz]", description: "[Zz]"},
+                        peg$c10 = function () {
+                            ops.push({type: 'closePath', args: []});
+                        },
                         peg$c11 = /^[Ll]/,
-                        peg$c12 = { type: "class", value: "[Ll]", description: "[Ll]" },
-                        peg$c13 = function(ch, args) {
-                            for (var i=0; i < args.length; i++) {
+                        peg$c12 = {type: "class", value: "[Ll]", description: "[Ll]"},
+                        peg$c13 = function (ch, args) {
+                            for (var i = 0; i < args.length; i++) {
                                 ops.push({type: 'lineTo', args: makeAbsolute(ch, args[i])});
                             }
                         },
                         peg$c14 = /^[Hh]/,
-                        peg$c15 = { type: "class", value: "[Hh]", description: "[Hh]" },
-                        peg$c16 = function(ch, args) {
-                            for (var i=0; i < args.length; i++) {
+                        peg$c15 = {type: "class", value: "[Hh]", description: "[Hh]"},
+                        peg$c16 = function (ch, args) {
+                            for (var i = 0; i < args.length; i++) {
                                 ops.push({type: 'lineTo', args: makeAbsoluteFromX(ch, args[i])});
                             }
                         },
                         peg$c17 = /^[Vv]/,
-                        peg$c18 = { type: "class", value: "[Vv]", description: "[Vv]" },
-                        peg$c19 = function(ch, args) {
-                            for (var i=0; i < args.length; i++) {
+                        peg$c18 = {type: "class", value: "[Vv]", description: "[Vv]"},
+                        peg$c19 = function (ch, args) {
+                            for (var i = 0; i < args.length; i++) {
                                 ops.push({type: 'lineTo', args: makeAbsoluteFromY(ch, args[i])});
                             }
                         },
                         peg$c20 = /^[Cc]/,
-                        peg$c21 = { type: "class", value: "[Cc]", description: "[Cc]" },
-                        peg$c22 = function(ch, args) {
-                            for (var i=0; i < args.length; i++) {
+                        peg$c21 = {type: "class", value: "[Cc]", description: "[Cc]"},
+                        peg$c22 = function (ch, args) {
+                            for (var i = 0; i < args.length; i++) {
                                 ops.push({type: 'bezierCurveTo', args: makeAbsoluteMultiple(ch, args[i])});
                             }
                         },
-                        peg$c23 = function(cp1, cp2, last) { return cp1.concat(cp2, last); },
+                        peg$c23 = function (cp1, cp2, last) {
+                            return cp1.concat(cp2, last);
+                        },
                         peg$c24 = /^[Ss]/,
-                        peg$c25 = { type: "class", value: "[Ss]", description: "[Ss]" },
-                        peg$c26 = function(ch, args) {
-                            for (var i=0; i < args.length; i++) {
-                                ops.push({type: 'bezierCurveTo', args: makeReflected().concat(makeAbsoluteMultiple(ch, args[i]))});
+                        peg$c25 = {type: "class", value: "[Ss]", description: "[Ss]"},
+                        peg$c26 = function (ch, args) {
+                            for (var i = 0; i < args.length; i++) {
+                                ops.push({
+                                    type: 'bezierCurveTo',
+                                    args: makeReflected().concat(makeAbsoluteMultiple(ch, args[i]))
+                                });
                             }
                         },
-                        peg$c27 = function(cp1, last) { return cp1.concat(last); },
+                        peg$c27 = function (cp1, last) {
+                            return cp1.concat(last);
+                        },
                         peg$c28 = /^[Qq]/,
-                        peg$c29 = { type: "class", value: "[Qq]", description: "[Qq]" },
-                        peg$c30 = function(ch, args) {
-                            for (var i=0; i < args.length; i++) {
+                        peg$c29 = {type: "class", value: "[Qq]", description: "[Qq]"},
+                        peg$c30 = function (ch, args) {
+                            for (var i = 0; i < args.length; i++) {
                                 ops.push({type: 'quadraticCurveTo', args: makeAbsoluteMultiple(ch, args[i])});
                             }
                         },
                         peg$c31 = /^[Tt]/,
-                        peg$c32 = { type: "class", value: "[Tt]", description: "[Tt]" },
-                        peg$c33 = function(ch, args) {
-                            for (var i=0; i < args.length; i++) {
+                        peg$c32 = {type: "class", value: "[Tt]", description: "[Tt]"},
+                        peg$c33 = function (ch, args) {
+                            for (var i = 0; i < args.length; i++) {
                                 var reflected = makeReflected();
-                                ops.push({type: 'quadraticCurveTo', args: reflected.concat(makeAbsoluteMultiple(ch, args[i]))});
+                                ops.push({
+                                    type: 'quadraticCurveTo',
+                                    args: reflected.concat(makeAbsoluteMultiple(ch, args[i]))
+                                });
                                 lastControl = reflected.slice(0);
                             }
                         },
                         peg$c34 = /^[Aa]/,
-                        peg$c35 = { type: "class", value: "[Aa]", description: "[Aa]" },
-                        peg$c36 = function(ch, args) {
-                            for (var i=0; i < args.length; i++) {
+                        peg$c35 = {type: "class", value: "[Aa]", description: "[Aa]"},
+                        peg$c36 = function (ch, args) {
+                            for (var i = 0; i < args.length; i++) {
                                 var x1 = [lastCoord.slice()];
                                 var x2 = [makeAbsolute(ch, args[i].slice(-2))];
                                 absArgs = x1.concat(args[i].slice(0, -2), x2);
                                 ellipseFromEllipticalArc.apply(this, absArgs);
                             }
                         },
-                        peg$c37 = function(rx, ry, xrot, large, sweep, last) { return [parseFloat(rx), parseFloat(ry), parseFloat(flatten(xrot).join('')), parseInt(large), parseInt(sweep), last[0], last[1]]; },
-                        peg$c38 = function(x, y) { return [x, y] },
-                        peg$c39 = function(number) { return parseFloat(flatten(number).join('')) },
+                        peg$c37 = function (rx, ry, xrot, large, sweep, last) {
+                            return [parseFloat(rx), parseFloat(ry), parseFloat(flatten(xrot).join('')), parseInt(large), parseInt(sweep), last[0], last[1]];
+                        },
+                        peg$c38 = function (x, y) {
+                            return [x, y]
+                        },
+                        peg$c39 = function (number) {
+                            return parseFloat(flatten(number).join(''))
+                        },
                         peg$c40 = "0",
-                        peg$c41 = { type: "literal", value: "0", description: "\"0\"" },
+                        peg$c41 = {type: "literal", value: "0", description: "\"0\""},
                         peg$c42 = "1",
-                        peg$c43 = { type: "literal", value: "1", description: "\"1\"" },
+                        peg$c43 = {type: "literal", value: "1", description: "\"1\""},
                         peg$c44 = ",",
-                        peg$c45 = { type: "literal", value: ",", description: "\",\"" },
+                        peg$c45 = {type: "literal", value: ",", description: "\",\""},
                         peg$c46 = ".",
-                        peg$c47 = { type: "literal", value: ".", description: "\".\"" },
+                        peg$c47 = {type: "literal", value: ".", description: "\".\""},
                         peg$c48 = /^[eE]/,
-                        peg$c49 = { type: "class", value: "[eE]", description: "[eE]" },
+                        peg$c49 = {type: "class", value: "[eE]", description: "[eE]"},
                         peg$c50 = "+",
-                        peg$c51 = { type: "literal", value: "+", description: "\"+\"" },
+                        peg$c51 = {type: "literal", value: "+", description: "\"+\""},
                         peg$c52 = "-",
-                        peg$c53 = { type: "literal", value: "-", description: "\"-\"" },
+                        peg$c53 = {type: "literal", value: "-", description: "\"-\""},
                         peg$c54 = /^[0-9]/,
-                        peg$c55 = { type: "class", value: "[0-9]", description: "[0-9]" },
-                        peg$c56 = function(digits) { return digits.join('') },
+                        peg$c55 = {type: "class", value: "[0-9]", description: "[0-9]"},
+                        peg$c56 = function (digits) {
+                            return digits.join('')
+                        },
                         peg$c57 = /^[ \t\n\r]/,
-                        peg$c58 = { type: "class", value: "[ \\t\\n\\r]", description: "[ \\t\\n\\r]" },
+                        peg$c58 = {type: "class", value: "[ \\t\\n\\r]", description: "[ \\t\\n\\r]"},
 
-                        peg$currPos          = 0,
-                        peg$reportedPos      = 0,
-                        peg$cachedPos        = 0,
-                        peg$cachedPosDetails = { line: 1, column: 1, seenCR: false },
-                        peg$maxFailPos       = 0,
-                        peg$maxFailExpected  = [],
-                        peg$silentFails      = 0,
+                        peg$currPos = 0,
+                        peg$reportedPos = 0,
+                        peg$cachedPos = 0,
+                        peg$cachedPosDetails = {line: 1, column: 1, seenCR: false},
+                        peg$maxFailPos = 0,
+                        peg$maxFailExpected = [],
+                        peg$silentFails = 0,
 
                         peg$result;
 
@@ -12657,7 +12689,7 @@ function getUrls() {
                     function expected(description) {
                         throw peg$buildException(
                             null,
-                            [{ type: "other", description: description }],
+                            [{type: "other", description: description}],
                             peg$reportedPos
                         );
                     }
@@ -12673,7 +12705,9 @@ function getUrls() {
                             for (p = startPos; p < endPos; p++) {
                                 ch = input.charAt(p);
                                 if (ch === "\n") {
-                                    if (!details.seenCR) { details.line++; }
+                                    if (!details.seenCR) {
+                                        details.line++;
+                                    }
                                     details.column = 1;
                                     details.seenCR = false;
                                 } else if (ch === "\r" || ch === "\u2028" || ch === "\u2029") {
@@ -12690,7 +12724,7 @@ function getUrls() {
                         if (peg$cachedPos !== pos) {
                             if (peg$cachedPos > pos) {
                                 peg$cachedPos = 0;
-                                peg$cachedPosDetails = { line: 1, column: 1, seenCR: false };
+                                peg$cachedPosDetails = {line: 1, column: 1, seenCR: false};
                             }
                             advance(peg$cachedPosDetails, peg$cachedPos, pos);
                             peg$cachedPos = pos;
@@ -12700,7 +12734,9 @@ function getUrls() {
                     }
 
                     function peg$fail(expected) {
-                        if (peg$currPos < peg$maxFailPos) { return; }
+                        if (peg$currPos < peg$maxFailPos) {
+                            return;
+                        }
 
                         if (peg$currPos > peg$maxFailPos) {
                             peg$maxFailPos = peg$currPos;
@@ -12714,7 +12750,7 @@ function getUrls() {
                         function cleanupExpected(expected) {
                             var i = 1;
 
-                            expected.sort(function(a, b) {
+                            expected.sort(function (a, b) {
                                 if (a.description < b.description) {
                                     return -1;
                                 } else if (a.description > b.description) {
@@ -12735,20 +12771,30 @@ function getUrls() {
 
                         function buildMessage(expected, found) {
                             function stringEscape(s) {
-                                function hex(ch) { return ch.charCodeAt(0).toString(16).toUpperCase(); }
+                                function hex(ch) {
+                                    return ch.charCodeAt(0).toString(16).toUpperCase();
+                                }
 
                                 return s
-                                    .replace(/\\/g,   '\\\\')
-                                    .replace(/"/g,    '\\"')
+                                    .replace(/\\/g, '\\\\')
+                                    .replace(/"/g, '\\"')
                                     .replace(/\x08/g, '\\b')
-                                    .replace(/\t/g,   '\\t')
-                                    .replace(/\n/g,   '\\n')
-                                    .replace(/\f/g,   '\\f')
-                                    .replace(/\r/g,   '\\r')
-                                    .replace(/[\x00-\x07\x0B\x0E\x0F]/g, function(ch) { return '\\x0' + hex(ch); })
-                                    .replace(/[\x10-\x1F\x80-\xFF]/g,    function(ch) { return '\\x'  + hex(ch); })
-                                    .replace(/[\u0180-\u0FFF]/g,         function(ch) { return '\\u0' + hex(ch); })
-                                    .replace(/[\u1080-\uFFFF]/g,         function(ch) { return '\\u'  + hex(ch); });
+                                    .replace(/\t/g, '\\t')
+                                    .replace(/\n/g, '\\n')
+                                    .replace(/\f/g, '\\f')
+                                    .replace(/\r/g, '\\r')
+                                    .replace(/[\x00-\x07\x0B\x0E\x0F]/g, function (ch) {
+                                        return '\\x0' + hex(ch);
+                                    })
+                                    .replace(/[\x10-\x1F\x80-\xFF]/g, function (ch) {
+                                        return '\\x' + hex(ch);
+                                    })
+                                    .replace(/[\u0180-\u0FFF]/g, function (ch) {
+                                        return '\\u0' + hex(ch);
+                                    })
+                                    .replace(/[\u1080-\uFFFF]/g, function (ch) {
+                                        return '\\u' + hex(ch);
+                                    });
                             }
 
                             var expectedDescs = new Array(expected.length),
@@ -12770,7 +12816,7 @@ function getUrls() {
                         }
 
                         var posDetails = peg$computePosDetails(pos),
-                            found      = pos < input.length ? input.charAt(pos) : null;
+                            found = pos < input.length ? input.charAt(pos) : null;
 
                         if (expected !== null) {
                             cleanupExpected(expected);
@@ -13001,7 +13047,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s1 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c5); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c5);
+                            }
                         }
                         if (s1 !== peg$FAILED) {
                             s2 = [];
@@ -13084,7 +13132,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s1 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c9); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c9);
+                            }
                         }
                         if (s1 !== peg$FAILED) {
                             peg$reportedPos = s0;
@@ -13104,7 +13154,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s1 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c12); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c12);
+                            }
                         }
                         if (s1 !== peg$FAILED) {
                             s2 = [];
@@ -13187,7 +13239,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s1 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c15); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c15);
+                            }
                         }
                         if (s1 !== peg$FAILED) {
                             s2 = [];
@@ -13270,7 +13324,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s1 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c18); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c18);
+                            }
                         }
                         if (s1 !== peg$FAILED) {
                             s2 = [];
@@ -13310,7 +13366,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s1 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c21); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c21);
+                            }
                         }
                         if (s1 !== peg$FAILED) {
                             s2 = [];
@@ -13440,7 +13498,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s1 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c25); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c25);
+                            }
                         }
                         if (s1 !== peg$FAILED) {
                             s2 = [];
@@ -13555,7 +13615,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s1 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c29); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c29);
+                            }
                         }
                         if (s1 !== peg$FAILED) {
                             s2 = [];
@@ -13670,7 +13732,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s1 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c32); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c32);
+                            }
                         }
                         if (s1 !== peg$FAILED) {
                             s2 = [];
@@ -13753,7 +13817,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s1 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c35); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c35);
+                            }
                         }
                         if (s1 !== peg$FAILED) {
                             s2 = [];
@@ -14026,7 +14092,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s0 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c41); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c41);
+                            }
                         }
                         if (s0 === peg$FAILED) {
                             if (input.charCodeAt(peg$currPos) === 49) {
@@ -14034,7 +14102,9 @@ function getUrls() {
                                 peg$currPos++;
                             } else {
                                 s0 = peg$FAILED;
-                                if (peg$silentFails === 0) { peg$fail(peg$c43); }
+                                if (peg$silentFails === 0) {
+                                    peg$fail(peg$c43);
+                                }
                             }
                         }
 
@@ -14116,7 +14186,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s0 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c45); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c45);
+                            }
                         }
 
                         return s0;
@@ -14178,7 +14250,9 @@ function getUrls() {
                                 peg$currPos++;
                             } else {
                                 s2 = peg$FAILED;
-                                if (peg$silentFails === 0) { peg$fail(peg$c47); }
+                                if (peg$silentFails === 0) {
+                                    peg$fail(peg$c47);
+                                }
                             }
                             if (s2 !== peg$FAILED) {
                                 s3 = peg$parsedigit_sequence();
@@ -14206,7 +14280,9 @@ function getUrls() {
                                     peg$currPos++;
                                 } else {
                                     s2 = peg$FAILED;
-                                    if (peg$silentFails === 0) { peg$fail(peg$c47); }
+                                    if (peg$silentFails === 0) {
+                                        peg$fail(peg$c47);
+                                    }
                                 }
                                 if (s2 !== peg$FAILED) {
                                     s1 = [s1, s2];
@@ -14233,7 +14309,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s1 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c49); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c49);
+                            }
                         }
                         if (s1 !== peg$FAILED) {
                             s2 = peg$parsesign();
@@ -14269,7 +14347,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s0 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c51); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c51);
+                            }
                         }
                         if (s0 === peg$FAILED) {
                             if (input.charCodeAt(peg$currPos) === 45) {
@@ -14277,7 +14357,9 @@ function getUrls() {
                                 peg$currPos++;
                             } else {
                                 s0 = peg$FAILED;
-                                if (peg$silentFails === 0) { peg$fail(peg$c53); }
+                                if (peg$silentFails === 0) {
+                                    peg$fail(peg$c53);
+                                }
                             }
                         }
 
@@ -14294,7 +14376,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s2 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c55); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c55);
+                            }
                         }
                         if (s2 !== peg$FAILED) {
                             while (s2 !== peg$FAILED) {
@@ -14304,7 +14388,9 @@ function getUrls() {
                                     peg$currPos++;
                                 } else {
                                     s2 = peg$FAILED;
-                                    if (peg$silentFails === 0) { peg$fail(peg$c55); }
+                                    if (peg$silentFails === 0) {
+                                        peg$fail(peg$c55);
+                                    }
                                 }
                             }
                         } else {
@@ -14327,7 +14413,9 @@ function getUrls() {
                             peg$currPos++;
                         } else {
                             s0 = peg$FAILED;
-                            if (peg$silentFails === 0) { peg$fail(peg$c58); }
+                            if (peg$silentFails === 0) {
+                                peg$fail(peg$c58);
+                            }
                         }
 
                         return s0;
@@ -14376,14 +14464,14 @@ function getUrls() {
                     function makeAbsoluteMultiple(c, seq) {
                         var r = [];
                         var lastPosCopy = lastCoord.slice(0);
-                        for (var i=0; i < seq.length; i+=2) {
+                        for (var i = 0; i < seq.length; i += 2) {
                             // Only the last point should update lastCoord.
                             lastCoord = lastPosCopy.slice(0);
-                            var coord = makeAbsolute(c, seq.slice(i, i+2));
+                            var coord = makeAbsolute(c, seq.slice(i, i + 2));
                             r = r.concat(coord);
                             // Record the last control point, it might be needed for
                             // shorthand operations.
-                            if (i == seq.length-4) {
+                            if (i == seq.length - 4) {
                                 lastControl = coord.slice(0);
                             }
                         }
@@ -14399,8 +14487,8 @@ function getUrls() {
                         // reflected = 2*lastCoord - lastControl
                         // Note the result is absolute, not relative.
                         var r = [0, 0];
-                        r[0] = 2*lastCoord[0] - lastControl[0];
-                        r[1] = 2*lastCoord[1] - lastControl[1];
+                        r[0] = 2 * lastCoord[0] - lastControl[0];
+                        r[1] = 2 * lastCoord[1] - lastControl[1];
                         return r;
                     }
 
@@ -14436,51 +14524,51 @@ function getUrls() {
                     }
 
                     function dot(u, v) {
-                        return (u[0]*v[0] + u[1]*v[1]);
+                        return (u[0] * v[0] + u[1] * v[1]);
                     }
 
                     function ratio(u, v) {
-                        return dot(u,v) / (mag(u)*mag(v))
+                        return dot(u, v) / (mag(u) * mag(v))
                     }
 
                     function clamp(value, min, max) {
-                        return Math.min(Math.max(val, min),max);
+                        return Math.min(Math.max(val, min), max);
                     }
 
                     function angle(u, v) {
                         var sign = 1.0;
-                        if ((u[0]*v[1] - u[1]*v[0]) < 0) {
+                        if ((u[0] * v[1] - u[1] * v[0]) < 0) {
                             sign = -1.0;
                         }
-                        return sign * Math.acos(clamp(ratio(u,v)), -1, 1);
+                        return sign * Math.acos(clamp(ratio(u, v)), -1, 1);
                     }
 
                     function rotClockwise(v, angle) {
                         var cost = Math.cos(angle);
                         var sint = Math.sin(angle);
-                        return [cost*v[0] + sint*v[1], -1 * sint*v[0] + cost*v[1]];
+                        return [cost * v[0] + sint * v[1], -1 * sint * v[0] + cost * v[1]];
                     }
 
                     function rotCounterClockwise(v, angle) {
                         var cost = Math.cos(angle);
                         var sint = Math.sin(angle);
-                        return [cost*v[0] - sint*v[1], sint*v[0] + cost*v[1]];
+                        return [cost * v[0] - sint * v[1], sint * v[0] + cost * v[1]];
                     }
 
                     function midPoint(u, v) {
-                        return [(u[0] - v[0])/2.0, (u[1] - v[1])/2.0];
+                        return [(u[0] - v[0]) / 2.0, (u[1] - v[1]) / 2.0];
                     }
 
                     function meanVec(u, v) {
-                        return [(u[0] + v[0])/2.0, (u[1] + v[1])/2.0];
+                        return [(u[0] + v[0]) / 2.0, (u[1] + v[1]) / 2.0];
                     }
 
                     function pointMul(u, v) {
-                        return [u[0]*v[0], u[1]*v[1]];
+                        return [u[0] * v[0], u[1] * v[1]];
                     }
 
                     function scale(c, v) {
-                        return [c*v[0], c*v[1]];
+                        return [c * v[0], c * v[1]];
                     }
 
                     function sum(u, v) {
@@ -14509,32 +14597,32 @@ function getUrls() {
                         var rx2 = Math.pow(rx, 2);
                         var ry2 = Math.pow(ry, 2);
 
-                        var lambda = Math.sqrt(xPrime2[0]/rx2 + xPrime2[1]/ry2);
+                        var lambda = Math.sqrt(xPrime2[0] / rx2 + xPrime2[1] / ry2);
                         if (lambda > 1) {
                             rx *= lambda;
                             ry *= lambda;
                             rx2 = Math.pow(rx, 2);
                             ry2 = Math.pow(ry, 2);
                         }
-                        var factor = Math.sqrt(Math.abs(rx2*ry2 - rx2*xPrime2[1] - ry2*xPrime2[0]) /
-                            (rx2*xPrime2[1] + ry2*xPrime2[0]));
+                        var factor = Math.sqrt(Math.abs(rx2 * ry2 - rx2 * xPrime2[1] - ry2 * xPrime2[0]) /
+                            (rx2 * xPrime2[1] + ry2 * xPrime2[0]));
                         if (fA == fS) {
                             factor *= -1.0;
                         }
-                        var cPrime = scale(factor, [rx*xPrime[1]/ry, -ry*xPrime[0]/rx]); // F.6.5.2
+                        var cPrime = scale(factor, [rx * xPrime[1] / ry, -ry * xPrime[0] / rx]); // F.6.5.2
                         var c = sum(rotCounterClockwise(cPrime, phi), meanVec(x1, x2));  // F.6.5.3
-                        var x1UnitVector = [(xPrime[0] - cPrime[0])/rx, (xPrime[1] - cPrime[1])/ry];
-                        var x2UnitVector = [(-1.0*xPrime[0] - cPrime[0])/rx, (-1.0*xPrime[1] - cPrime[1])/ry];
+                        var x1UnitVector = [(xPrime[0] - cPrime[0]) / rx, (xPrime[1] - cPrime[1]) / ry];
+                        var x2UnitVector = [(-1.0 * xPrime[0] - cPrime[0]) / rx, (-1.0 * xPrime[1] - cPrime[1]) / ry];
                         var theta = angle([1, 0], x1UnitVector);                         // F.6.5.5
                         var deltaTheta = angle(x1UnitVector, x2UnitVector);              // F.6.5.6
                         var start = theta;
-                        var end = theta+deltaTheta;
+                        var end = theta + deltaTheta;
                         ops.push(
                             {type: 'save', args: []},
                             {type: 'translate', args: [c[0], c[1]]},
                             {type: 'rotate', args: [phi]},
                             {type: 'scale', args: [rx, ry]},
-                            {type: 'arc', args: [0, 0, 1, start, end, 1-fS]},
+                            {type: 'arc', args: [0, 0, 1, start, end, 1 - fS]},
                             {type: 'restore', args: []}
                         );
                     }
@@ -14546,7 +14634,7 @@ function getUrls() {
                         return peg$result;
                     } else {
                         if (peg$result !== peg$FAILED && peg$currPos < input.length) {
-                            peg$fail({ type: "end", description: "end of input" });
+                            peg$fail({type: "end", description: "end of input"});
                         }
 
                         throw peg$buildException(null, peg$maxFailExpected, peg$maxFailPos);
@@ -14555,7 +14643,7 @@ function getUrls() {
 
                 return {
                     SyntaxError: SyntaxError,
-                    parse:       parse
+                    parse: parse
                 };
             })();
 
@@ -14567,7 +14655,7 @@ function getUrls() {
                 if (typeof arg == 'string') {
                     try {
                         this.ops_ = parser.parse(arg);
-                    } catch(e) {
+                    } catch (e) {
                         // Treat an invalid SVG path as an empty path.
                     }
                 } else if (arg.hasOwnProperty('ops_')) {
@@ -14596,18 +14684,18 @@ function getUrls() {
             ];
 
             function createFunction(name) {
-                return function() {
+                return function () {
                     this.ops_.push({type: name, args: Array.prototype.slice.call(arguments, 0)});
                 };
             }
 
             // Add simple_mapping methods to Path2D.
-            for (var i=0; i<simple_mapping.length; i++) {
+            for (var i = 0; i < simple_mapping.length; i++) {
                 var name = simple_mapping[i];
                 Path_.prototype[name] = createFunction(name);
             }
 
-            Path_.prototype['addPath'] = function(path, tr) {
+            Path_.prototype['addPath'] = function (path, tr) {
                 var hasTx = false;
                 if (tr
                     && tr.a != undefined
@@ -14633,7 +14721,7 @@ function getUrls() {
             original_is_point_in_stroke = CanvasRenderingContext2D.prototype.isPointInStroke;
 
             // Replace methods on CanvasRenderingContext2D with ones that understand Path2D.
-            CanvasRenderingContext2D.prototype.fill = function(arg) {
+            CanvasRenderingContext2D.prototype.fill = function (arg) {
                 if (arg instanceof Path_) {
                     this.beginPath();
                     for (var i = 0, len = arg.ops_.length; i < len; i++) {
@@ -14646,7 +14734,7 @@ function getUrls() {
                 }
             }
 
-            CanvasRenderingContext2D.prototype.stroke = function(arg) {
+            CanvasRenderingContext2D.prototype.stroke = function (arg) {
                 if (arg instanceof Path_) {
                     this.beginPath();
                     for (var i = 0, len = arg.ops_.length; i < len; i++) {
@@ -14659,7 +14747,7 @@ function getUrls() {
                 }
             }
 
-            CanvasRenderingContext2D.prototype.clip = function(arg) {
+            CanvasRenderingContext2D.prototype.clip = function (arg) {
                 if (arg instanceof Path_) {
                     // Note that we don't save and restore the context state, since the
                     // clip region is part of the state. Not really a problem since the
@@ -14676,7 +14764,7 @@ function getUrls() {
                 }
             }
 
-            CanvasRenderingContext2D.prototype.isPointInPath = function(arg) {
+            CanvasRenderingContext2D.prototype.isPointInPath = function (arg) {
                 if (arg instanceof Path_) {
                     this.beginPath();
                     for (var i = 0, len = arg.ops_.length; i < len; i++) {
@@ -14688,7 +14776,7 @@ function getUrls() {
                     return original_is_point_in_path.apply(this, arguments);
                 }
             }
-            CanvasRenderingContext2D.prototype.isPointInStroke = function(arg) {
+            CanvasRenderingContext2D.prototype.isPointInStroke = function (arg) {
                 if (arg instanceof Path_) {
                     this.beginPath();
                     for (var i = 0, len = arg.ops_.length; i < len; i++) {
@@ -14952,8 +15040,6 @@ FloatPoint.prototype.equals = function (fpt) {
 };
 
 
-
-
 /**
  *
  * @param {FloatPoint} pt the point between which an imaginary line runs
@@ -15024,7 +15110,6 @@ function midPointF(p1, p2) {
 ;
 
 
-
 /**
  *
  * @param {FloatPoint} p1 The first point
@@ -15042,9 +15127,6 @@ FloatPoint.prototype.liesBetween = function (p1, p2) {
     }
     return false;
 };
-
-
-
 
 
 /**
@@ -15081,7 +15163,6 @@ Line.prototype.getY = function (x) {
     }
     return Number.NaN;
 };
-
 
 
 /**
@@ -15139,8 +15220,6 @@ Line.prototype.distanceSquared = function (p1, p2) {
     }
     return Number.NaN;
 };
-
-
 
 
 /**
@@ -15212,11 +15291,11 @@ Line.prototype.intersectionWithLine = function (line) {
  * @return true if the values deviate by 1.0E-14 or lesser.
  */
 function approxEquals(val1, val2, minDeviation) {
-    if(!minDeviation){
+    if (!minDeviation) {
         if (typeof val1 === "number" && typeof val2 === "number") {
             return Math.abs(Math.abs(val1) - Math.abs(val2)) <= 1.0E-14;
         }
-    }else{
+    } else {
         if (typeof val1 === "number" && typeof val2 === "number" && typeof minDeviation === "number") {
             return Math.abs(Math.abs(val1) - Math.abs(val2)) <= Math.abs(minDeviation);
         }
@@ -15294,6 +15373,7 @@ Dimension.prototype.getScaledInstance = function (scaleFactor) {
     }
     return null;
 };
+
 /**
  *
  * @param {Number} a the coefficient in x squared
@@ -15392,11 +15472,11 @@ Rectangle.prototype.bottom = function () {
 };
 
 Rectangle.prototype.centerX = function () {
-    return this.left + this.width/2;
+    return this.left + this.width / 2;
 };
 
 Rectangle.prototype.centerY = function () {
-    return this.top + this.height/2;
+    return this.top + this.height / 2;
 };
 
 Rectangle.prototype.setLocation = function (x, y) {
@@ -15600,7 +15680,10 @@ Rectangle.prototype.contains = function (rect) {
  */
 Rectangle.prototype.intersects = function (r) {
     if (r.constructor.name === 'Rectangle') {
-        let left = r.left; let right = r.right(); let top = r.top; let bottom = r.bottom();
+        let left = r.left;
+        let right = r.right();
+        let top = r.top;
+        let bottom = r.bottom();
         if (this.left < right && left < this.right && this.top < bottom && top < this.bottom) {
             if (this.left < left) this.left = left;
             if (this.top < top) this.top = top;
@@ -15812,7 +15895,6 @@ EllipseModel.prototype.area = function () {
 };
 
 
-
 /**
  *
  * @param {Number} y the y coordinate of
@@ -15888,8 +15970,6 @@ EllipseModel.prototype.contains = function (p) {
         return false;
     }
 };
-
-
 
 
 /**
@@ -16014,8 +16094,6 @@ EllipseModel.prototype.hasSameSizeAs = function (ellipse) {
 };
 
 
-
-
 /**
  *
  * @param {Rectangle} rect The rectangle
@@ -16108,7 +16186,6 @@ EllipseModel.prototype.intersection = function (rect) {
     }
 
 
-
     return pts;
 };
 
@@ -16197,10 +16274,8 @@ EllipseModel.prototype.intersectsWith = function (rect) {
     }
 
 
-
     return intersects1 || intersects2 || intersects3 || intersects4;
 };
-
 
 
 /**
@@ -16242,8 +16317,6 @@ EllipseModel.prototype.intersectsWith = function (ellipse) {
 };//end method
 
 
-
-
 function componentToHex(c) {
     var hex = c.toString(16);
     return hex.length === 1 ? "0" + hex : hex;
@@ -16264,8 +16337,7 @@ function hexToRGB(hex) {
 
 
 // Using Math.round() will give you a non-uniform distribution!
-function randomInt(min, max)
-{
+function randomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
@@ -16299,7 +16371,6 @@ Random.prototype.generateUUID = function () { // Public Domain/MIT
 };
 
 
-
 /**
  *
  * @returns {Number}
@@ -16307,6 +16378,7 @@ Random.prototype.generateUUID = function () { // Public Domain/MIT
 function oneDegInRads() {
     return (Math.PI / 180.0);
 }
+
 /**
  *
  * @param {type} angdeg
@@ -16315,6 +16387,7 @@ function oneDegInRads() {
 function angDegToRads(angdeg) {
     return (angdeg * Math.PI / 180.0);
 }
+
 /**
  *
  * @param {type} angrad
@@ -16323,7 +16396,6 @@ function angDegToRads(angdeg) {
 function angRadToDegs(angrad) {
     return (180 * angrad / Math.PI);
 }
-
 
 
 /**
@@ -16335,7 +16407,6 @@ function angRadToDegs(angrad) {
 function equals(num1, num2) {
     return Math.abs(Math.abs(num1) - Math.abs(num2)) <= 1.0E-10;
 }
-
 
 
 function dragElement(elmnt) {
@@ -16675,9 +16746,6 @@ Polygon.prototype.updateBounds = function (x, y) {
 };
 
 
-
-
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /**
@@ -16743,8 +16811,8 @@ function Graphics(canvas) {
 
         // Give the canvas pixel dimensions of their CSS
         // size * the device pixel ratio.
-        canvas.width = Math.round (canvasRect.right * dpr) - Math.round (canvasRect.left * dpr);
-        canvas.height = Math.round (canvasRect.bottom * dpr) - Math.round (canvasRect.top * dpr);
+        canvas.width = Math.round(canvasRect.right * dpr) - Math.round(canvasRect.left * dpr);
+        canvas.height = Math.round(canvasRect.bottom * dpr) - Math.round(canvasRect.top * dpr);
 
         canvas.style.width = canvasRect.width + 'px';
         canvas.style.height = canvasRect.height + 'px';
@@ -16755,7 +16823,6 @@ function Graphics(canvas) {
         this.ctx.scale(1, 1);
 
     }
-
 
 
     this.ctx.strokeStyle = "#000";
@@ -16936,7 +17003,7 @@ Graphics.prototype.rotateAt = function (angleRads, x, y, task) {
  * @returns {undefined}
  */
 Graphics.prototype.rotateDegsAt = function (angleDegs, x, y, task) {
-    if(angleDegs === 0){
+    if (angleDegs === 0) {
         task();
         return;
     }
@@ -17177,7 +17244,6 @@ Graphics.prototype.drawRoundRect = function (x, y, width, height, radius) {
 };
 
 
-
 /**
  * Fills a rectangular shape's outline
  * @param {number} x The left coordinates of the rectangle
@@ -17215,7 +17281,6 @@ Graphics.prototype.fillRoundRect = function (x, y, width, height, radius) {
         this.ctx.lineTo(x, y + radius.tl);
         this.ctx.quadraticCurveTo(x, y, x + radius.tl, y);
         this.ctx.fill();
-
 
 
     }
@@ -17345,7 +17410,6 @@ Graphics.prototype.fillRoundRectTopSide = function (x, y, width, height, radius)
 };
 
 
-
 /**
  * Fills a rectangular shape's outline and curves the rectangle on the bottom edges.
  * @param {number} x The left coordinates of the rectangle
@@ -17431,7 +17495,6 @@ Graphics.prototype.fillEllipse = function (cenX, cenY, radX, radY, rotation, sta
 };
 
 
-
 /**
  * Same as drawEllipse, but with less options
  * @param {Number} cenX The x-center of the ellipse
@@ -17443,6 +17506,25 @@ Graphics.prototype.fillEllipse = function (cenX, cenY, radX, radY, rotation, sta
 Graphics.prototype.drawOval = function (cenX, cenY, radX, radY) {
     if (typeof cenX === 'number' && typeof cenY === 'number' && typeof radX === 'number' && typeof radY === 'number') {
 
+        this.ctx.beginPath();
+        this.ctx.ellipse(cenX, cenY, radX, radY, 0, 0, 2 * Math.PI, false);
+        this.ctx.closePath();
+        this.ctx.stroke();
+    }
+};
+/**
+ * Same as drawEllipse, but with less options
+ * @param {Number} left The left of the ellipse
+ * @param {Number} top The top of the ellipse
+ * @param {Number} radX The ellipse's major-axis radius. Must be non-negative.
+ * @param {Number} radY The ellipse's minor-axis radius. Must be non-negative.
+ * @returns {undefined}
+ */
+Graphics.prototype.drawOvalFromTopLeft = function (left, top, radX, radY) {
+    if (typeof left === 'number' && typeof top === 'number' && typeof radX === 'number' && typeof radY === 'number') {
+
+        let cenX = left + radX;
+        let cenY = top + radY;
         this.ctx.beginPath();
         this.ctx.ellipse(cenX, cenY, radX, radY, 0, 0, 2 * Math.PI, false);
         this.ctx.closePath();
@@ -17468,6 +17550,28 @@ Graphics.prototype.fillOval = function (cenX, cenY, radX, radY) {
     }
 };
 
+
+/**
+ * Same as fillEllipse, but with less options
+ * @param {Number} left The left side of the ellipse
+ * @param {Number} top The top of the ellipse
+ * @param {Number} radX The ellipse's major-axis radius. Must be non-negative.
+ * @param {Number} radY The ellipse's minor-axis radius. Must be non-negative.
+ * @returns {undefined}
+ */
+Graphics.prototype.fillOvalFromTopLeft = function (left, top, radX, radY) {
+    if (typeof left === 'number' && typeof top === 'number' && typeof radX === 'number' && typeof radY === 'number') {
+
+        let cenX = left + radX;
+        let cenY = top + radY;
+
+        this.ctx.beginPath();
+        this.ctx.ellipse(cenX, cenY, radX, radY, 0, 0, 2 * Math.PI, false);
+        this.ctx.fill();
+
+    }
+};
+
 /**
  * Draws a circle
  * @param {Number} cenX The x center  of the circle
@@ -17483,6 +17587,19 @@ Graphics.prototype.drawCircle = function (cenX, cenY, radius) {
 
 
 /**
+ * Draws a circle
+ * @param {Number} left The left  of the circle
+ * @param {Number} top The  top  of the circle
+ * @param {Number} radius The radius of the circle
+ * @returns {undefined}
+ */
+Graphics.prototype.drawCircleFromTopLeft = function (left, top, radius) {
+    if (typeof cenX === 'number' && typeof cenY === 'number' && typeof radius === 'number') {
+        this.drawOvalFromTopLeft(left, top, radius, radius);
+    }
+};
+
+/**
  * Fills a circle
  * @param {Number} cenX The x center  of the circle
  * @param {Number} cenY The y center  of the circle
@@ -17495,9 +17612,43 @@ Graphics.prototype.fillCircle = function (cenX, cenY, radius) {
     }
 };
 
+/**
+ * Fills a circle
+ * @param {Number} left The left of the circle
+ * @param {Number} top The top  of the circle
+ * @param {Number} radius The radius of the circle
+ * @returns {undefined}
+ */
+Graphics.prototype.fillCircleFromTopLeft = function (left, top, radius) {
+    if (typeof left === 'number' && typeof top === 'number' && typeof radius === 'number') {
+        this.fillOvalFromTopLeft(left, top, radius, radius);
+    }
+};
+
 Graphics.prototype.drawArc = function (cenX, cenY, radius, startAngle, endAngle, counterclockwise) {
     if (typeof cenX === 'number' && typeof cenY === 'number' && typeof radius === 'number' &&
         typeof startAngle === 'number' && typeof endAngle === 'number' && typeof counterclockwise === 'boolean') {
+
+        this.ctx.beginPath();
+        this.ctx.arc(cenX, cenY, radius, startAngle, endAngle, counterclockwise);
+        this.ctx.stroke();
+    }
+};
+
+/**
+ *
+ * @param left The left side of the enclosing rectangle
+ * @param top The top side of the enclosing rectangle
+ * @param radius The radius of the arc
+ * @param startAngle The starting angle of the arc
+ * @param endAngle The ending angle of the arc
+ * @param counterclockwise If true, draw the arc in a counter-clockwise direction.
+ */
+Graphics.prototype.drawArcFromTopLeft = function (left, top, radius, startAngle, endAngle, counterclockwise) {
+    if (typeof left === 'number' && typeof top === 'number' && typeof radius === 'number' &&
+        typeof startAngle === 'number' && typeof endAngle === 'number' && typeof counterclockwise === 'boolean') {
+        let cenX = left + radius;
+        let cenY = top + radius;
 
         this.ctx.beginPath();
         this.ctx.arc(cenX, cenY, radius, startAngle, endAngle, counterclockwise);
@@ -17890,7 +18041,7 @@ Graphics.prototype.getBoundingBox = function () {
         }
     }
 
-    console.log('lol!!...' + JSON.stringify(ret));
+   // console.log('lol!!...' + JSON.stringify(ret));
     // A mess-up occurred ...
     return null;
 };
@@ -17968,7 +18119,29 @@ Graphics.prototype.drawImageAtLocWithSize = function (image, dx, dy, dWidth, dHe
 
 };
 
-
+/**
+ *
+ * @param image An element to draw into the context.
+ * The specification permits any canvas image source ( CanvasImageSource ),
+ * specifically, a CSSImageValue , an HTMLImageElement , an SVGImageElement ,
+ * an HTMLVideoElement , an HTMLCanvasElement , an ImageBitmap , or an OffscreenCanvas .
+ * @param sx The x-axis coordinate of the top left corner of the sub-rectangle of the source image to
+ * draw into the destination context. Note that this argument is not included in the 3- or 5-argument syntax.
+ * @param sy The y-axis coordinate of the top left corner of the sub-rectangle of the source image to draw
+ * into the destination context. Note that this argument is not included in the 3- or 5-argument syntax.
+ * @param sWidth The width of the sub-rectangle of the source image to draw into the destination context.
+ * If not specified, the entire rectangle from the coordinates specified by sx and sy to the bottom-right corner of the image is used. Note that this argument is not included in the 3- or 5-argument syntax.
+ * @param sHeight The height of the sub-rectangle of the source image to draw into the destination context.
+ * Note that this argument is not included in the 3- or 5-argument syntax.
+ * @param dx The x-axis coordinate in the destination canvas at which to place the top-left corner of the source image .
+ * @param dy The y-axis coordinate in the destination canvas at which to place the top-left corner of the source image .
+ * @param dWidth The width to draw the image in the destination canvas. This allows scaling of the drawn image.
+ * If not specified, the image is not scaled in width when drawn. Note that this argument is not included in the
+ * 3-argument syntax.
+ * @param dHeight The height to draw the image in the destination canvas. This allows scaling of the drawn image.
+ * If not specified, the image is not scaled in height when drawn. Note that this argument is not included in the
+ * 3-argument syntax
+ */
 Graphics.prototype.drawImage = function (image, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight) {
     if (typeof sx === 'number' && typeof sy === 'number' && typeof sWidth === 'number' && typeof sHeight === 'number'
         && typeof dx === 'number' && typeof dy === 'number' && typeof dWidth === 'number' && typeof dHeight === 'number') {
@@ -18118,7 +18291,6 @@ Graphics.prototype.getTextSize = function (text) {
 };
 
 
-
 /**
  * Computes the size of an arra of strings using same canvas to optimize dom editing.
  * @param {string} textArray An array of strings whose dimensions are needed
@@ -18172,7 +18344,6 @@ Graphics.prototype.textHeight = function (text) {
     }
     return 0;
 };
-
 
 
 /**
@@ -18273,10 +18444,7 @@ Graphics.prototype.getLinesByMaxWidthAlgorithm = function (text, lineWidth) {
 
     return lines;
 };//end method
-
-
 //MysteryImages
-
 
 const MysteryConstants = {
     DRAW_SQUARE: 1,
@@ -18537,6 +18705,9 @@ function MysteryImage(options) {
     this.g.setBackground(this.bgColor);
     this.g.setColor(this.fgColor);
     this.g.setAlpha(this.opacity);
+    this.fgColor = this.g.ctx.strokeStyle;
+    this.bgColor = this.g.ctx.fillStyle;
+
 
 }
 
@@ -18552,6 +18723,31 @@ function makeCanvas(canvasId, w, h) {
     document.body.appendChild(canvas);
 
     return canvas;
+}
+
+function invertColor(hex) {
+    if (hex.indexOf('#') === 0) {
+        hex = hex.slice(1);
+    }
+    // convert 3-digit hex to 6-digits.
+    if (hex.length === 3) {
+        hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2];
+    }
+    if (hex.length !== 6) {
+        throw new Error('Invalid HEX color.');
+    }
+    // invert color components
+    var r = (255 - parseInt(hex.slice(0, 2), 16)).toString(16),
+        g = (255 - parseInt(hex.slice(2, 4), 16)).toString(16),
+        b = (255 - parseInt(hex.slice(4, 6), 16)).toString(16);
+    // pad each with zeros and return
+    return '#' + padZero(r) + padZero(g) + padZero(b);
+}
+
+function padZero(str, len) {
+    len = len || 2;
+    var zeros = new Array(len).join('0');
+    return (zeros + str).slice(-len);
 }
 
 /**
@@ -18808,7 +19004,7 @@ MysteryImage.prototype.drawText = function (x, y) {
     let w = g.stringWidth(txt);
     let h = g.textHeight(txt);
     g.drawString(txt, x, y + h);
-    return { width: w, height: h };
+    return {width: w, height: h};
 };
 
 MysteryImage.prototype.drawRotatedText = function (x, y, size, angDeg) {
@@ -18824,11 +19020,34 @@ MysteryImage.prototype.drawRotatedText = function (x, y, size, angDeg) {
     });
 };
 
+MysteryImage.prototype.drawBus = function (x, y, sz) {
+    let g = this.g;
+    let bus = new BusView(sz, this.fgColor,invertColor(this.fgColor), 16);
+    bus.draw();
+    g.drawImageAtLocWithSize(bus.imageCache,x, y, sz, sz);
+    bus.cleanup();
+};
+
+MysteryImage.prototype.drawRotatedBus = function (x, y, sz, angDeg) {
+    let g = this.g;
+    let bus = new BusView(sz,this.fgColor,invertColor(this.fgColor), 16);
+    bus.draw();
+    let image = bus.imageCache;
+    let self = this;
+    let halfSz = sz / 2;
+    g.rotateDegsAt(angDeg, x + halfSz, y + halfSz, function () {
+        g.drawImage(image,-halfSz, -halfSz);
+        // let imageView = document.getElementById("imager");
+        // imageView.src = bus.g.getCanvas().toDataURL("image/png");
+        bus.cleanup();
+    });
+};
+
 MysteryImage.prototype.generateRect = function (w, h) {
 
     let ww = w / PIXEL_RATIO;
     let hh = h / PIXEL_RATIO;
-    let mnsz = this.minSize/PIXEL_RATIO;
+    let mnsz = this.minSize / PIXEL_RATIO;
     let sz = mnsz + this.rnd.nextInt(mnsz + 1);
     //sz = this.g.normalizeQuantity(sz);
 
@@ -18859,10 +19078,10 @@ function calibrate(g, w, h, font) {
     let fnt = new Font(FontStyle.REGULAR, 8, "Kartika", CssSizeUnits.PX, "normal")
 
     let step = 50;
-    for (let x = 0; x < w; x+=step) {
+    for (let x = 0; x < w; x += step) {
         g.drawLine(x, 0, x, 20);
         g.setFont(fnt);
-        g.drawString(""+x, x, 30);
+        g.drawString("" + x, x, 30);
         g.setFont(font);
     }
 
@@ -18870,11 +19089,11 @@ function calibrate(g, w, h, font) {
     g.setColor('pink');
     g.setBackground("white");
 
-    for (let y = 0; y < h; y+=step) {
+    for (let y = 0; y < h; y += step) {
         g.setFont(font);
         g.drawLine(0, y, 20, y);
         g.setFont(fnt);
-        g.drawString(""+y, 30, y);
+        g.drawString("" + y, 30, y);
     }
     g.setAlpha(alpha);
 }
@@ -18979,6 +19198,12 @@ MysteryImage.prototype.baseDraw = function (w, h) {
                 case MysteryConstants.DRAW_ROTATED_OVAL:
                     this.drawRotatedOval(r.centerX(), r.centerY(), r.width, angDeg);
                     break;
+                case MysteryConstants.DRAW_BUS:
+                    this.drawBus(r.left, r.top, r.width);
+                    break;
+                case MysteryConstants.DRAW_ROTATED_BUS:
+                    this.drawRotatedBus(r.left, r.top, r.width, angDeg);
+                    break;
                 default:
                     break;
             }
@@ -19010,12 +19235,284 @@ MysteryImage.prototype.draw = function () {
 };//end draw method
 
 //End MysteryImages
+
+//BusView
+function BusView(busWidth, mainColor, minorColor, busRadius) {
+
+    this.mainColor = mainColor;
+    this.minorColor = minorColor;
+    this.busRadius = busRadius;
+
+    this.imageCache = null;//ImageData
+    let canvas = this.makeCanvas(busWidth, busWidth);
+    this.g = new Graphics(canvas);
+
+    this.alphaRange = {
+        MIN_ALPHA: 80,
+        MAX_ALPHA: 255
+    };
+
+    this.opacityValue = this.alphaRange.MIN_ALPHA;
+    this.busArchitecture = new BusArchitecture(busWidth);
+}
+
+
+BusView.prototype.makeCanvas = function(w, h) {
+    let canvas = document.createElement('canvas');
+    canvas.id = "bus-canv-"+new Date().getTime();
+
+    canvas.width = w;
+    canvas.height = h;
+    canvas.style.border = "0px solid";
+    document.body.appendChild(canvas);
+    return canvas;
+};
+BusView.prototype.cleanup = function (){
+    this.imageCache = null;
+    this.g.clear();
+    this.g.getCanvas().remove();
+};
+
+
+function BusArchitecture(busWidth) {
+    if (!busWidth || typeof busWidth !== "number") {
+        throw 'invalid argument for bus width';
+    }
+    this.busWidth = busWidth;
+    this.busHeight = 0;
+    this.busWheelWidth = 0;
+    this.busWheelsSpan = 0;
+    this.busWheelsY = 0;
+    this.busSemiCircularHollowForWheelWidth = 0;
+    this.busSemiCircularHollowForWheelY = 0;
+    this.busSemiCircularHollowSpan = 0;
+    this.busRimWidth = 0;//inner circle in bus wheel
+    this.busLowerRectWidth = 0;
+    this.busLowerRectHeight = 0;
+    this.busLowerRectX = 0;
+    this.busLowerRectY = 0;
+    this.busWindowX = 0;
+    this.busWindowY = 0;
+    this.busWindowWidth = 0;
+    this.busWindowHeight = 0;
+    this.busWindowGap = 0;
+
+
+    this.busLowerRodBetweenTiresWidth = 0;
+    this.busLowerRodBetweenTiresHeight = 0;
+    this.busLowerRodBetweenTiresX = 0;
+    this.busLowerRodBetweenTiresY = 0;
+
+
+    this.busFenderWidth = 0;
+    this.busFenderHeight = 0;
+    this.fenderDisplacementBehindBus = 0;
+    this.fenderY = 0;
+
+    this.structure = {
+
+        STD_BUS_WIDTH: 920,
+        STD_BUS_HEIGHT: 572,
+        STD_BUS_WHEEL_WIDTH: 176,
+        STD_BUS_WHEEL_Y: 490,
+        STD_BUS_SEMI_CIRCLE_HOLLOW_FOR_WHEEL_Y: 485,
+        STD_BUS_SEMI_CIRCLE_HOLLOW_FOR_WHEEL_WIDTH: 188,
+        /**
+         * Distance from the left of the first semi-circle containing the first wheel
+         * to the right of the second semi-circle containing the second wheel
+         */
+        STD_BUS_SEMI_CIRCLE_HOLLOW_SPAN: 690,
+        STD_BUS_RIM_WIDTH: 90,
+        STD_BUS_LOWER_RECT_WIDTH: 665,
+        STD_BUS_LOWER_RECT_HEIGHT: 203,
+        STD_BUS_LOWER_RECT_X: 124,
+        STD_BUS_LOWER_RECT_Y: 266,
+
+
+        STD_BUS_LOWER_ROD_BETWEEN_TIRES_WIDTH: 320,
+        STD_BUS_LOWER_ROD_BETWEEN_TIRES_HEIGHT: 20,
+        STD_BUS_LOWER_ROD_BETWEEN_TIRES_X: 296,
+        STD_BUS_LOWER_ROD_BETWEEN_TIRES_Y: 508,
+
+        /**
+         * The x location of the first bus window counting
+         * from the left
+         */
+        STD_BUS_WINDOW_X: 123,
+        STD_BUS_WINDOW_Y: 100,
+        /**
+         * Distance from left of left wheel to right of right wheel
+         */
+        STD_BUS_WHEELS_SPAN: 682,
+
+        STD_BUS_WINDOW_WIDTH: 160,
+        STD_BUS_WINDOW_HEIGHT: 130,
+        STD_BUS_WINDOW_GAP: 92.5,
+        STD_BUS_FENDER_WIDTH: 969,
+        STD_BUS_FENDER_HEIGHT: 85,
+        /**
+         * Standard distance between the back of the fender and the back of the bus's body
+         */
+        STD_BUS_FENDER_DISPLACEMENT_BEHIND_BUS: 12,
+        STD_BUS_FENDER_Y: 485
+    };
+
+    this.init();
+}
+
+BusArchitecture.prototype.init = function () {
+    let ratio = (this.busWidth / this.structure.STD_BUS_WIDTH);
+    this.busHeight = (ratio * this.structure.STD_BUS_HEIGHT);
+    this.busWheelWidth = (ratio * this.structure.STD_BUS_WHEEL_WIDTH);
+    this.busWheelsY = (ratio * this.structure.STD_BUS_WHEEL_Y);
+    this.busSemiCircularHollowForWheelWidth = (ratio * this.structure.STD_BUS_SEMI_CIRCLE_HOLLOW_FOR_WHEEL_WIDTH);
+    this.busSemiCircularHollowForWheelY = (ratio * this.structure.STD_BUS_SEMI_CIRCLE_HOLLOW_FOR_WHEEL_Y);
+    this.busSemiCircularHollowSpan = (ratio * this.structure.STD_BUS_SEMI_CIRCLE_HOLLOW_SPAN);
+    this.busRimWidth = (ratio * this.structure.STD_BUS_RIM_WIDTH);
+    this.busLowerRectWidth = (ratio * this.structure.STD_BUS_LOWER_RECT_WIDTH);
+    this.busLowerRectHeight = (ratio * this.structure.STD_BUS_LOWER_RECT_HEIGHT);
+    this.busLowerRectX = (ratio * this.structure.STD_BUS_LOWER_RECT_X);
+    this.busLowerRectY = (ratio * this.structure.STD_BUS_LOWER_RECT_Y);
+    this.busWheelsSpan = (ratio * this.structure.STD_BUS_WHEELS_SPAN);
+
+    this.busLowerRodBetweenTiresWidth = (ratio * this.structure.STD_BUS_LOWER_ROD_BETWEEN_TIRES_WIDTH);
+    this.busLowerRodBetweenTiresHeight = (ratio * this.structure.STD_BUS_LOWER_ROD_BETWEEN_TIRES_HEIGHT);
+
+    this.busLowerRodBetweenTiresX = (ratio * this.structure.STD_BUS_LOWER_ROD_BETWEEN_TIRES_X);
+    this.busLowerRodBetweenTiresY = (ratio * this.structure.STD_BUS_LOWER_ROD_BETWEEN_TIRES_Y);
+
+    this.busWindowX = (ratio * this.structure.STD_BUS_WINDOW_X);
+    this.busWindowY = (ratio * this.structure.STD_BUS_WINDOW_Y);
+    this.busWindowWidth = (ratio * this.structure.STD_BUS_WINDOW_WIDTH);
+    this.busWindowHeight = (ratio * this.structure.STD_BUS_WINDOW_HEIGHT);
+    this.busWindowGap = (ratio * this.structure.STD_BUS_WINDOW_GAP);
+    this.busFenderWidth = (ratio * this.structure.STD_BUS_FENDER_WIDTH);
+    this.busFenderHeight = (ratio * this.structure.STD_BUS_FENDER_HEIGHT);
+    this.fenderDisplacementBehindBus = (ratio * this.structure.STD_BUS_FENDER_DISPLACEMENT_BEHIND_BUS);
+    this.fenderY = (ratio * this.structure.STD_BUS_FENDER_Y);
+};
+
+/**
+ *
+ */
+BusView.prototype.drawBus = function () {
+
+    let g = this.g;
+
+    let r_big = this.busRadius <= 0 ? 16 : this.busRadius;
+    let r_small = 4;
+
+    let w = this.busArchitecture.busWidth;
+    let h = this.busArchitecture.busHeight;
+    let x = (0.5 * (g.width - w));
+    let y = (0.5 * (g.height - h));
+
+    g.setBackground(this.mainColor);
+    g.fillRoundRect(x, y, w, h, r_big);
+
+    let fenderDisp = this.busArchitecture.fenderDisplacementBehindBus;
+    let fenderX = x - fenderDisp;
+    let fenderY = y + this.busArchitecture.fenderY;
+
+    //draw the fender
+    g.fillRoundRect(fenderX, fenderY, this.busArchitecture.busFenderWidth, this.busArchitecture.busFenderHeight, r_big);
+
+    //draw the windows
+    g.setBackground(this.minorColor);
+    let bx = x + this.busArchitecture.busWindowX;
+    let by = y + this.busArchitecture.busWindowY;
+    g.fillRoundRect(bx, by, this.busArchitecture.busWindowWidth, this.busArchitecture.busWindowHeight, r_small);
+
+    bx += this.busArchitecture.busWindowWidth + this.busArchitecture.busWindowGap;
+    g.fillRoundRect(bx, by, this.busArchitecture.busWindowWidth, this.busArchitecture.busWindowHeight, r_small);
+
+    bx += this.busArchitecture.busWindowWidth + this.busArchitecture.busWindowGap;
+    g.fillRoundRect(bx, by, this.busArchitecture.busWindowWidth, this.busArchitecture.busWindowHeight, r_small);
+
+//drawArc = function (cenX, cenY, radius, startAngle, endAngle, counterclockwise)
+    //draw semi circles for tire containers
+    let hollowForWheelY = y + this.busArchitecture.busSemiCircularHollowForWheelY;
+
+    let hollowWidth = this.busArchitecture.busSemiCircularHollowForWheelWidth;
+    let hollowDispFromSides = ((w - this.busArchitecture.busSemiCircularHollowSpan) * 0.5);
+    let hollowForWheelX = x + hollowDispFromSides;
+
+//draw hollows for wheels...left
+    g.drawArcFromTopLeft(hollowForWheelX, hollowForWheelY, hollowForWheelX + hollowWidth,
+        hollowForWheelY + hollowWidth, -180, 180, true);
+
+    hollowForWheelX = x + (w - hollowDispFromSides - hollowWidth);
+//draw hollows for wheels...right
+    g.drawArcFromTopLeft(hollowForWheelX, hollowForWheelY, hollowForWheelX + hollowWidth,
+        hollowForWheelY + hollowWidth, -180, 180, true);
+
+
+    //draw wheels:
+    g.setBackground(this.mainColor);
+    let wheelsDisplacementFromBusEnds = ((w - this.busArchitecture.busWheelsSpan) * 0.5);
+    let wheelRad = (this.busArchitecture.busWheelWidth * 0.5);
+    let leftWheelCenX = (x + wheelsDisplacementFromBusEnds + wheelRad);
+    let rightWheelCenX = x + (w - wheelsDisplacementFromBusEnds - wheelRad);
+    let wheelY = y + this.busArchitecture.busWheelsY;
+
+    g.fillCircle(leftWheelCenX, wheelY + wheelRad, wheelRad);
+    g.fillCircle(rightWheelCenX, wheelY + wheelRad, wheelRad);
+
+
+    g.setColor(this.minorColor);
+    g.drawCircle(leftWheelCenX, wheelY + wheelRad, wheelRad);
+    g.drawCircle(rightWheelCenX, wheelY + wheelRad, wheelRad);
+
+    let rimRadius = (this.busArchitecture.busRimWidth * 0.5);
+
+    g.setBackground(this.minorColor);
+    //draw wheel rims
+    //left rim is concentric with left wheel
+    g.fillCircle(leftWheelCenX, wheelY + wheelRad, rimRadius);
+    //right rim is concentric with left wheel
+    g.fillCircle(rightWheelCenX, wheelY + wheelRad, rimRadius);
+
+
+    //draw lower rect
+    g.setColor(this.minorColor);
+    g.setStrokeWidth(1.5);
+    g.setAlpha(this.opacityValue);
+
+    let left = x + this.busArchitecture.busLowerRectX;
+    let top = y + this.busArchitecture.busLowerRectY;
+    g.drawRoundRect(left, top, this.busArchitecture.busLowerRectWidth, this.busArchitecture.busLowerRectHeight, r_small);
+
+    //draw lower rod between wheels
+    left = x + this.busArchitecture.busLowerRodBetweenTiresX;
+    top = y + this.busArchitecture.busLowerRodBetweenTiresY;
+    let right = left + this.busArchitecture.busLowerRodBetweenTiresWidth;
+    let bottom = top + this.busArchitecture.busLowerRodBetweenTiresHeight;
+
+    g.setBackground(this.minorColor);
+    g.setAlpha(this.alphaRange.MAX_ALPHA);
+    g.fillRoundRect(left, top, this.busArchitecture.busLowerRodBetweenTiresWidth, this.busArchitecture.busLowerRodBetweenTiresHeight, r_small);
+
+};
+/**
+ *
+ */
+BusView.prototype.draw = function () {
+    let g = this.g;
+    let w = g.width;
+    let h = g.height;
+    if (this.imageCache != null) {
+        g.drawImageAtLocWithSize(this.imageCache, 0, 0, w, h);
+    } else {
+        this.drawBus();
+        this.imageCache = g.getCanvas();
+    }
+};
+//End BusView
 /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
 
 
 function Point(x, y) {
@@ -19102,8 +19599,6 @@ FloatPoint.prototype.equals = function (fpt) {
 };
 
 
-
-
 /**
  *
  * @param {FloatPoint} pt the point between which an imaginary line runs
@@ -19174,7 +19669,6 @@ function midPointF(p1, p2) {
 ;
 
 
-
 /**
  *
  * @param {FloatPoint} p1 The first point
@@ -19192,9 +19686,6 @@ FloatPoint.prototype.liesBetween = function (p1, p2) {
     }
     return false;
 };
-
-
-
 
 
 /**
@@ -19231,7 +19722,6 @@ Line.prototype.getY = function (x) {
     }
     return Number.NaN;
 };
-
 
 
 /**
@@ -19289,8 +19779,6 @@ Line.prototype.distanceSquared = function (p1, p2) {
     }
     return Number.NaN;
 };
-
-
 
 
 /**
@@ -19456,6 +19944,7 @@ Dimension.prototype.getScaledInstance = function (scaleFactor) {
     }
     return null;
 };
+
 /**
  *
  * @param {Number} a the coefficient in x squared
@@ -19554,11 +20043,11 @@ Rectangle.prototype.bottom = function () {
 };
 
 Rectangle.prototype.centerX = function () {
-    return this.left + this.width/2;
+    return this.left + this.width / 2;
 };
 
 Rectangle.prototype.centerY = function () {
-    return this.top + this.height/2;
+    return this.top + this.height / 2;
 };
 
 Rectangle.prototype.setLocation = function (x, y) {
@@ -19762,7 +20251,10 @@ Rectangle.prototype.contains = function (rect) {
  */
 Rectangle.prototype.intersects = function (r) {
     if (r.constructor.name === 'Rectangle') {
-        let left = r.left; let right = r.right(); let top = r.top; let bottom = r.bottom();
+        let left = r.left;
+        let right = r.right();
+        let top = r.top;
+        let bottom = r.bottom();
         if (this.left < right && left < this.right && this.top < bottom && top < this.bottom) {
             if (this.left < left) this.left = left;
             if (this.top < top) this.top = top;
@@ -19974,7 +20466,6 @@ EllipseModel.prototype.area = function () {
 };
 
 
-
 /**
  *
  * @param {Number} y the y coordinate of
@@ -20050,8 +20541,6 @@ EllipseModel.prototype.contains = function (p) {
         return false;
     }
 };
-
-
 
 
 /**
@@ -20176,8 +20665,6 @@ EllipseModel.prototype.hasSameSizeAs = function (ellipse) {
 };
 
 
-
-
 /**
  *
  * @param {Rectangle} rect The rectangle
@@ -20270,7 +20757,6 @@ EllipseModel.prototype.intersection = function (rect) {
     }
 
 
-
     return pts;
 };
 
@@ -20359,10 +20845,8 @@ EllipseModel.prototype.intersectsWith = function (rect) {
     }
 
 
-
     return intersects1 || intersects2 || intersects3 || intersects4;
 };
-
 
 
 /**
@@ -20404,8 +20888,6 @@ EllipseModel.prototype.intersectsWith = function (ellipse) {
 };//end method
 
 
-
-
 function componentToHex(c) {
     var hex = c.toString(16);
     return hex.length === 1 ? "0" + hex : hex;
@@ -20426,8 +20908,7 @@ function hexToRGB(hex) {
 
 
 // Using Math.round() will give you a non-uniform distribution!
-function randomInt(min, max)
-{
+function randomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
@@ -20461,7 +20942,6 @@ Random.prototype.generateUUID = function () { // Public Domain/MIT
 };
 
 
-
 /**
  *
  * @returns {Number}
@@ -20469,6 +20949,7 @@ Random.prototype.generateUUID = function () { // Public Domain/MIT
 function oneDegInRads() {
     return (Math.PI / 180.0);
 }
+
 /**
  *
  * @param {type} angdeg
@@ -20477,6 +20958,7 @@ function oneDegInRads() {
 function angDegToRads(angdeg) {
     return (angdeg * Math.PI / 180.0);
 }
+
 /**
  *
  * @param {type} angrad
@@ -20485,6 +20967,7 @@ function angDegToRads(angdeg) {
 function angRadToDegs(angrad) {
     return (180 * angrad / Math.PI);
 }
+
 /**
  *
  * @param num1 The first number
@@ -20494,7 +20977,6 @@ function angRadToDegs(angrad) {
 function equals(num1, num2) {
     return Math.abs(Math.abs(num1) - Math.abs(num2)) <= 1.0E-10;
 }
-
 
 
 function dragElement(elmnt) {
