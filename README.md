@@ -28,8 +28,7 @@ In **_layman_**, no new xml files are created.
 
 
 ### How to use
-Download the `layman.js` file and add the script in the head section of your html page
-page...e.g.
+Download the `layman.js` file and add the script in the head section of your html page e.g.
 
 ```html
 <!DOCTYPE html>
