@@ -933,12 +933,13 @@ View.prototype.getValueAndPriority = function (value) {
     };
 };
 
-
 /**
  * Applies necessary constraints to itself, where necessary
  *  Included layouts, templated layouts, and root layouts will need this a lot.
+ * @param {Page} page
+ * @return {*[]}
  */
-View.prototype.layoutSelf = function () {
+View.prototype.layoutSelf = function (page) {
 
     let w = this.width;
     let h = this.height;
@@ -964,13 +965,13 @@ View.prototype.layoutSelf = function () {
     w = idnpWid.id;
     let priorityWidth = idnpWid.priority;
 
-    this.setWidthConstraints(constraints, this.id, w, priorityWidth);
+    this.setWidthConstraints(page, constraints, this.id, w, priorityWidth);
 
     let idnpHei = this.getValueAndPriority(h);
     h = idnpHei.id;
     let priorityHeight = idnpHei.priority;
 
-    this.setHeightConstraints(constraints, this.id, h, priorityHeight);
+    this.setHeightConstraints(page, constraints, this.id, h, priorityHeight);
 
     if (maxWid) {
 
@@ -1147,7 +1148,7 @@ View.prototype.layoutChildren = function (page) {
         }
 
         /**
-         * horizontal bias and centering. In the underlying autolayout.js library, I fund out the hard way
+         * horizontal bias and centering. In the underlying autolayout.js library, I found out the hard way
          * that when using centerX and centerY(?), one can shift the default behaviour using the multiplier, but
          * instead of the shift applying for 0 to 1 from the left to the right, it applies for 0 to 2.
          * Expected behaviour, assuming their own scale is different, then one would expect that:
@@ -1257,7 +1258,7 @@ View.prototype.layoutChildren = function (page) {
             }
         }
 
-        this.setWidthConstraints(constraints, cid, w, priorityWid);
+        this.setWidthConstraints(page, constraints, cid, w, priorityWid);
 
         let idnpHei = this.getValueAndPriority(h);
         h = idnpHei.id;
@@ -1310,8 +1311,8 @@ View.prototype.layoutChildren = function (page) {
 
             }
         }
-        this.setHeightConstraints(constraints, cid, h, priorityHei);
-        this.setSizeBoundariesConstraints(constraints, cid, maxWid, minWid, maxHei, minHei);
+        this.setHeightConstraints(page, constraints, cid, h, priorityHei);
+        this.setSizeBoundariesConstraints(page, constraints, cid, maxWid, minWid, maxHei, minHei);
 
         if (ss) {
             if (!hiddenViewForWidthId) {
@@ -2386,7 +2387,18 @@ View.prototype.setBottomAlignBT = function (view1, marginBottom, view2, priority
 
 };
 
-View.prototype.setSizeBoundariesConstraints = function (constraints, cid, maxWid, minWid, maxHei, minHei) {
+
+/**
+ *
+ * @param {Page} page
+ * @param {Array} constraints
+ * @param {String} cid
+ * @param {String|Number} maxWid
+ * @param {String|Number} minWid
+ * @param {String|Number} maxHei
+ * @param {String|Number} minHei
+ */
+View.prototype.setSizeBoundariesConstraints = function (page, constraints, cid, maxWid, minWid, maxHei, minHei) {
 
     if (maxWid) {
 
@@ -2844,7 +2856,15 @@ function quickScan(dim, optimize) {
     return tokens;
 }
 
-View.prototype.setWidthConstraints = function (constraints, id, w, priority) {
+/**
+ *
+ * @param {Page} page
+ * @param {Array} constraints
+ * @param {String} id
+ * @param {String|Number} w The width
+ * @param {Number} priority
+ */
+View.prototype.setWidthConstraints = function (page, constraints, id, w, priority) {
 
     let mulInd = w.indexOf("*");
     let addInd = w.indexOf("+");
@@ -2856,6 +2876,22 @@ View.prototype.setWidthConstraints = function (constraints, id, w, priority) {
 
     if (isNumber(w)) {
         w = typeof w === 'string' ? parseFloat(w) : w;
+        if(w === 0){
+            let child = page.viewMap.get(id);
+            if(child.dimRatio !== -1){
+                constraints.push({
+                    view1: id,
+                    attr1: 'width',    // see AutoLayout.Attribute
+                    relation: 'equ',   // see AutoLayout.Relation
+                    view2: id,
+                    attr2: AutoLayout.Attribute.HEIGHT,
+                    constant: 0,
+                    multiplier: child.dimRatio,
+                    priority: priority
+                });
+                return;
+            }
+        }
         constraints.push({
             view1: id,
             attr1: 'width',    // see AutoLayout.Attribute
@@ -2868,6 +2904,22 @@ View.prototype.setWidthConstraints = function (constraints, id, w, priority) {
         });
     } else if ((parseObj = parseNumberAndUnitsNoValidation(w, true)).number) {
         let val = parseFloat(parseObj.number);
+        if(val === 0){
+            let child = page.viewMap.get(id);
+            if(child.dimRatio !== -1){
+                constraints.push({
+                    view1: id,
+                    attr1: 'width',    // see AutoLayout.Attribute
+                    relation: 'equ',   // see AutoLayout.Relation
+                    view2: id,
+                    attr2: AutoLayout.Attribute.HEIGHT,
+                    constant: 0,
+                    multiplier: child.dimRatio,
+                    priority: priority
+                });
+                return;
+            }
+        }
         switch (parseObj.units) {
             case CssSizeUnits.PX:
                 constraints.push({
@@ -3082,7 +3134,16 @@ View.prototype.setWidthConstraints = function (constraints, id, w, priority) {
     }
 
 };
-View.prototype.setHeightConstraints = function (constraints, id, h, priority) {
+
+/**
+ *
+ * @param {Page} page
+ * @param {Array} constraints
+ * @param {String} id
+ * @param {String|Number} h The height
+ * @param {Number} priority
+ */
+View.prototype.setHeightConstraints = function (page, constraints, id, h, priority) {
 
     let mulInd = h.indexOf("*");
     let addInd = h.indexOf("+");
@@ -3093,6 +3154,23 @@ View.prototype.setHeightConstraints = function (constraints, id, h, priority) {
 
     if (isNumber(h)) {
         h = typeof h === 'string' ? parseFloat(h) : h;
+
+        if(h === 0){
+            let child = page.viewMap.get(id);
+            if(child.dimRatio !== -1){
+                constraints.push({
+                    view1: id,
+                    attr1: AutoLayout.Attribute.HEIGHT,    // see AutoLayout.Attribute
+                    relation: 'equ',   // see AutoLayout.Relation
+                    view2: id,
+                    attr2: AutoLayout.Attribute.WIDTH,
+                    constant: 0,
+                    multiplier: 1.0/child.dimRatio,
+                    priority: priority
+                });
+                return;
+            }
+        }
         constraints.push({
             view1: id,
             attr1: 'height',    // see AutoLayout.Attribute
@@ -3105,6 +3183,22 @@ View.prototype.setHeightConstraints = function (constraints, id, h, priority) {
         });
     } else if ((parseObj = parseNumberAndUnitsNoValidation(h, true)).number) {
         let val = parseFloat(parseObj.number);
+        if(val === 0){
+            let child = page.viewMap.get(id);
+            if(child.dimRatio !== -1){
+                constraints.push({
+                    view1: id,
+                    attr1: AutoLayout.Attribute.HEIGHT,    // see AutoLayout.Attribute
+                    relation: 'equ',   // see AutoLayout.Relation
+                    view2: id,
+                    attr2: AutoLayout.Attribute.WIDTH,
+                    constant: 0,
+                    multiplier: 1.0/child.dimRatio,
+                    priority: priority
+                });
+                return;
+            }
+        }
         switch (parseObj.units) {
             case CssSizeUnits.PX:
                 constraints.push({
@@ -4199,8 +4293,8 @@ const attrKeys = {
     layout_constraintGuide_percent: "guide-pct",
     layout_constraintGuide_begin: "guide-begin",
     layout_constraintGuide_end: "guide-end",
-    layout_horizontalBias: "hor-bias",// a floating point bumber between 0 and 1 specifying the priority of the horizontal constraint attributes
-    layout_verticalBias: "ver-bias",// a floating point bumber between 0 and 1 specifying the priority of the vertical constraint attributes
+    layout_horizontalBias: "hor-bias",// a floating point number between 0 and 1 specifying the priority of the horizontal constraint attributes
+    layout_verticalBias: "ver-bias",// a floating point number between 0 and 1 specifying the priority of the vertical constraint attributes
     dimension_ratio: "dim-ratio",
     orientation: "orient", //
 };

@@ -91,7 +91,7 @@ For convenience and to reduce verbosity, the constraint properties with long nam
     layout_constraintBottom_toTopOf    -> bt
     layout_constraintCenterXAlign      -> cx
     layout_constraintCenterYAlign      -> cy
-    layout_constraintDimensionRatio    -> dim_ratio
+    layout_constraintDimensionRatio    -> dim-ratio
     layout_constraintGuide_percent     -> guide-pct(in %)
     layout_constraintGuide_begin     -> guide-begin(in px or no units)
     layout_constraintGuide_end     -> guide-end(in px or no units)

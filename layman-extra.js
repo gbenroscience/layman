@@ -937,6 +937,7 @@ View.prototype.makeBgImage = function () {
     let opacityValue = refIds.get(attrKeys.mi_opacity);
     let cacheAfterDraw = refIds.get(attrKeys.mi_cacheAfterDraw);
     let bgOpacityEnabled = refIds.get(attrKeys.mi_opaqueBg);//allow the opacity to affect the background color also.
+    let mysteryMode = refIds.get(attrKeys.mi_mode);
 
 
     let textOnly = refIds.get(attrKeys.mi_textOnly);
@@ -953,11 +954,16 @@ View.prototype.makeBgImage = function () {
 
 
     if (textArray) {
-        try {
-            textArray = JSON.parse(textArray);
-        } catch (e) {
-            throw e;
+        if(typeof textArray === 'string'){
+            try {
+                textArray = JSON.parse(textArray);
+            } catch (e) {
+                throw e;
+            }
+        }else if(typeof textArray === "object"){
+           //no action... some validation in the future
         }
+
     }
 
     cacheAfterDraw = cacheAfterDraw === true || cacheAfterDraw === 'true';
@@ -975,6 +981,7 @@ View.prototype.makeBgImage = function () {
         fontStyle: style,
         fgColor: fgColor,
         bgColor: bgColor,
+        mode: mysteryMode,
         numShapes: numShapes, // Total number of shapes to generate
         shapesDensity: shapesDensity, //Total number of shapes per unit area
         strokeWidth: strokeWidth,
@@ -1035,8 +1042,10 @@ View.prototype.getValueAndPriority = function (value) {
 /**
  * Applies necessary constraints to itself, where necessary
  *  Included layouts, templated layouts, and root layouts will need this a lot.
+ * @param {Page} page
+ * @return {*[]}
  */
-View.prototype.layoutSelf = function () {
+View.prototype.layoutSelf = function (page) {
 
     let w = this.width;
     let h = this.height;
@@ -1062,13 +1071,13 @@ View.prototype.layoutSelf = function () {
     w = idnpWid.id;
     let priorityWidth = idnpWid.priority;
 
-    this.setWidthConstraints(constraints, this.id, w, priorityWidth);
+    this.setWidthConstraints(page, constraints, this.id, w, priorityWidth);
 
     let idnpHei = this.getValueAndPriority(h);
     h = idnpHei.id;
     let priorityHeight = idnpHei.priority;
 
-    this.setHeightConstraints(constraints, this.id, h, priorityHeight);
+    this.setHeightConstraints(page, constraints, this.id, h, priorityHeight);
 
     if (maxWid) {
 
@@ -1359,7 +1368,7 @@ View.prototype.layoutChildren = function (page) {
             }
         }
 
-        this.setWidthConstraints(constraints, cid, w, priorityWid);
+        this.setWidthConstraints(page, constraints, cid, w, priorityWid);
 
         let idnpHei = this.getValueAndPriority(h);
         h = idnpHei.id;
@@ -1412,8 +1421,8 @@ View.prototype.layoutChildren = function (page) {
 
             }
         }
-        this.setHeightConstraints(constraints, cid, h, priorityHei);
-        this.setSizeBoundariesConstraints(constraints, cid, maxWid, minWid, maxHei, minHei);
+        this.setHeightConstraints(page, constraints, cid, h, priorityHei);
+        this.setSizeBoundariesConstraints(page, constraints, cid, maxWid, minWid, maxHei, minHei);
 
         if (ss) {
             if (!hiddenViewForWidthId) {
@@ -2488,10 +2497,19 @@ View.prototype.setBottomAlignBT = function (view1, marginBottom, view2, priority
 
 };
 
-View.prototype.setSizeBoundariesConstraints = function (constraints, cid, maxWid, minWid, maxHei, minHei) {
+/**
+ *
+ * @param {Page} page
+ * @param {Array} constraints
+ * @param {String} cid
+ * @param {String|Number} maxWid
+ * @param {String|Number} minWid
+ * @param {String|Number} maxHei
+ * @param {String|Number} minHei
+ */
+View.prototype.setSizeBoundariesConstraints = function (page, constraints, cid, maxWid, minWid, maxHei, minHei) {
 
     if (maxWid) {
-
         let idnpMaxWid = this.getValueAndPriority(maxWid);
         maxWid = idnpMaxWid.id;
         let priorityMaxWid = idnpMaxWid.priority;
@@ -2946,7 +2964,7 @@ function quickScan(dim, optimize) {
     return tokens;
 }
 
-View.prototype.setWidthConstraints = function (constraints, id, w, priority) {
+View.prototype.setWidthConstraints = function (page, constraints, id, w, priority) {
 
     let mulInd = w.indexOf("*");
     let addInd = w.indexOf("+");
@@ -2958,6 +2976,22 @@ View.prototype.setWidthConstraints = function (constraints, id, w, priority) {
 
     if (isNumber(w)) {
         w = typeof w === 'string' ? parseFloat(w) : w;
+        if(w === 0){
+            let child = page.viewMap.get(id);
+            if(child.dimRatio !== -1){
+                constraints.push({
+                    view1: id,
+                    attr1: 'width',    // see AutoLayout.Attribute
+                    relation: 'equ',   // see AutoLayout.Relation
+                    view2: id,
+                    attr2: AutoLayout.Attribute.HEIGHT,
+                    constant: 0,
+                    multiplier: child.dimRatio,
+                    priority: priority
+                });
+                return;
+            }
+        }
         constraints.push({
             view1: id,
             attr1: 'width',    // see AutoLayout.Attribute
@@ -2970,6 +3004,22 @@ View.prototype.setWidthConstraints = function (constraints, id, w, priority) {
         });
     } else if ((parseObj = parseNumberAndUnitsNoValidation(w, true)).number) {
         let val = parseFloat(parseObj.number);
+        if(val === 0){
+            let child = page.viewMap.get(id);
+            if(child.dimRatio !== -1){
+                constraints.push({
+                    view1: id,
+                    attr1: 'width',    // see AutoLayout.Attribute
+                    relation: 'equ',   // see AutoLayout.Relation
+                    view2: id,
+                    attr2: AutoLayout.Attribute.HEIGHT,
+                    constant: 0,
+                    multiplier: child.dimRatio,
+                    priority: priority
+                });
+                return;
+            }
+        }
         switch (parseObj.units) {
             case CssSizeUnits.PX:
                 constraints.push({
@@ -3184,7 +3234,16 @@ View.prototype.setWidthConstraints = function (constraints, id, w, priority) {
     }
 
 };
-View.prototype.setHeightConstraints = function (constraints, id, h, priority) {
+
+/**
+ *
+ * @param {Page} page
+ * @param {Array} constraints
+ * @param {String} id
+ * @param {String|Number} h The height
+ * @param {Number} priority
+ */
+View.prototype.setHeightConstraints = function (page, constraints, id, h, priority) {
 
     let mulInd = h.indexOf("*");
     let addInd = h.indexOf("+");
@@ -3195,6 +3254,22 @@ View.prototype.setHeightConstraints = function (constraints, id, h, priority) {
 
     if (isNumber(h)) {
         h = typeof h === 'string' ? parseFloat(h) : h;
+        if(h === 0){
+            let child = page.viewMap.get(id);
+            if(child.dimRatio !== -1){
+                constraints.push({
+                    view1: id,
+                    attr1: AutoLayout.Attribute.HEIGHT,    // see AutoLayout.Attribute
+                    relation: 'equ',   // see AutoLayout.Relation
+                    view2: id,
+                    attr2: AutoLayout.Attribute.WIDTH,
+                    constant: 0,
+                    multiplier: 1.0/child.dimRatio,
+                    priority: priority
+                });
+                return;
+            }
+        }
         constraints.push({
             view1: id,
             attr1: 'height',    // see AutoLayout.Attribute
@@ -3207,6 +3282,22 @@ View.prototype.setHeightConstraints = function (constraints, id, h, priority) {
         });
     } else if ((parseObj = parseNumberAndUnitsNoValidation(h, true)).number) {
         let val = parseFloat(parseObj.number);
+        if(val === 0){
+            let child = page.viewMap.get(id);
+            if(child.dimRatio !== -1){
+                constraints.push({
+                    view1: id,
+                    attr1: AutoLayout.Attribute.HEIGHT,    // see AutoLayout.Attribute
+                    relation: 'equ',   // see AutoLayout.Relation
+                    view2: id,
+                    attr2: AutoLayout.Attribute.WIDTH,
+                    constant: 0,
+                    multiplier: 1.0/child.dimRatio,
+                    priority: priority
+                });
+                return;
+            }
+        }
         switch (parseObj.units) {
             case CssSizeUnits.PX:
                 constraints.push({
@@ -4308,6 +4399,7 @@ const attrKeys = {
 
 
     mi_useAutoBg: "mi-use-bg",//bool.. if true, will enable automatic backgrounds
+    mi_mode: "mi-mode", //
     mi_fontStyle: "mi-font-st",
     mi_fontName: "mi-font-nm",
     mi_fontWeight: "mi-font-wt",
@@ -16458,11 +16550,9 @@ function dragElement(elmnt) {
  * To change this template file, choose Tools | Templates
  * and open the template in the editor.
  */
-
-
 const PIXEL_RATIO = (function () {
     let ctx = document.createElement("canvas").getContext("2d"),
-        dpr = window.devicePixelRatio || 1,
+        dpr = window.devicePixelRatio || window.webkitDevicePixelRatio || window.mozDevicePixelRatio || 1,
         bsr = ctx.webkitBackingStorePixelRatio ||
             ctx.mozBackingStorePixelRatio ||
             ctx.msBackingStorePixelRatio ||
@@ -16568,12 +16658,10 @@ function Polygon(xpoints, ypoints, npoints) {
  */
 Polygon.prototype.addPoint = function (x, y) {
     if (typeof x !== 'number') {
-        logger('x must be an integer number');
-        return;
+        throw ('x must be an integer number');
     }
     if (typeof y !== 'number') {
-        logger('y must be an integer number');
-        return;
+        throw ('y must be an integer number');
     }
     this.xpoints.push(x);
     this.ypoints.push(y);
@@ -16798,10 +16886,40 @@ createHiDPICanvas = function (canvas, w, h, ratio) {
     return canvas;
 };
 
+/**
+ * dpr is not yet fully applied to canvas.
+ * Use this answer to sort this out later... https://stackoverflow.com/a/62028950/1845404.
+ * The issue is that this might be on a case by case basis.
+ * You can scale, translate, and rotate the drawing coordinates via the canvas transform.
+ *
+ * If you have the min and max coordinates of your drawing
+ *
+ * Example:
+ *
+ * const min = {x: 100, y: 200};
+ * const max = {x: 10009, y: 10000};
+ * You can make it fit the canvas as follows
+ *
+ * const width = canvas.width;
+ * const height = canvas.height;
+ *
+ * // get a scale to best fit the canvas
+ * const scale = Math.min(width / (max.x - min.x), height / (max.y - min.y));
+ *
+ * // get a origin so that the drawing is centered on the canvas
+ * const top = (height - (max.y - min.y)) / 2;
+ * const left = (width - (max.x - min.x)) / 2;
+ *
+ * // set the transform so that you can draw to the canvas
+ * ctx.setTransform(scale, 0, 0, scale, left, top);
+ *
+ * // draw something
+ * ctx.strokeRect(min.x, min.y, max.x - min.x, max.y - min.y);
+ * @param canvas
+ * @constructor
+ */
 function Graphics(canvas) {
-
     let dpr = PIXEL_RATIO;
-
     //canvas = createHiDPICanvas(canvas , canvas.offsetWidth , canvas.offsetHeight, scaleFactor );
     this.ctx = canvas.getContext('2d');
 
@@ -16819,9 +16937,8 @@ function Graphics(canvas) {
 
         // Scale all drawing operations by the dpr, so you
         // don't have to worry about the difference.
-        //this.ctx.scale(dpr, dpr);
+        // this.ctx.scale(dpr, dpr);
         this.ctx.scale(1, 1);
-
     }
 
 
@@ -17695,6 +17812,7 @@ Graphics.prototype.drawPolygon = function (polygon) {
             }
         }
         this.ctx.lineTo(x, y);
+        this.ctx.closePath();
         this.ctx.stroke();
     }
 };
@@ -17720,6 +17838,7 @@ Graphics.prototype.fillPolygon = function (polygon) {
             }
         }
         this.ctx.lineTo(x, y);
+        this.ctx.closePath();
         this.ctx.fill();
     }
 };
@@ -17805,6 +17924,7 @@ Graphics.prototype.fillPolygonFromVertices = function (xpoints, ypoints, npoints
         }
     }
     this.ctx.lineTo(x, y);
+    this.ctx.closePath();
     this.fill();
 
 };
@@ -18041,7 +18161,7 @@ Graphics.prototype.getBoundingBox = function () {
         }
     }
 
-   // console.log('lol!!...' + JSON.stringify(ret));
+    // console.log('lol!!...' + JSON.stringify(ret));
     // A mess-up occurred ...
     return null;
 };
@@ -18460,10 +18580,24 @@ const MysteryConstants = {
     DRAW_ROTATED_RECT: 11,
     DRAW_ROTATED_TRIANGLE: 12,
     DRAW_ROTATED_STAR: 13,
-    DRAW_ROTATED_TEXT: 14,
-    DRAW_ROTATED_OVAL: 15,
+    DRAW_ROTATED_OVAL: 14,
+    DRAW_POLYGON: 15,
+    DRAW_ROTATED_TEXT: 16,
     DENSITY_SCALE: 0.00001,
     DEF_ALPHA: 1
+};
+
+const MysteryModes = {
+    ALL: "all",
+    STAR: "star",
+    LINE: "line",
+    TEXT: "text",
+    TRIANGLE: "triangle",
+    SQUARE: "square",
+    OVAL: "oval",
+    CIRCLE: "circle",
+    POLYGON: "polygon",
+    COMBO: "combo"
 };
 
 /**
@@ -18499,6 +18633,8 @@ function MysteryImage(options) {
         throw 'No initializing options specified!';
     }
     this.rnd = new Random();
+    this.mode = MysteryModes.ALL;
+    this.comboArray = [];
     this.state = MysteryConstants.DRAW_ROTATED_TEXT;
 
 
@@ -18529,6 +18665,42 @@ function MysteryImage(options) {
             }
         } else {
             throw 'Invalid value specified for `height`';
+        }
+    }
+
+    if (options.mode) {
+        if (typeof options.mode === "string") {
+            let self = this;
+            if (options.mode.indexOf(",") === -1) {
+                let found = false;
+                Object.keys(MysteryModes).forEach(function (key) {
+                    if (options.mode === key.toLowerCase()) {
+                        self.mode = key;
+                        found = true;
+                    }
+                });
+                if (!found) {
+                    throw 'invalid mi-mode: `' + options.mode + '`';
+                }
+            } else {
+                let detectedStates = options.mode.replace(/\s/g, "").split(",");
+                for (let i = 0; i < detectedStates.length; i++) {
+                    let found = false;
+                    let st = detectedStates[i];
+                    Object.keys(MysteryModes).forEach(function (key) {
+                        if (st === key.toLowerCase()) {
+                            self.comboArray.push(key);
+                            found = true;
+                        }
+                    });
+                    if (!found) {
+                        throw 'invalid mi-mode: `' + options.mode + '`';
+                    }
+                }
+                this.mode = MysteryModes.COMBO;
+            }
+        } else {
+            throw 'Invalid value specified for `mode`';
         }
     }
 
@@ -18825,6 +18997,179 @@ MysteryImage.prototype.drawRect = function (x, y, sz, fill) {
 
 };
 
+MysteryImage.prototype.drawPolygon = function(x,y, sz, fill){
+    let g = this.g;
+
+    let self = this;
+    function drawShapeless(){
+        let polygon = new Polygon([],[],0);
+        let points = [];
+        let sides = 4 + self.rnd.nextInt(5);
+        let allowedYs = [y, y+sz/4, y+3*sz/4,y+sz];
+        for(let i=0;i<sides;i++){
+            let xx = x + self.rnd.nextInt(sz);
+            let yy = allowedYs[self.rnd.nextInt(allowedYs.length)];
+            points.push(new Point(xx,yy));
+        }
+        points.sort(function (p1, p2) {
+            return p1.x - p2.x;
+        });
+        for(let i=0;i<points.length; i++){
+            polygon.addPoint(points[i].x, points[i].y);
+        }
+
+        return polygon;
+    }
+
+    function drawL(){
+        let polygon = new Polygon([],[],0);
+        polygon.addPoint(x,y);
+        polygon.addPoint(x+sz/4, y);
+
+        polygon.addPoint(x+sz/4, y+3*sz/4);
+        polygon.addPoint(x+sz, y+3*sz/4);
+
+        polygon.addPoint(x+sz, y+sz);
+
+        polygon.addPoint(x, y+sz);
+        polygon.addPoint(x, y);
+        return polygon;
+    }
+    function drawFlippedL(){
+        let polygon = new Polygon([],[],0);
+
+        polygon.addPoint(x+3*sz/4, y);
+        polygon.addPoint(x+sz, y);
+
+        polygon.addPoint(x+sz, y+sz);
+        polygon.addPoint(x, y+sz);
+
+        polygon.addPoint(x, y+3*sz/4);
+        polygon.addPoint(x+3*sz/4, y+3*sz/4);
+
+        polygon.addPoint(x+3*sz/4, y);
+
+        return polygon;
+    }
+
+    function drawInvertedL(){
+        let polygon = new Polygon([],[],0);
+
+        polygon.addPoint(x, y);
+        polygon.addPoint(x+sz, y);
+
+        polygon.addPoint(x+sz, y+sz/4);
+        polygon.addPoint(x+sz/4, y+sz/4);
+
+        polygon.addPoint(x+sz/4, y+sz);
+        polygon.addPoint(x, y+sz);
+
+        polygon.addPoint(x, y);
+
+        return polygon;
+    }
+
+    function drawFlippedInvertedL(){
+        let polygon = new Polygon([],[],0);
+
+        polygon.addPoint(x, y);
+        polygon.addPoint(x+sz, y);
+
+        polygon.addPoint(x+sz, y+sz);
+        polygon.addPoint(x+3*sz/4, y+sz);
+
+        polygon.addPoint(x+3*sz/4, y+sz/4);
+        polygon.addPoint(x, y+sz/4);
+
+        polygon.addPoint(x, y);
+
+        return polygon;
+    }
+
+    function drawU(){
+        let polygon = new Polygon([],[],0);
+        polygon.addPoint(x,y);
+        polygon.addPoint(x+sz/4, y);
+
+        polygon.addPoint(x+sz/4, y+3*sz/4);
+        polygon.addPoint(x+3*sz/4, y+3*sz/4);
+
+        polygon.addPoint(x+3*sz/4, y);
+        polygon.addPoint(x+sz, y);
+
+        polygon.addPoint(x+sz, y+sz);
+
+        polygon.addPoint(x, y+sz);
+        polygon.addPoint(x, y);
+        return polygon;
+    }
+
+    function drawInvertedU(){
+        let polygon = new Polygon([],[],0);
+        polygon.addPoint(x,y);
+        polygon.addPoint(x+sz, y);
+
+        polygon.addPoint(x+sz, y+sz);
+        polygon.addPoint(x+3*sz/4, y+sz);
+
+        polygon.addPoint(x+3*sz/4, y+sz/4);
+        polygon.addPoint(x+sz/4, y+sz/4);
+
+        polygon.addPoint(x+sz/4, y+sz);
+
+        polygon.addPoint(x, y+sz);
+        polygon.addPoint(x, y);
+        return polygon;
+    }
+
+    function drawPlus(){
+        let polygon = new Polygon([],[],0);
+        let t = sz/4;
+        polygon.addPoint(x+3*sz/8, y);
+        polygon.addPoint(x+3*sz/8, y+3*sz/8);
+        polygon.addPoint(x, y+3*sz/8);
+        polygon.addPoint(x, y+5*sz/8);
+        polygon.addPoint(x+3*sz/8, y+5*sz/8);
+        polygon.addPoint(x+3*sz/8, y+sz);
+        polygon.addPoint(x+5*sz/8, y+sz);
+        polygon.addPoint(x+5*sz/8, y+5*sz/8);
+        polygon.addPoint(x+sz, y+5*sz/8);
+        polygon.addPoint(x+sz, y+3*sz/8);
+        polygon.addPoint(x+5*sz/8, y+3*sz/8);
+        polygon.addPoint(x+5*sz/8, y);
+        return polygon;
+    }
+    function drawHexagon(){
+        let polygon = new Polygon([],[],0);
+        polygon.addPoint(x+sz/4,y);
+        polygon.addPoint(x+3*sz/4, y);
+
+        polygon.addPoint(x+sz, y+sz/2);
+        polygon.addPoint(x+3*sz/4, y+sz);
+
+        polygon.addPoint(x+sz/4, y+sz);
+
+        polygon.addPoint(x, y+sz/2);
+        polygon.addPoint(x+sz/4,y);
+        return polygon;
+    }
+    let functions = [drawL,  drawFlippedL, drawInvertedL, drawFlippedInvertedL, drawU, drawInvertedU, drawPlus, drawHexagon,drawShapeless];
+    let index = this.rnd.nextInt(functions.length);
+    let polygon = functions[index]();
+
+    if(!fill){
+        fill = this.rnd.nextInt(4) > 0;
+    }
+    if(fill){
+        g.fillPolygon(polygon);
+    }else{
+        g.drawPolygon(polygon);
+    }
+};
+
+
+
+
 MysteryImage.prototype.drawRotatedRect = function (x, y, sz, angDeg, fill) {
     let g = this.g;
     let w = sz;
@@ -18997,46 +19342,49 @@ MysteryImage.prototype.drawRotatedTriangle = function (x, y, size, angDeg, fill)
 };
 
 MysteryImage.prototype.drawText = function (x, y) {
-    let g = this.g;
-    let len = this.textArray.length;
-    let index = this.rnd.nextInt(len);
-    let txt = this.textArray[index];
-    let w = g.stringWidth(txt);
-    let h = g.textHeight(txt);
-    g.drawString(txt, x, y + h);
-    return {width: w, height: h};
+    if (this.textArray && this.textArray.length > 0) {
+        let g = this.g;
+        let len = this.textArray.length;
+        let index = this.rnd.nextInt(len);
+        let txt = this.textArray[index];
+        let w = g.stringWidth(txt);
+        let h = g.textHeight(txt);
+        g.drawString(txt, x, y + h);
+        return {width: w, height: h};
+    }
 };
 
 MysteryImage.prototype.drawRotatedText = function (x, y, size, angDeg) {
-    let g = this.g;
-    let self = this;
-    let index = this.rnd.nextInt(this.textArray.length);
-    let txt = this.textArray[index];
-    let halfSz = size / 2;
-
-    let h = g.textHeight(txt);
-    g.rotateDegsAt(angDeg, x + halfSz, y + halfSz, function () {
-        self.drawText(-halfSz, h - halfSz);
-    });
+    if (this.textArray && this.textArray.length > 0) {
+        let g = this.g;
+        let self = this;
+        let index = this.rnd.nextInt(this.textArray.length);
+        let txt = this.textArray[index];
+        let halfSz = size / 2;
+        let h = g.textHeight(txt);
+        g.rotateDegsAt(angDeg, x + halfSz, y + halfSz, function () {
+            self.drawText(-halfSz, h - halfSz);
+        });
+    }
 };
 
 MysteryImage.prototype.drawBus = function (x, y, sz) {
     let g = this.g;
-    let bus = new BusView(sz, this.fgColor,invertColor(this.fgColor), 16);
+    let bus = new BusView(sz, this.fgColor, invertColor(this.fgColor), 16);
     bus.draw();
-    g.drawImageAtLocWithSize(bus.imageCache,x, y, sz, sz);
+    g.drawImageAtLocWithSize(bus.imageCache, x, y, sz, sz);
     bus.cleanup();
 };
 
 MysteryImage.prototype.drawRotatedBus = function (x, y, sz, angDeg) {
     let g = this.g;
-    let bus = new BusView(sz,this.fgColor,invertColor(this.fgColor), 16);
+    let bus = new BusView(sz, this.fgColor, invertColor(this.fgColor), 16);
     bus.draw();
     let image = bus.imageCache;
     let self = this;
     let halfSz = sz / 2;
     g.rotateDegsAt(angDeg, x + halfSz, y + halfSz, function () {
-        g.drawImage(image,-halfSz, -halfSz);
+        g.drawImage(image, -halfSz, -halfSz);
         // let imageView = document.getElementById("imager");
         // imageView.src = bus.g.getCanvas().toDataURL("image/png");
         bus.cleanup();
@@ -19051,8 +19399,8 @@ MysteryImage.prototype.generateRect = function (w, h) {
     let sz = mnsz + this.rnd.nextInt(mnsz + 1);
     //sz = this.g.normalizeQuantity(sz);
 
-    let x = sz + this.rnd.nextInt(ww);
-    let y = sz + this.rnd.nextInt(hh);
+    let x = this.rnd.nextInt(ww);
+    let y = this.rnd.nextInt(hh);
 
     if (x + sz >= ww) {
         x = ww - 2 * sz;
@@ -19120,11 +19468,16 @@ MysteryImage.prototype.baseDraw = function (w, h) {
 
     while (rects.length < this.numShapes && attempts < maxIters) {
 
-        if (this.textOnly) {
-            this.state = rnd.nextBool() ? MysteryConstants.DRAW_TEXT : MysteryConstants.DRAW_ROTATED_TEXT;
+        if (this.mode.toLowerCase() === MysteryModes.ALL.toLowerCase()) {
+            if (this.textOnly) {
+                this.state = rnd.nextBool() ? MysteryConstants.DRAW_TEXT : MysteryConstants.DRAW_ROTATED_TEXT;
+            } else {
+                this.state = 1 + rnd.nextInt(this.textArray.length === 0 ? MysteryConstants.DRAW_POLYGON : MysteryConstants.DRAW_ROTATED_TEXT);
+            }
         } else {
-            this.state = 1 + rnd.nextInt(this.textArray.length === 0 ? MysteryConstants.DRAW_ROTATED_STAR : MysteryConstants.DRAW_ROTATED_OVAL);
+            this.selectStateFromMode(this.mode);
         }
+
 
         let fill = rnd.nextBool();
         let angDeg = 1 + rnd.nextInt(360);
@@ -19162,7 +19515,7 @@ MysteryImage.prototype.baseDraw = function (w, h) {
                     this.drawRect(r.left, r.top, r.width, fill);
                     break;
                 case MysteryConstants.DRAW_CIRCLE:
-                    this.drawCircle(r.left, r.top, r.width, fill);
+                    this.drawCircle(r.left, r.top, r.width, this.mode.toLowerCase() === MysteryModes.CIRCLE ? true : fill);
                     break;
                 case MysteryConstants.DRAW_OVAL:
                     this.drawOval(r.left, r.top, r.width, fill);
@@ -19198,11 +19551,8 @@ MysteryImage.prototype.baseDraw = function (w, h) {
                 case MysteryConstants.DRAW_ROTATED_OVAL:
                     this.drawRotatedOval(r.centerX(), r.centerY(), r.width, angDeg);
                     break;
-                case MysteryConstants.DRAW_BUS:
-                    this.drawBus(r.left, r.top, r.width);
-                    break;
-                case MysteryConstants.DRAW_ROTATED_BUS:
-                    this.drawRotatedBus(r.left, r.top, r.width, angDeg);
+                case MysteryConstants.DRAW_POLYGON:
+                    this.drawPolygon(r.left, r.top, r.width, fill);
                     break;
                 default:
                     break;
@@ -19212,6 +19562,45 @@ MysteryImage.prototype.baseDraw = function (w, h) {
 
     }
 
+};
+/**
+ *
+ * @param {String} mode
+ */
+MysteryImage.prototype.selectStateFromMode = function (mode) {
+    let rnd = this.rnd;
+    switch (mode.toLowerCase()) {
+        case MysteryModes.OVAL:
+            this.state = rnd.nextBool() ? MysteryConstants.DRAW_OVAL : MysteryConstants.DRAW_ROTATED_OVAL;
+            break;
+        case MysteryModes.CIRCLE:
+            this.state = MysteryConstants.DRAW_CIRCLE;
+            break;
+        case MysteryModes.TEXT:
+            this.state = rnd.nextBool() ? MysteryConstants.DRAW_TEXT : MysteryConstants.DRAW_ROTATED_TEXT;
+            break;
+        case MysteryModes.TRIANGLE:
+            this.state = rnd.nextBool() ? MysteryConstants.DRAW_TRIANGLE : MysteryConstants.DRAW_ROTATED_TRIANGLE;
+            break;
+        case MysteryModes.STAR:
+            this.state = rnd.nextBool() ? MysteryConstants.DRAW_STAR : MysteryConstants.DRAW_ROTATED_STAR;
+            break;
+        case MysteryModes.LINE:
+            this.state = MysteryConstants.DRAW_LINE;
+            break;
+        case MysteryModes.SQUARE:
+            this.state = rnd.nextBool() ? MysteryConstants.DRAW_SQUARE : MysteryConstants.DRAW_ROTATED_SQUARE;
+            break;
+        case MysteryModes.POLYGON:
+            this.state = MysteryConstants.DRAW_POLYGON;
+            break;
+        case MysteryModes.COMBO:
+            let chosenMode = this.comboArray[rnd.nextInt(this.comboArray.length)];
+            this.selectStateFromMode(chosenMode);
+            break;
+        default:
+            break;
+    }
 };
 
 
@@ -19257,9 +19646,9 @@ function BusView(busWidth, mainColor, minorColor, busRadius) {
 }
 
 
-BusView.prototype.makeCanvas = function(w, h) {
+BusView.prototype.makeCanvas = function (w, h) {
     let canvas = document.createElement('canvas');
-    canvas.id = "bus-canv-"+new Date().getTime();
+    canvas.id = "bus-canv-" + new Date().getTime();
 
     canvas.width = w;
     canvas.height = h;
@@ -19267,7 +19656,7 @@ BusView.prototype.makeCanvas = function(w, h) {
     document.body.appendChild(canvas);
     return canvas;
 };
-BusView.prototype.cleanup = function (){
+BusView.prototype.cleanup = function () {
     this.imageCache = null;
     this.g.clear();
     this.g.getCanvas().remove();
