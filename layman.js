@@ -1504,7 +1504,7 @@ View.prototype.setLeftAlignSS = function (view1, marginLeft, view2, priority, co
                 attr1: 'left',    // see AutoLayout.Attribute
                 relation: 'equ',   // see AutoLayout.Relation
                 view2: view2,
-                attr2: 'right',    // see AutoLayout.Attribute
+                attr2: 'left',    // see AutoLayout.Attribute
                 constant: 0,
                 multiplier: 1,
                 priority: 1000

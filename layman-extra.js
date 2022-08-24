@@ -1330,6 +1330,18 @@ View.prototype.layoutChildren = function (page) {
                 if (parseInt(w) === 0) {
                     priorityWid = AutoLayout.Priority.DEFAULTLOW;
                 } else {
+                    //constrain left and right of view to left and right o
+                    if(ss === ee){
+
+                    }
+
+
+
+
+
+
+
+
                     hiddenViewForWidthId = cid + "_dummywid_" + ULID.ulid();
                     if (ss) {
                         this.setLeftAlignSS(hiddenViewForWidthId, child.margins.start, ss, AutoLayout.Priority.REQUIRED, constraints);
@@ -1614,7 +1626,7 @@ View.prototype.setLeftAlignSS = function (view1, marginLeft, view2, priority, co
                 attr1: 'left',    // see AutoLayout.Attribute
                 relation: 'equ',   // see AutoLayout.Relation
                 view2: view2,
-                attr2: 'right',    // see AutoLayout.Attribute
+                attr2: 'left',    // see AutoLayout.Attribute
                 constant: 0,
                 multiplier: 1,
                 priority: 1000
@@ -1766,6 +1778,128 @@ View.prototype.setLeftAlignSE = function (view1, marginLeft, view2, priority, co
 
 
 /**
+ * Sets the left align constraint for a left-center(start-center) align situation...works with pixels, percents
+ * @param {string} view1 The view whose left is being constrained
+ * @param {string|number} marginLeft The left margin... supported units are px, % and no units(we assume px)
+ * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
+ * @param {number} priority The priority of the left-left anchor constraint
+ * @param {Array} constraints The array that holds the constraints generated here
+ */
+View.prototype.setLeftAlignSC = function (view1, marginLeft, view2, priority, constraints) {
+    marginLeft = (marginLeft === '0%' ? 0 : marginLeft);
+    if (typeof marginLeft === 'number') {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.LEFT,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            constant: marginLeft,
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (isNumber(marginLeft)) {//may be a number string
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.LEFT,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            constant: parseFloat(marginLeft),
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (endsWith(marginLeft, "px")) {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.LEFT,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            constant: parseFloat(marginLeft),
+            multiplier: 1,
+            priority: priority
+        });
+    } else {
+        let isPct = endsWith(marginLeft, "%");
+
+        if (!isPct) {
+            throw 'margin-left can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
+        }
+
+        let val = parseFloat(marginLeft) / 100.0;
+
+
+        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
+        if (view2 === 'parent') {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.LEFT,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'left',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'right',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        } else {
+
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'left',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: view2,
+                attr2: 'left',    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'left',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'right',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        }
+    }
+
+};
+
+/**
  * Sets the right align constraint for a right-right(end-end) align situation...works with pixels, percents
  * @param {string} view1 The view whose right is being constrained
  * @param {*} marginRight The right margin... supported units are px, % and no units(we assume px)
@@ -1882,7 +2016,6 @@ View.prototype.setRightAlignEE = function (view1, marginRight, view2, priority, 
             });
         }
     }
-
 };
 
 
