@@ -4287,6 +4287,17 @@ const attrKeys = {
     layout_constraintBottom_toTopOf: "bt",
     layout_constraintCenterXAlign: "cx",
     layout_constraintCenterYAlign: "cy",
+
+    layout_constraintStart_toCenterX: "scx",
+    layout_constraintCenterX_toStart: "cxs",
+    layout_constraintEnd_toCenterX: "ecx",
+    layout_constraintCenterX_toEnd: "cxe",
+
+    layout_constraintTop_toCenterY: "tcy",
+    layout_constraintCenterY_toTop: "cyt",
+    layout_constraintBottom_toCenterY: "bcy",
+    layout_constraintCenterY_toBottom: "cyb",
+
     layout_constraint: "data-const",
     layout_constraintGuide: "data-guide",
     layout_constraintGuideColor: "data-guide-color",

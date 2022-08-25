@@ -682,7 +682,26 @@ function View(page, node, refIds, parentId) {
             top: refIds.get(attrKeys.layout_marginTop),
             bottom: refIds.get(attrKeys.layout_marginBottom),
             start: refIds.get(attrKeys.layout_marginStart),
-            end: refIds.get(attrKeys.layout_marginEnd)
+            end: refIds.get(attrKeys.layout_marginEnd),
+            horUnitsSame: true,
+            verUnitsSame: true,
+            horMarginDiff: function () {
+                let s = parseNumberAndUnitsNoValidation(this.start, true);
+                let e = parseNumberAndUnitsNoValidation(this.end, true);
+                console.log((parseFloat(s.number) - parseFloat(e.number)) + s.units);
+                if (!this.horUnitsSame) {
+                    throw 'start and end margins must be same when using `cx, scx, cxs` etc.'
+                }
+                return (parseFloat(s.number) - parseFloat(e.number)) + s.units;
+            },
+            verMarginDiff: function () {
+                let t = parseNumberAndUnitsNoValidation(this.top, true);
+                let b = parseNumberAndUnitsNoValidation(this.bottom, true);
+                if (!this.verUnitsSame) {
+                    throw 'top and bottom margins must be same when using `cy, tcy, cyt` etc.'
+                }
+                return (parseFloat(t.number) - parseFloat(b.number)) + t.units;
+            }
         };
         if (mv) {
             if (isNumber(parseInt(mv))) {
@@ -726,17 +745,60 @@ function View(page, node, refIds, parentId) {
         }
 
 
-        if (!this.margins.start) {
+        if (!this.margins.start || this.margins.start === '0') {
             this.margins.start = 0;
         }
-        if (!this.margins.end) {
+        if (!this.margins.end || this.margins.end === '0') {
             this.margins.end = 0;
         }
-        if (!this.margins.top) {
+        if (!this.margins.top || this.margins.top === '0') {
             this.margins.top = 0;
         }
-        if (!this.margins.bottom) {
+        if (!this.margins.bottom || this.margins.bottom === '0') {
             this.margins.bottom = 0;
+        }
+
+        enforceSameUnitsOnMargins:{
+            let ms = parseNumberAndUnitsNoValidation(this.margins.start, true);
+            let me = parseNumberAndUnitsNoValidation(this.margins.end, true);
+            let mt = parseNumberAndUnitsNoValidation(this.margins.top, true);
+            let mb = parseNumberAndUnitsNoValidation(this.margins.bottom, true);
+
+            let ms1 = refIds.get(attrKeys.layout_marginStart);
+            let me1 = refIds.get(attrKeys.layout_marginEnd);
+            let mt1 = refIds.get(attrKeys.layout_marginTop);
+            let mb1 = refIds.get(attrKeys.layout_marginBottom);
+
+            if (ms1 && me1) {
+                if (ms.units !== me.units) {
+                    //forgive a 0 margin with no units
+                    if (parseInt(ms.number) !== 0 && parseInt(me.number) !== 0) {
+                        this.margins.horUnitsSame = false;
+                    }
+                }
+            }
+            if (mt1 && mb1) {
+                if (mt.units !== mb.units) {
+                    //forgive a 0 margin with no units
+                    if (parseInt(mt.number) !== 0 && parseInt(mb.number) !== 0) {
+                        this.margins.verUnitsSame = false;
+                    }
+                }
+            }
+            if (ms1 && !me1) {
+                this.margins.end = '0' + ms.units;
+            }
+            if (me1 && !ms1) {
+                this.margins.start = '0' + me.units;
+            }
+            if (mt1 && !mb1) {
+                this.margins.bottom = '0' + mt.units;
+            }
+            if (mb1 && !mt1) {
+                this.margins.top = '0' + mb.units;
+            }
+
+
         }
 
 
@@ -954,14 +1016,14 @@ View.prototype.makeBgImage = function () {
 
 
     if (textArray) {
-        if(typeof textArray === 'string'){
+        if (typeof textArray === 'string') {
             try {
                 textArray = JSON.parse(textArray);
             } catch (e) {
                 throw e;
             }
-        }else if(typeof textArray === "object"){
-           //no action... some validation in the future
+        } else if (typeof textArray === "object") {
+            //no action... some validation in the future
         }
 
     }
@@ -1245,6 +1307,17 @@ View.prototype.layoutChildren = function (page) {
         let cx = child.refIds.get(attrKeys.layout_constraintCenterXAlign);
         let cy = child.refIds.get(attrKeys.layout_constraintCenterYAlign);
 
+        let scx = child.refIds.get(attrKeys.layout_constraintStart_toCenterX);
+        let ecx = child.refIds.get(attrKeys.layout_constraintEnd_toCenterX);
+        let cxs = child.refIds.get(attrKeys.layout_constraintCenterX_toStart);
+        let cxe = child.refIds.get(attrKeys.layout_constraintCenterX_toEnd);
+
+
+        let tcy = child.refIds.get(attrKeys.layout_constraintTop_toCenterY);
+        let cyt = child.refIds.get(attrKeys.layout_constraintCenterY_toTop);
+        let bcy = child.refIds.get(attrKeys.layout_constraintBottom_toCenterY);
+        let cyb = child.refIds.get(attrKeys.layout_constraintCenterY_toBottom);
+
 
         let horBias = child.refIds.get(attrKeys.layout_horizontalBias);
         let verBias = child.refIds.get(attrKeys.layout_verticalBias);
@@ -1252,6 +1325,7 @@ View.prototype.layoutChildren = function (page) {
             child.layoutGuide(constraints);
             continue;
         }
+
 
         /**
          * horizontal bias and centering. In the underlying autolayout.js library, I fund out the hard way
@@ -1324,37 +1398,28 @@ View.prototype.layoutChildren = function (page) {
         let hiddenViewForWidthId = undefined;
         let hiddenViewForHeightId = undefined;
 
-
+//scx, ecx, cxs, cxe,|
         if (idnpWid.defaultUsed) {//user specified no priority
-            if ((ss && ee) || (se && ee) || (ss && es) || (se && es)) {
+            if ((ss && ee) || (ss && es) || (ss && ecx) || (se && ee) || (se && es) || (se && ecx) ||
+                (scx && ee) || (scx && es) || (scx && ecx)) {
                 if (parseInt(w) === 0) {
                     priorityWid = AutoLayout.Priority.DEFAULTLOW;
                 } else {
-                    //constrain left and right of view to left and right o
-                    if(ss === ee){
-
-                    }
-
-
-
-
-
-
-
-
                     hiddenViewForWidthId = cid + "_dummywid_" + ULID.ulid();
                     if (ss) {
                         this.setLeftAlignSS(hiddenViewForWidthId, child.margins.start, ss, AutoLayout.Priority.REQUIRED, constraints);
                     } else if (se) {
                         this.setLeftAlignSE(hiddenViewForWidthId, child.margins.start, se, AutoLayout.Priority.REQUIRED, constraints);
+                    } else if(scx){
+                        this.setLeftAlignCX(hiddenViewForWidthId, child.margins.start, scx, AutoLayout.Priority.REQUIRED, constraints);
                     }
-
                     if (ee) {
                         this.setRightAlignEE(hiddenViewForWidthId, child.margins.end, ee, AutoLayout.Priority.REQUIRED, constraints);
                     } else if (es) {
                         this.setRightAlignES(hiddenViewForWidthId, child.margins.end, es, AutoLayout.Priority.REQUIRED, constraints);
+                    } else if(ecx){
+                        this.setRightAlignCX(hiddenViewForWidthId, child.margins.end, ecx, AutoLayout.Priority.REQUIRED, constraints);
                     }
-
                     constraints.push({
                         view1: hiddenViewForWidthId,
                         attr1: 'width',    // see AutoLayout.Attribute
@@ -1371,12 +1436,11 @@ View.prototype.layoutChildren = function (page) {
                         relation: 'equ',   // see AutoLayout.Relation
                         view2: hiddenViewForWidthId,
                         attr2: 'centerX',    // see AutoLayout.Attribute
-                        constant: child.margins.start - child.margins.end,
+                        constant: child.margins.horMarginDiff(),
                         multiplier: horBias,
                         priority: AutoLayout.Priority.REQUIRED
                     });
                 }
-
             }
         }
 
@@ -1385,9 +1449,9 @@ View.prototype.layoutChildren = function (page) {
         let idnpHei = this.getValueAndPriority(h);
         h = idnpHei.id;
         let priorityHei = idnpHei.priority;
-
+//tcy, bcy, cyt, cyb
         if (idnpHei.defaultUsed) {//user specified no priority
-            if ((tt && bb) || (tb && bb) || (tt && bt) || (tb && bt)) {
+            if ((tt && bb) || (tt && bt) || (tt && bcy) || (tb && bb) || (tb && bt) || (tb && bcy) || (tcy && bb) || (tcy && bt) || (tcy && bcy)) {
                 if (parseInt(h) === 0) {
                     priorityHei = AutoLayout.Priority.DEFAULTLOW;
                 } else {
@@ -1399,12 +1463,16 @@ View.prototype.layoutChildren = function (page) {
                         this.setTopAlignTT(hiddenViewForHeightId, child.margins.top, tt, AutoLayout.Priority.REQUIRED, constraints);
                     } else if (tb) {
                         this.setTopAlignTB(hiddenViewForHeightId, child.margins.top, tb, AutoLayout.Priority.REQUIRED, constraints);
+                    } else if(tcy){
+                        this.setTopAlignCY(hiddenViewForHeightId, child.margins.top, tcy, AutoLayout.Priority.REQUIRED, constraints);
                     }
 
                     if (bb) {
                         this.setBottomAlignBB(hiddenViewForHeightId, child.margins.bottom, bb, AutoLayout.Priority.REQUIRED, constraints);
                     } else if (bt) {
                         this.setBottomAlignBT(hiddenViewForHeightId, child.margins.bottom, bt, AutoLayout.Priority.REQUIRED, constraints);
+                    } else if(bcy){
+                        this.setBottomAlignCY(hiddenViewForHeightId, child.margins.bottom, bcy, AutoLayout.Priority.REQUIRED, constraints);
                     }
 
                     constraints.push({
@@ -1424,7 +1492,7 @@ View.prototype.layoutChildren = function (page) {
                         relation: 'equ',   // see AutoLayout.Relation
                         view2: hiddenViewForHeightId,
                         attr2: 'centerY',    // see AutoLayout.Attribute
-                        constant: child.margins.top - child.margins.bottom,
+                        constant: child.margins.verMarginDiff(),
                         multiplier: verBias,
                         priority: AutoLayout.Priority.REQUIRED
                     });
@@ -1504,13 +1572,16 @@ View.prototype.layoutChildren = function (page) {
             let idnp = this.getValueAndPriority(cx);
             cx = idnp.id;
             let priority = idnp.priority;
+            if (!child.margins.horUnitsSame) {
+                throw '`cx` needs margin-start and margin-end to have same units!';
+            }
             constraints.push({
                 view1: cid,
                 attr1: 'centerX',    // see AutoLayout.Attribute
                 relation: 'equ',   // see AutoLayout.Relation
                 view2: cx === 'parent' ? null : cx,
                 attr2: 'centerX',    // see AutoLayout.Attribute
-                constant: child.margins.start - child.margins.end,
+                constant: child.margins.horMarginDiff(),
                 multiplier: horBias,
                 priority: priority
             });
@@ -1519,17 +1590,100 @@ View.prototype.layoutChildren = function (page) {
             let idnp = this.getValueAndPriority(cy);
             cy = idnp.id;
             let priority = idnp.priority;
+            if (!child.margins.verUnitsSame) {
+                throw '`cy` needs margin-top and margin-bottom to have same units!';
+            }
             constraints.push({
                 view1: cid,
                 attr1: 'centerY',    // see AutoLayout.Attribute
                 relation: 'equ',   // see AutoLayout.Relation
                 view2: cy === 'parent' ? null : cy,
                 attr2: 'centerY',    // see AutoLayout.Attribute
-                constant: child.margins.top - child.margins.bottom,
+                constant: child.margins.verMarginDiff(),
                 multiplier: verBias,
                 priority: priority
             });
         }
+
+        if (scx) {
+            if (!hiddenViewForWidthId) {
+                let idnp = this.getValueAndPriority(scx);
+                scx = idnp.id;
+                let priority = idnp.priority;
+                this.setLeftAlignCX(cid, child.margins.start, scx, priority, constraints);
+            }
+        }
+        if (ecx) {
+            if (!hiddenViewForWidthId) {
+                let idnp = this.getValueAndPriority(ecx);
+                ecx = idnp.id;
+                let priority = idnp.priority;
+                this.setRightAlignCX(cid, child.margins.end, ecx, priority, constraints);
+            }
+        }
+        if (cxs) {
+            if (!hiddenViewForWidthId) {
+                let idnp = this.getValueAndPriority(cxs);
+                cxs = idnp.id;
+                let priority = idnp.priority;
+                if (!child.margins.horUnitsSame) {
+                    throw '`cxs` needs margin-start and margin-end to have same units!';
+                }
+                this.setCXAlignLeft(cid, child.margins.horMarginDiff(), cxs, priority, constraints);
+            }
+        }
+        if (cxe) {
+            if (!hiddenViewForWidthId) {
+                let idnp = this.getValueAndPriority(cxe);
+                cxe = idnp.id;
+                let priority = idnp.priority;
+                if (!child.margins.horUnitsSame) {
+                    throw '`cxe` needs margin-start and margin-end to have same units!';
+                }
+                this.setCXAlignRight(cid, child.margins.horMarginDiff(), cxe, priority, constraints);
+            }
+        }
+
+
+        if (tcy) {
+            if (!hiddenViewForWidthId) {
+                let idnp = this.getValueAndPriority(tcy);
+                tcy = idnp.id;
+                let priority = idnp.priority;
+                this.setTopAlignCY(cid, child.margins.top, tcy, priority, constraints);
+            }
+        }
+        if (bcy) {
+            if (!hiddenViewForWidthId) {
+                let idnp = this.getValueAndPriority(bcy);
+                bcy = idnp.id;
+                let priority = idnp.priority;
+                this.setBottomAlignCY(cid, child.margins.bottom, bcy, priority, constraints);
+            }
+        }
+        if (cyt) {
+            if (!hiddenViewForWidthId) {
+                let idnp = this.getValueAndPriority(cyt);
+                cyt = idnp.id;
+                let priority = idnp.priority;
+                if (!child.margins.verUnitsSame) {
+                    throw '`bcy` needs margin-top and margin-bottom to have same units!';
+                }
+                this.setCYAlignTop(cid, child.margins.verMarginDiff(), cyt, priority, constraints);
+            }
+        }
+        if (cyb) {
+            if (!hiddenViewForWidthId) {
+                let idnp = this.getValueAndPriority(cyb);
+                cyb = idnp.id;
+                let priority = idnp.priority;
+                if (!child.margins.verUnitsSame) {
+                    throw '`cyb` needs margin-top and margin-bottom to have same units!';
+                }
+                this.setCYAlignBottom(cid, child.margins.verMarginDiff(), cyb, priority, constraints);
+            }
+        }
+
     }
 
     return constraints;
@@ -1785,7 +1939,7 @@ View.prototype.setLeftAlignSE = function (view1, marginLeft, view2, priority, co
  * @param {number} priority The priority of the left-left anchor constraint
  * @param {Array} constraints The array that holds the constraints generated here
  */
-View.prototype.setLeftAlignSC = function (view1, marginLeft, view2, priority, constraints) {
+View.prototype.setLeftAlignCX = function (view1, marginLeft, view2, priority, constraints) {
     marginLeft = (marginLeft === '0%' ? 0 : marginLeft);
     if (typeof marginLeft === 'number') {
         constraints.push({
@@ -1866,10 +2020,10 @@ View.prototype.setLeftAlignSC = function (view1, marginLeft, view2, priority, co
 
             constraints.push({
                 view1: hiddenViewId,
-                attr1: 'left',    // see AutoLayout.Attribute
+                attr1: AutoLayout.Attribute.LEFT,   // see AutoLayout.Attribute
                 relation: 'equ',   // see AutoLayout.Relation
                 view2: view2,
-                attr2: 'left',    // see AutoLayout.Attribute
+                attr2: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
                 constant: 0,
                 multiplier: 1,
                 priority: 1000
@@ -1898,6 +2052,860 @@ View.prototype.setLeftAlignSC = function (view1, marginLeft, view2, priority, co
     }
 
 };
+
+/**
+ * Sets the center-x align constraint for a centerx-start(center-start) align situation...works with pixels, percents
+ * @param {string} view1 The view whose center-x is being constrained to the left of another view
+ * @param {string|number} margin The resultant margin (diff between left and right margins)... supported units are px, % and no units(we assume px)
+ * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
+ * @param {number} priority The priority of the center_x-left anchor constraint
+ * @param {Array} constraints The array that holds the constraints generated here
+ */
+View.prototype.setCXAlignLeft = function (view1, margin, view2, priority, constraints) {
+    margin = (margin === '0%' ? 0 : margin);
+    if (typeof margin === 'number') {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.LEFT,    // see AutoLayout.Attribute
+            constant: margin,
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (isNumber(margin)) {//may be a number string
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.LEFT,    // see AutoLayout.Attribute
+            constant: parseFloat(margin),
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (endsWith(margin, "px")) {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.LEFT,    // see AutoLayout.Attribute
+            constant: parseFloat(margin),
+            multiplier: 1,
+            priority: priority
+        });
+    } else {
+        let isPct = endsWith(margin, "%");
+
+        if (!isPct) {
+            throw 'margin-left can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
+        }
+
+        let val = parseFloat(margin) / 100.0;
+        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
+        if (view2 === 'parent') {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.LEFT,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: AutoLayout.Attribute.LEFT,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        } else {
+
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.LEFT,   // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: view2,
+                attr2: AutoLayout.Attribute.LEFT,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        }
+    }
+
+};
+
+
+/**
+ * Sets the center-x align constraint for a centerx-end(center-end) align situation...works with pixels, percents
+ * @param {string} view1 The view whose center-x is being constrained to the right(end) of another view
+ * @param {string|number} margin The resultant margin (diff between left and right margins)... supported units are px, % and no units(we assume px)
+ * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
+ * @param {number} priority The priority of the center_x-right anchor constraint
+ * @param {Array} constraints The array that holds the constraints generated here
+ */
+View.prototype.setCXAlignRight = function (view1, margin, view2, priority, constraints) {
+    margin = (margin === '0%' ? 0 : margin);
+    if (typeof margin === 'number') {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+            constant: margin,
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (isNumber(margin)) {//may be a number string
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+            constant: parseFloat(margin),
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (endsWith(margin, "px")) {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+            constant: parseFloat(margin),
+            multiplier: 1,
+            priority: priority
+        });
+    } else {
+        let isPct = endsWith(margin, "%");
+
+        if (!isPct) {
+            throw 'margins can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
+        }
+
+        let val = parseFloat(margin) / 100.0;
+        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
+        if (view2 === 'parent') {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.LEFT,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        } else {
+
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.LEFT,   // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: view2,
+                attr2: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        }
+    }
+
+};
+
+
+/**
+ * Sets the right align constraint for a right-center(end-center) align situation...works with pixels, percents
+ * @param {string} view1 The view whose right is being constrained
+ * @param {string|number} marginRight The right margin... supported units are px, % and no units(we assume px)
+ * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
+ * @param {number} priority The priority of the right-center anchor constraint
+ * @param {Array} constraints The array that holds the constraints generated here
+ */
+View.prototype.setRightAlignCX = function (view1, marginRight, view2, priority, constraints) {
+    marginRight = (marginRight === '0%' ? 0 : marginRight);
+    if (typeof marginRight === 'number') {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            constant: -marginRight,
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (isNumber(marginRight)) {//may be a number string
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            constant: -parseFloat(marginRight),
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (endsWith(marginRight, "px")) {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+            constant: -parseFloat(marginRight),
+            multiplier: 1,
+            priority: priority
+        });
+    } else {
+        let isPct = endsWith(marginRight, "%");
+
+        if (!isPct) {
+            throw 'margin-left can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
+        }
+
+        let val = parseFloat(marginRight) / 100.0;
+
+
+        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
+        if (view2 === 'parent') {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.RIGHT,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'left',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'left',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        } else {
+
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.RIGHT,   // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: view2,
+                attr2: AutoLayout.Attribute.CENTERX,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'left',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'left',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        }
+    }
+
+};
+
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Sets the top align constraint for a top-centerY align situation...works with pixels, percents
+ * @param {string} view1 The view whose top is being constrained
+ * @param {string|number} marginTop The top margin... supported units are px, % and no units(we assume px)
+ * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
+ * @param {number} priority The priority of the top-cy anchor constraint
+ * @param {Array} constraints The array that holds the constraints generated here
+ */
+View.prototype.setTopAlignCY = function (view1, marginTop, view2, priority, constraints) {
+    marginTop = (marginTop === '0%' ? 0 : marginTop);
+    if (typeof marginTop === 'number') {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.TOP,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            constant: marginTop,
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (isNumber(marginTop)) {//may be a number string
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.TOP,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            constant: parseFloat(marginTop),
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (endsWith(marginTop, "px")) {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.TOP,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            constant: parseFloat(marginTop),
+            multiplier: 1,
+            priority: priority
+        });
+    } else {
+        let isPct = endsWith(marginTop, "%");
+
+        if (!isPct) {
+            throw 'margin-left can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
+        }
+
+        let val = parseFloat(marginTop) / 100.0;
+
+
+        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
+        if (view2 === 'parent') {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.TOP,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'height',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'height',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'top',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'bottom',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        } else {
+
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.TOP,   // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: view2,
+                attr2: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'height',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'top',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'bottom',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        }
+    }
+};
+
+/**
+ * Sets the center-y align constraint for a centery-top align situation...works with pixels, percents
+ * @param {string} view1 The view whose center-y is being constrained to the top of another view
+ * @param {string|number} margin The resultant margin (diff between top and bottom margins)... supported units are px, % and no units(we assume px)
+ * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
+ * @param {number} priority The priority of the center_y-top anchor constraint
+ * @param {Array} constraints The array that holds the constraints generated here
+ */
+View.prototype.setCYAlignTop = function (view1, margin, view2, priority, constraints) {
+    margin = (margin === '0%' ? 0 : margin);
+    if (typeof margin === 'number') {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.TOP,    // see AutoLayout.Attribute
+            constant: margin,
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (isNumber(margin)) {//may be a number string
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.TOP,    // see AutoLayout.Attribute
+            constant: parseFloat(margin),
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (endsWith(margin, "px")) {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.TOP,    // see AutoLayout.Attribute
+            constant: parseFloat(margin),
+            multiplier: 1,
+            priority: priority
+        });
+    } else {
+        let isPct = endsWith(margin, "%");
+
+        if (!isPct) {
+            throw 'margin-left can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
+        }
+
+        let val = parseFloat(margin) / 100.0;
+        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
+        if (view2 === 'parent') {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.TOP,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: AutoLayout.Attribute.TOP,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'height',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        } else {
+
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.TOP,   // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: view2,
+                attr2: AutoLayout.Attribute.TOP,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'height',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        }
+    }
+
+};
+
+
+/**
+ * Sets the center-y align constraint for a centery-bottom align situation...works with pixels, percents
+ * @param {string} view1 The view whose center-y is being constrained to the bottom of another view
+ * @param {string|number} margin The resultant margin (diff between top and bottom margins)... supported units are px, % and no units(we assume px)
+ * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
+ * @param {number} priority The priority of the center_y-bottom anchor constraint
+ * @param {Array} constraints The array that holds the constraints generated here
+ */
+View.prototype.setCYAlignBottom = function (view1, margin, view2, priority, constraints) {
+    margin = (margin === '0%' ? 0 : margin);
+    if (typeof margin === 'number') {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+            constant: margin,
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (isNumber(margin)) {//may be a number string
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+            constant: parseFloat(margin),
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (endsWith(margin, "px")) {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+            constant: parseFloat(margin),
+            multiplier: 1,
+            priority: priority
+        });
+    } else {
+        let isPct = endsWith(margin, "%");
+
+        if (!isPct) {
+            throw 'margins can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
+        }
+
+        let val = parseFloat(margin) / 100.0;
+        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
+        if (view2 === 'parent') {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.TOP,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'height',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        } else {
+
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.TOP,   // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: view2,
+                attr2: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'height',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        }
+    }
+
+};
+
+
+/**
+ * Sets the bottom align constraint for a bottom-centerY align situation...works with pixels, percents
+ * @param {string} view1 The view whose bottom is being constrained
+ * @param {string|number} marginBottom The bottom margin... supported units are px, % and no units(we assume px)
+ * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
+ * @param {number} priority The priority of the bottom-cy anchor constraint
+ * @param {Array} constraints The array that holds the constraints generated here
+ */
+View.prototype.setBottomAlignCY = function (view1, marginBottom, view2, priority, constraints) {
+    marginBottom = (marginBottom === '0%' ? 0 : marginBottom);
+    if (typeof marginBottom === 'number') {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            constant: -marginBottom,
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (isNumber(marginBottom)) {//may be a number string
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            constant: -parseFloat(marginBottom),
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (endsWith(marginBottom, "px")) {
+        constraints.push({
+            view1: view1,
+            attr1: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+            constant: -parseFloat(marginBottom),
+            multiplier: 1,
+            priority: priority
+        });
+    } else {
+        let isPct = endsWith(marginBottom, "%");
+
+        if (!isPct) {
+            throw 'margin-left can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
+        }
+
+        let val = parseFloat(marginBottom) / 100.0;
+
+
+        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
+        if (view2 === 'parent') {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.BOTTOM,    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'height',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'top',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'top',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        } else {
+
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: AutoLayout.Attribute.BOTTOM,   // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: view2,
+                attr2: AutoLayout.Attribute.CENTERY,    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'height',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'top',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'top',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        }
+    }
+
+};
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 /**
  * Sets the right align constraint for a right-right(end-end) align situation...works with pixels, percents
@@ -3109,9 +4117,9 @@ View.prototype.setWidthConstraints = function (page, constraints, id, w, priorit
 
     if (isNumber(w)) {
         w = typeof w === 'string' ? parseFloat(w) : w;
-        if(w === 0){
+        if (w === 0) {
             let child = page.viewMap.get(id);
-            if(child.dimRatio !== -1){
+            if (child.dimRatio !== -1) {
                 constraints.push({
                     view1: id,
                     attr1: 'width',    // see AutoLayout.Attribute
@@ -3137,9 +4145,9 @@ View.prototype.setWidthConstraints = function (page, constraints, id, w, priorit
         });
     } else if ((parseObj = parseNumberAndUnitsNoValidation(w, true)).number) {
         let val = parseFloat(parseObj.number);
-        if(val === 0){
+        if (val === 0) {
             let child = page.viewMap.get(id);
-            if(child.dimRatio !== -1){
+            if (child.dimRatio !== -1) {
                 constraints.push({
                     view1: id,
                     attr1: 'width',    // see AutoLayout.Attribute
@@ -3387,9 +4395,9 @@ View.prototype.setHeightConstraints = function (page, constraints, id, h, priori
 
     if (isNumber(h)) {
         h = typeof h === 'string' ? parseFloat(h) : h;
-        if(h === 0){
+        if (h === 0) {
             let child = page.viewMap.get(id);
-            if(child.dimRatio !== -1){
+            if (child.dimRatio !== -1) {
                 constraints.push({
                     view1: id,
                     attr1: AutoLayout.Attribute.HEIGHT,    // see AutoLayout.Attribute
@@ -3397,7 +4405,7 @@ View.prototype.setHeightConstraints = function (page, constraints, id, h, priori
                     view2: id,
                     attr2: AutoLayout.Attribute.WIDTH,
                     constant: 0,
-                    multiplier: 1.0/child.dimRatio,
+                    multiplier: 1.0 / child.dimRatio,
                     priority: priority
                 });
                 return;
@@ -3415,9 +4423,9 @@ View.prototype.setHeightConstraints = function (page, constraints, id, h, priori
         });
     } else if ((parseObj = parseNumberAndUnitsNoValidation(h, true)).number) {
         let val = parseFloat(parseObj.number);
-        if(val === 0){
+        if (val === 0) {
             let child = page.viewMap.get(id);
-            if(child.dimRatio !== -1){
+            if (child.dimRatio !== -1) {
                 constraints.push({
                     view1: id,
                     attr1: AutoLayout.Attribute.HEIGHT,    // see AutoLayout.Attribute
@@ -3425,7 +4433,7 @@ View.prototype.setHeightConstraints = function (page, constraints, id, h, priori
                     view2: id,
                     attr2: AutoLayout.Attribute.WIDTH,
                     constant: 0,
-                    multiplier: 1.0/child.dimRatio,
+                    multiplier: 1.0 / child.dimRatio,
                     priority: priority
                 });
                 return;
@@ -4519,6 +5527,17 @@ const attrKeys = {
     layout_constraintBottom_toTopOf: "bt",
     layout_constraintCenterXAlign: "cx",
     layout_constraintCenterYAlign: "cy",
+
+    layout_constraintStart_toCenterX: "scx",
+    layout_constraintCenterX_toStart: "cxs",
+    layout_constraintEnd_toCenterX: "ecx",
+    layout_constraintCenterX_toEnd: "cxe",
+
+    layout_constraintTop_toCenterY: "tcy",
+    layout_constraintCenterY_toTop: "cyt",
+    layout_constraintBottom_toCenterY: "bcy",
+    layout_constraintCenterY_toBottom: "cyb",
+
     layout_constraint: "data-const",
     layout_constraintGuide: "data-guide",
     layout_constraintGuideColor: "data-guide-color",
@@ -5341,6 +6360,7 @@ function parseNumberAndUnitsNoValidation(val, seeNoUnitsAsPx) {
         if (seeNoUnitsAsPx && seeNoUnitsAsPx === true) {
             return {number: val, units: "px"};
         } else {
+            console.log("..................", val)
             return {number: null, units: null};
         }
     }
@@ -19130,177 +20150,179 @@ MysteryImage.prototype.drawRect = function (x, y, sz, fill) {
 
 };
 
-MysteryImage.prototype.drawPolygon = function(x,y, sz, fill){
+MysteryImage.prototype.drawPolygon = function (x, y, sz, fill) {
     let g = this.g;
 
     let self = this;
-    function drawShapeless(){
-        let polygon = new Polygon([],[],0);
+
+    function drawShapeless() {
+        let polygon = new Polygon([], [], 0);
         let points = [];
         let sides = 4 + self.rnd.nextInt(5);
-        let allowedYs = [y, y+sz/4, y+3*sz/4,y+sz];
-        for(let i=0;i<sides;i++){
+        let allowedYs = [y, y + sz / 4, y + 3 * sz / 4, y + sz];
+        for (let i = 0; i < sides; i++) {
             let xx = x + self.rnd.nextInt(sz);
             let yy = allowedYs[self.rnd.nextInt(allowedYs.length)];
-            points.push(new Point(xx,yy));
+            points.push(new Point(xx, yy));
         }
         points.sort(function (p1, p2) {
             return p1.x - p2.x;
         });
-        for(let i=0;i<points.length; i++){
+        for (let i = 0; i < points.length; i++) {
             polygon.addPoint(points[i].x, points[i].y);
         }
 
         return polygon;
     }
 
-    function drawL(){
-        let polygon = new Polygon([],[],0);
-        polygon.addPoint(x,y);
-        polygon.addPoint(x+sz/4, y);
+    function drawL() {
+        let polygon = new Polygon([], [], 0);
+        polygon.addPoint(x, y);
+        polygon.addPoint(x + sz / 4, y);
 
-        polygon.addPoint(x+sz/4, y+3*sz/4);
-        polygon.addPoint(x+sz, y+3*sz/4);
+        polygon.addPoint(x + sz / 4, y + 3 * sz / 4);
+        polygon.addPoint(x + sz, y + 3 * sz / 4);
 
-        polygon.addPoint(x+sz, y+sz);
+        polygon.addPoint(x + sz, y + sz);
 
-        polygon.addPoint(x, y+sz);
+        polygon.addPoint(x, y + sz);
         polygon.addPoint(x, y);
         return polygon;
     }
-    function drawFlippedL(){
-        let polygon = new Polygon([],[],0);
 
-        polygon.addPoint(x+3*sz/4, y);
-        polygon.addPoint(x+sz, y);
+    function drawFlippedL() {
+        let polygon = new Polygon([], [], 0);
 
-        polygon.addPoint(x+sz, y+sz);
-        polygon.addPoint(x, y+sz);
+        polygon.addPoint(x + 3 * sz / 4, y);
+        polygon.addPoint(x + sz, y);
 
-        polygon.addPoint(x, y+3*sz/4);
-        polygon.addPoint(x+3*sz/4, y+3*sz/4);
+        polygon.addPoint(x + sz, y + sz);
+        polygon.addPoint(x, y + sz);
 
-        polygon.addPoint(x+3*sz/4, y);
+        polygon.addPoint(x, y + 3 * sz / 4);
+        polygon.addPoint(x + 3 * sz / 4, y + 3 * sz / 4);
 
-        return polygon;
-    }
-
-    function drawInvertedL(){
-        let polygon = new Polygon([],[],0);
-
-        polygon.addPoint(x, y);
-        polygon.addPoint(x+sz, y);
-
-        polygon.addPoint(x+sz, y+sz/4);
-        polygon.addPoint(x+sz/4, y+sz/4);
-
-        polygon.addPoint(x+sz/4, y+sz);
-        polygon.addPoint(x, y+sz);
-
-        polygon.addPoint(x, y);
+        polygon.addPoint(x + 3 * sz / 4, y);
 
         return polygon;
     }
 
-    function drawFlippedInvertedL(){
-        let polygon = new Polygon([],[],0);
+    function drawInvertedL() {
+        let polygon = new Polygon([], [], 0);
 
         polygon.addPoint(x, y);
-        polygon.addPoint(x+sz, y);
+        polygon.addPoint(x + sz, y);
 
-        polygon.addPoint(x+sz, y+sz);
-        polygon.addPoint(x+3*sz/4, y+sz);
+        polygon.addPoint(x + sz, y + sz / 4);
+        polygon.addPoint(x + sz / 4, y + sz / 4);
 
-        polygon.addPoint(x+3*sz/4, y+sz/4);
-        polygon.addPoint(x, y+sz/4);
+        polygon.addPoint(x + sz / 4, y + sz);
+        polygon.addPoint(x, y + sz);
 
         polygon.addPoint(x, y);
 
         return polygon;
     }
 
-    function drawU(){
-        let polygon = new Polygon([],[],0);
-        polygon.addPoint(x,y);
-        polygon.addPoint(x+sz/4, y);
+    function drawFlippedInvertedL() {
+        let polygon = new Polygon([], [], 0);
 
-        polygon.addPoint(x+sz/4, y+3*sz/4);
-        polygon.addPoint(x+3*sz/4, y+3*sz/4);
+        polygon.addPoint(x, y);
+        polygon.addPoint(x + sz, y);
 
-        polygon.addPoint(x+3*sz/4, y);
-        polygon.addPoint(x+sz, y);
+        polygon.addPoint(x + sz, y + sz);
+        polygon.addPoint(x + 3 * sz / 4, y + sz);
 
-        polygon.addPoint(x+sz, y+sz);
+        polygon.addPoint(x + 3 * sz / 4, y + sz / 4);
+        polygon.addPoint(x, y + sz / 4);
 
-        polygon.addPoint(x, y+sz);
+        polygon.addPoint(x, y);
+
+        return polygon;
+    }
+
+    function drawU() {
+        let polygon = new Polygon([], [], 0);
+        polygon.addPoint(x, y);
+        polygon.addPoint(x + sz / 4, y);
+
+        polygon.addPoint(x + sz / 4, y + 3 * sz / 4);
+        polygon.addPoint(x + 3 * sz / 4, y + 3 * sz / 4);
+
+        polygon.addPoint(x + 3 * sz / 4, y);
+        polygon.addPoint(x + sz, y);
+
+        polygon.addPoint(x + sz, y + sz);
+
+        polygon.addPoint(x, y + sz);
         polygon.addPoint(x, y);
         return polygon;
     }
 
-    function drawInvertedU(){
-        let polygon = new Polygon([],[],0);
-        polygon.addPoint(x,y);
-        polygon.addPoint(x+sz, y);
+    function drawInvertedU() {
+        let polygon = new Polygon([], [], 0);
+        polygon.addPoint(x, y);
+        polygon.addPoint(x + sz, y);
 
-        polygon.addPoint(x+sz, y+sz);
-        polygon.addPoint(x+3*sz/4, y+sz);
+        polygon.addPoint(x + sz, y + sz);
+        polygon.addPoint(x + 3 * sz / 4, y + sz);
 
-        polygon.addPoint(x+3*sz/4, y+sz/4);
-        polygon.addPoint(x+sz/4, y+sz/4);
+        polygon.addPoint(x + 3 * sz / 4, y + sz / 4);
+        polygon.addPoint(x + sz / 4, y + sz / 4);
 
-        polygon.addPoint(x+sz/4, y+sz);
+        polygon.addPoint(x + sz / 4, y + sz);
 
-        polygon.addPoint(x, y+sz);
+        polygon.addPoint(x, y + sz);
         polygon.addPoint(x, y);
         return polygon;
     }
 
-    function drawPlus(){
-        let polygon = new Polygon([],[],0);
-        let t = sz/4;
-        polygon.addPoint(x+3*sz/8, y);
-        polygon.addPoint(x+3*sz/8, y+3*sz/8);
-        polygon.addPoint(x, y+3*sz/8);
-        polygon.addPoint(x, y+5*sz/8);
-        polygon.addPoint(x+3*sz/8, y+5*sz/8);
-        polygon.addPoint(x+3*sz/8, y+sz);
-        polygon.addPoint(x+5*sz/8, y+sz);
-        polygon.addPoint(x+5*sz/8, y+5*sz/8);
-        polygon.addPoint(x+sz, y+5*sz/8);
-        polygon.addPoint(x+sz, y+3*sz/8);
-        polygon.addPoint(x+5*sz/8, y+3*sz/8);
-        polygon.addPoint(x+5*sz/8, y);
+    function drawPlus() {
+        let polygon = new Polygon([], [], 0);
+        let t = sz / 4;
+        polygon.addPoint(x + 3 * sz / 8, y);
+        polygon.addPoint(x + 3 * sz / 8, y + 3 * sz / 8);
+        polygon.addPoint(x, y + 3 * sz / 8);
+        polygon.addPoint(x, y + 5 * sz / 8);
+        polygon.addPoint(x + 3 * sz / 8, y + 5 * sz / 8);
+        polygon.addPoint(x + 3 * sz / 8, y + sz);
+        polygon.addPoint(x + 5 * sz / 8, y + sz);
+        polygon.addPoint(x + 5 * sz / 8, y + 5 * sz / 8);
+        polygon.addPoint(x + sz, y + 5 * sz / 8);
+        polygon.addPoint(x + sz, y + 3 * sz / 8);
+        polygon.addPoint(x + 5 * sz / 8, y + 3 * sz / 8);
+        polygon.addPoint(x + 5 * sz / 8, y);
         return polygon;
     }
-    function drawHexagon(){
-        let polygon = new Polygon([],[],0);
-        polygon.addPoint(x+sz/4,y);
-        polygon.addPoint(x+3*sz/4, y);
 
-        polygon.addPoint(x+sz, y+sz/2);
-        polygon.addPoint(x+3*sz/4, y+sz);
+    function drawHexagon() {
+        let polygon = new Polygon([], [], 0);
+        polygon.addPoint(x + sz / 4, y);
+        polygon.addPoint(x + 3 * sz / 4, y);
 
-        polygon.addPoint(x+sz/4, y+sz);
+        polygon.addPoint(x + sz, y + sz / 2);
+        polygon.addPoint(x + 3 * sz / 4, y + sz);
 
-        polygon.addPoint(x, y+sz/2);
-        polygon.addPoint(x+sz/4,y);
+        polygon.addPoint(x + sz / 4, y + sz);
+
+        polygon.addPoint(x, y + sz / 2);
+        polygon.addPoint(x + sz / 4, y);
         return polygon;
     }
-    let functions = [drawL,  drawFlippedL, drawInvertedL, drawFlippedInvertedL, drawU, drawInvertedU, drawPlus, drawHexagon,drawShapeless];
+
+    let functions = [drawL, drawFlippedL, drawInvertedL, drawFlippedInvertedL, drawU, drawInvertedU, drawPlus, drawHexagon, drawShapeless];
     let index = this.rnd.nextInt(functions.length);
     let polygon = functions[index]();
 
-    if(!fill){
+    if (!fill) {
         fill = this.rnd.nextInt(4) > 0;
     }
-    if(fill){
+    if (fill) {
         g.fillPolygon(polygon);
-    }else{
+    } else {
         g.drawPolygon(polygon);
     }
 };
-
-
 
 
 MysteryImage.prototype.drawRotatedRect = function (x, y, sz, angDeg, fill) {
