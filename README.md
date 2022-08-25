@@ -1,33 +1,37 @@
 # layman
 
 ### Introduction
-**_layman_** is a constraint layout library for html pages. 
+
+**_layman_** is a constraint layout library for html pages.
 
 Here are some example pages designed using `layman`:
+
 1. [A simple login page](https://gbenroscience.github.io/layman/easylogin.html) and
 2. [A simple data collection page](https://gbenroscience.github.io/layman/profile.html)
 3. [An example showing how to trigger the onLayoutComplete function](https://gbenroscience.github.io/layman/onlayout.html)
 4. [And finally, a simple calculator](https://gbenroscience.github.io/layman/calc.html)
 
-**_layman_** is an offshoot of **_layit_** (by the same author) and uses basically the same layout engine as **_layit_**.
+**_layman_** is an offshoot of **_layit_** (by the same author) and uses basically the same layout engine as **_layit_**
+.
 
 What problem does **_layman_** solve?
 
-
-**_layman_** allows the user to work directly with their own html pages and constrain the elements to their heart's content without having to create additional xml files, or having to learn the syntax of android xml.
+**_layman_** allows the user to work directly with their own html pages and constrain the elements to their heart's
+content without having to create additional xml files, or having to learn the syntax of android xml.
 In **_layman_**, no new xml files are created.
 
-
 #### NOTE:
+
 `layman.js` includes a merge of original project files with the following files(**with attribution)**,
 
 ### 1. [ResizeSensor from marcj/css-element-queries](https://github.com/marcj/css-element-queries/)
+
 ### 2. [Autolayout from lume/autolayout](https://github.com/lume/autolayout)
+
 ### 3. [ULID from ulid/javascript](https://github.com/ulid/javascript)
 
-
-
 ### How to use
+
 Download the `layman.js` file and add the script in the head section of your html page e.g.
 
 ```html
@@ -47,7 +51,8 @@ All **_layman.js_** needs to work with your html layouts are three data attribut
 
 1. **data-const** _This attribute is used to specify the constraints on the html element._
 2. **data-guide** _Specifies that the html element is to be used as a Guideline for other html elements._
-3. **data-guide-color** _Specifies if guidelines should be visible and what color they should have. This can be very useful for debugging._
+3. **data-guide-color** _Specifies if guidelines should be visible and what color they should have. This can be very
+   useful for debugging._
 
 ## NOTE: The `data-guide-color` must be specified on the body tag alone. It applies to the whole page.
 
@@ -65,20 +70,25 @@ All **_layman.js_** needs to work with your html layouts are three data attribut
 </body>
 </html>
 ```
-If `data-guide-color` is absent on the `body` tag, then all Guidelines are rendered using a transparent color and hidden, just in case... lol.
-### Dive deeper into data-const
 
+If `data-guide-color` is absent on the `body` tag, then all Guidelines are rendered using a transparent color and
+hidden, just in case... lol.
+
+### Dive deeper into data-const
 
 #### Syntax
 
 ```html
+
 <div id="some-div" data-const="w:100px, h:150px, ss:parent, tt: parent"></div>
 ```
 
 ### Layout Construction & Syntax in more detail
-The syntax of the constraint definitions is similar to how 
+
+The syntax of the constraint definitions is similar to how
 Android's xml constraints work.
-For convenience and to reduce verbosity, the constraint properties with long names have been renamed to shorter forms. This allows for quicker typing also. See below:
+For convenience and to reduce verbosity, the constraint properties with long names have been renamed to shorter forms.
+This allows for quicker typing also. See below:
 
 ```
     layout_constraintTop_toTopOf       -> tt
@@ -91,16 +101,26 @@ For convenience and to reduce verbosity, the constraint properties with long nam
     layout_constraintBottom_toTopOf    -> bt
     layout_constraintCenterXAlign      -> cx
     layout_constraintCenterYAlign      -> cy
+    layout_constraintStart_toCenterX   -> scx
+    layout_constraintCenterX_toStart   -> cxs
+    layout_constraintEnd_toCenterX     -> ecx
+    layout_constraintCenterX_toEnd     -> cxe
+
+    layout_constraintTop_toCenterY     -> tcy
+    layout_constraintCenterY_toTop     -> cyt
+    layout_constraintBottom_toCenterY  -> bcy
+    layout_constraintCenterY_toBottom  -> cyb
     layout_constraintDimensionRatio    -> dim-ratio
     layout_constraintGuide_percent     -> guide-pct(in %)
-    layout_constraintGuide_begin     -> guide-begin(in px or no units)
-    layout_constraintGuide_end     -> guide-end(in px or no units)
+    layout_constraintGuide_begin       -> guide-begin(in px or no units)
+    layout_constraintGuide_end         -> guide-end(in px or no units)
 ```
 
 #### w and h
 
 These properties are used to specify the size of the view.
 Here are perfectly valid ways to specify the width of a view:
+
 ```
 1. w:80px  //sets the width in pixels
 2. w:50%   // sets the width as a percentage of its parent's width
@@ -126,7 +146,9 @@ Here are perfectly valid ways to specify the width of a view:
 22. w:some_id.width-120// sets the view's width to be the width of `some_id` minus 120 pixels
 23. w:some_id.height-32// sets the view's width to be the height of `some_id` minus 120 pixels
 ```
-These same rules apply to the height also. Note that division operation is not supported, only multiplication, addition and subtraction.
+
+These same rules apply to the height also. Note that division operation is not supported, only multiplication, addition
+and subtraction.
 
 Be careful not to use values which have not been initialized.
 e.g.
@@ -140,7 +162,8 @@ For example, if the view whose size we are setting is `phone_label`, You may do:
 but not:
 `w:phone_label.width` or `w:phone_label.width*2` or something similar.
 
-If you are setting the width in terms of the height or the height in terms of the width, then ensure that you have properly
+If you are setting the width in terms of the height or the height in terms of the width, then ensure that you have
+properly
 defined the value of the other dimension e.g.
 
 `w:height`<br>
@@ -151,64 +174,73 @@ OR
 `w:height`<br>
 `h:some_id`<br>
 
-All these relationships help to define aspect ratios and more complicated relationships that give developers flexibility in building UI.
+All these relationships help to define aspect ratios and more complicated relationships that give developers flexibility
+in building UI.
 
 `w:match_parent` and `h:'match_parent` are supported.
 `w:wrap_content` and `h:'wrap_content` are only partially supported.
 The implementation is not yet complete as regards these, for various reasons.
 
-The underlying `autolayout.js` library does not seem to support `wrap_content`,so we are trying to provide some implementation for it.
+The underlying `autolayout.js` library does not seem to support `wrap_content`,so we are trying to provide some
+implementation for it.
 
 Note that where no units are specified, pixels are used. So `w:200` and `w:200px` are equivalent.
 All these apply to `height` also.<br>
 **CSS calc operations are not supported**<br>
 
 #### maxW, maxH, minW, minH
+
 These refer to the maximum width and maximum height, minimum width and minimum height
 These are all supported.
 
 #### m
-Refers to the  margin around the element
+
+Refers to the margin around the element
 
 #### mv and mh
+
 Refer to the vertical (top and bottom) and horizontal margins around the html element
 
 #### ms and me, mt and mb
-Refer to the start(left) margin, the end(right) margin,  and the top and bottom margins around the html element
+
+Refer to the start(left) margin, the end(right) margin, and the top and bottom margins around the html element
 
 The units supported for margins are pixels and percentages.
 If no units are supplied, pixels are assumed.
 
-
 #### cx and cy
 
 Allows a view's center to be constrained horizontally or vertically to another view's center.<br>
-The values accepted are either, `parent` or `view_id`; where `view_id` is the id of the view we are constraining this view with respect to.
+The values accepted are either, `parent` or `view_id`; where `view_id` is the id of the view we are constraining this
+view with respect to.
 
 #### orient
+
 This is used when the data-guide attribute is set also on this html element;which means the
 element is a guideline for other elements.
 It specifies whether the Guideline is an horizontal or a vertical guideline.
 Accepted values are `vertical` or `horizontal`
 
 #### guide-pct
+
 This is used when the data-guide attribute is set also on this html element.
 It specifies the distance (in percentages or decimal fractions) of a horizontal Guideline from the top of its parent
 and the distance (in percentages or decimal fractions) of a vertical Guideline from the left of its parent
 You may set it as such: `guide-pct: 65%` or `guide-pct: 0.65`, both statements are equivalent.
 
 #### guide-begin
+
 This is used when the data-guide attribute is set also on this html element.
 It specifies the distance in pixels of a horizontal Guideline from the top of its parent
 and the distance in pixels of a vertical Guideline from the left of its parent
 You may set it as such: `guide-begin: 65px` or `guide-begin: 65`
 
 #### guide-end
+
 This is used when the data-guide attribute is set also on this html element.
 It specifies the distance in pixels of a horizontal Guideline from the bottom of its parent
 and the distance in pixels of a vertical Guideline from the right of its parent.<br>
 You may set it as such: `guide-end: 65px` or `guide-end: 65`
-
 
 ### Priorities
 
@@ -219,13 +251,14 @@ from iOS AutoLayout. The `priority` is a number that tells the layout engine how
 So when designing some layouts, you may specify the priority of the constraints, by ending it with
 `@priority_value`.
 <br> For example:
+
 ```html
+
 <div>
-<input id="phone_input" data-const="w:wrap_content, h: 42px, ss: parent, tt: parent, ms: 10, mt: 10">
-<input id="password_input" data-const="w: phone_input, h: wrap_content, ss: phone_input@750, tb: phone_input">
+    <input id="phone_input" data-const="w:wrap_content, h: 42px, ss: parent, tt: parent, ms: 10, mt: 10">
+    <input id="password_input" data-const="w: phone_input, h: wrap_content, ss: phone_input@750, tb: phone_input">
 </div>
 ```
-
 
 ### Examples
 
@@ -315,42 +348,48 @@ Below is the source code of a simple example login interface which you can
 </body>
 </html>
 ```
+
 Another example can [be seen here](https://gbenroscience.github.io/layman/profile.html)
 
-### **`onLayoutComplete`** 
+### **`onLayoutComplete`**
+
 In case one needs to run some code after the layout is done, put your code within the `onLayoutComplete` function.
 [Here is an example that uses the callback.](https://gbenroscience.github.io/layman/onlayout.html)
 
 ### CONSTRAINTS FREE HTML
 
-If you want to keep your HTML code lean, you may override the global `layoutCode` function expression, and return a javascript
+If you want to keep your HTML code lean, you may override the global `layoutCode` function expression, and return a
+javascript
 object that defines the layout.
 The syntax is really easy.
-Make sure you override the function expression in a script tag after the script that imports `layman.js`, or you could create a separate
+Make sure you override the function expression in a script tag after the script that imports `layman.js`, or you could
+create a separate
 script file, override it in that script and then import the script below the import statement for `layman.js`.
 This is how you override the function expression:
 
 ```javascript
-layoutCode = function(){
+layoutCode = function () {
     return {
-       body: {
-           'data-guide-color': "#2A805F"
-       },
-       elements: {
-           "sidebar": {
-               w: "15%", h: "100%", ss: "parent", tt: "parent"
-           },
-           "app-title": {
-               w: "match_parent", h: "48px", ss: "parent", tt: "parent"
-           }
-       }
+        body: {
+            'data-guide-color': "#2A805F"
+        },
+        elements: {
+            "sidebar": {
+                w: "15%", h: "100%", ss: "parent", tt: "parent"
+            },
+            "app-title": {
+                w: "match_parent", h: "48px", ss: "parent", tt: "parent"
+            }
+        }
     };
 }
 ```
 
 The `body` section can be used to define the color of the guidelines using the `data-guide-color` field.
-The `elements` section will contain further subsections. Each of the subsections will have a key name which is the id of the
-html element that possesses the layout constraints being defined in that subsection. So above, `sidebar` and `app-title` are both
+The `elements` section will contain further subsections. Each of the subsections will have a key name which is the id of
+the
+html element that possesses the layout constraints being defined in that subsection. So above, `sidebar` and `app-title`
+are both
 ids of html elements on the page.
 
 [Here is the former example that uses the `onLayoutComplete` function, but with its constraints abstracted into a JS object](https://gbenroscience.github.io/layman/layoutstyles.html)
