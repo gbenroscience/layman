@@ -214,6 +214,31 @@ Allows a view's center to be constrained horizontally or vertically to another v
 The values accepted are either, `parent` or `view_id`; where `view_id` is the id of the view we are constraining this
 view with respect to.
 
+#### scx
+Constrain the start`(s)` of a view to the horizontal center`(cx)` of another view using `scx`
+
+#### tcy
+Constrain the top`(t)` of a view to the vertical`(cy)` of another view using `tcy`
+
+#### cxs
+Constrain the horizontal center`(cx)` of a view to the start`(s)` of another view using `cxs`
+
+#### cyt
+Constrain the vertical center`(cy)` of a view to the top`(t)` of another view
+
+
+#### ecx
+Constrain the end`(e)` of a view to the horizontal center`(cx)` of another view using `ecx`
+
+#### bcy
+Constrain the bottom`(b)` of a view to the vertical`(cy)` of another view using `bcy`
+
+#### cxe
+Constrain the horizontal center`(cx)` of a view to the end`(e)` of another view using `cxe`
+
+#### cyb
+Constrain the vertical center`(cy)` of a view to the bottom`(b)` of another view
+
 #### orient
 
 This is used when the data-guide attribute is set also on this html element;which means the
