@@ -168,7 +168,9 @@ function shouldIgnoreNode(node) {
     let name = node.nodeName.toLowerCase();
     return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
         || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === '#text' || name === '#comment'
-        || name === 'script' || name === 'option' || name === 'optgroup');
+        || name === 'script' || name === 'option' || name === 'optgroup'
+        || name === 'b' || name === 'i' ||  name === 'strong' ||  name === 'u'
+    );
 }
 
 /**
@@ -180,6 +182,7 @@ function isWhiteSpaceOrCommentNode(node) {
     let name = node.nodeName.toLowerCase();
     return (name === '#text' || name === '#comment');
 }
+
 /**
  * Checks if the node is a comment, a whitespace or a script node
  * @param node
@@ -199,7 +202,8 @@ function isWhiteSpaceCommentOrScriptNode(node) {
 function shouldIgnoreSpecialChildElement(node) {
     let name = node.nodeName.toLowerCase();
     return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
-        || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === 'option' || name === 'optgroup');
+        || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === 'option' || name === 'optgroup'
+        || name === 'b' || name === 'i' ||  name === 'strong' ||  name === 'u');
 }
 
 /**
