@@ -354,6 +354,11 @@ Page.prototype.layoutFromTags = function (node) {
                 constraints = 'w:match_parent;h:match_parent;ss:parent;ee:parent;tt:parent;bb:parent'
             }
         }
+        constraints = constraints.trim();
+        if(endsWith(constraints, ";")){
+            constraints = constraints.substring(0, constraints.length - 1);
+        }
+
         constraints = constraints.replace(/\s/g, "");
         constraints = constraints.split(";");
 

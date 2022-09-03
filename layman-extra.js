@@ -376,8 +376,13 @@ Page.prototype.layoutFromTags = function (node) {
                 constraints = 'w:match_parent;h:match_parent;ss:parent;ee:parent;tt:parent;bb:parent'
             }
         }
+        constraints = constraints.trim();
+        if(endsWith(constraints, ";")){
+            constraints = constraints.substring(0, constraints.length - 1);
+        }
         constraints = constraints.replace(/\s/g, "");
         constraints = constraints.split(";");
+
 
         let refIds = new Map();
         for (let i = 0; i < constraints.length; i++) {
@@ -388,7 +393,7 @@ Page.prototype.layoutFromTags = function (node) {
                 let val = con.substring(indexColon + 1);
                 refIds.set(attr, val);
             } else {
-                throw 'invalid constraint definition... no colon found in ' + con;
+                throw 'invalid constraint definition... no colon found in ' + con+ " on "+root.id;
             }
         }
         let view;
@@ -1021,8 +1026,7 @@ View.prototype.makeBgImage = function () {
     let refIds = this.refIds;
 
     let useAutoBg = refIds.get(attrKeys.mi_useAutoBg);
-
-    if (!useAutoBg) {
+    if (!useAutoBg || useAutoBg === 'false') {
         return;
     }
 
