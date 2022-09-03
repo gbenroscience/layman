@@ -12,4 +12,5 @@ go.mod
 img.png
 logo.png
 welcometo.png
-
+bridged-worker.js
+bridged-worker-compatible.js
