@@ -8,6 +8,9 @@ styleSheet.setAttribute('type', 'text/css');
 
 let page;
 
+let projectURL , scriptURL;
+getUrls();
+console.log("projectURL: ", projectURL, " , scriptURL: ", scriptURL);
 /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
@@ -99,14 +102,79 @@ docReady(function () {
 
 /**
  *
+ * @param path The path to the popup's layout
+ * @constructor
+ */
+function RemoteLayoutData(path){
+    /**
+     * The path to the file that describes the sublayout of the include or popup
+     */
+    this.path = path;
+    /**
+     * The DOMRect that describes the parent include(or popup)
+     * @type {DOMRect[]}
+     */
+    this.rect = [];
+    /**
+     * If true, the
+     * @type {boolean}
+     */
+    this.consumed = false;
+}
+
+/**
+ *
  * @param {HTMLElement} rootNode May be undefined, or an htmlelement whose html content is to be parsed and laid out
  * @constructor
  */
 function Page(rootNode) {
     this.rootElement = rootNode;
+    /**
+     * A map of ids vs views
+     * @type {Map<String, View>}
+     */
     this.viewMap = new Map();
     this.hideRoot();
     this.layoutObj = layoutCode();
+    this.sourcesLoaded = true;
+    /**
+     * Store all subpages here by id.
+     * @type {Map<String, Page>}
+     */
+    this.subPages = new Map();
+    /**
+     * A map of filepaths against the file contents.
+     * The keys are the paths, the values are the file contents which define valid html sub-layouts
+     * @type {Map<any, any>}
+     */
+    this.sources = new Map();
+    /**
+     * Stores all source paths defined in html inline layout code or explicit layout code
+     * @type {*[]}
+     */
+    this.srcPaths = [];
+
+    /**
+     *
+     * Stores all popup ids against their layout paths here.
+     * The key is the id of the popup definition,
+     * The value is the src(filepath) to the html markup of the popup's  content.
+     * The library reads out the popups, stores them here and removes every trace of the popups from the original page code.
+     * @type {Map<String, RemoteLayoutData>}
+     */
+    this.popups = new Map();
+
+
+    /**
+     *
+     * Stores all included element ids against their layout path metadata here.
+     * The key is the id of the included div definition,
+     * The value is the src(filepath) to the html markup of the include's  content.
+     * The library lays out the includes with the main page and renders their content in their blank area as the layouts arrive via fetch
+     * @type {Map<String, RemoteLayoutData>}
+     */
+    this.includes = new Map();
+
     if (!rootNode) {
         let htmlBodyStyle = new Style('html,body', []);
         htmlBodyStyle.addFromOptions({
@@ -219,17 +287,21 @@ function enforceIdOnChildElements(node) {
     }
 }
 
-Page.prototype.layout = function (node) {
+Page.prototype.layout = function () {
     let layoutObj = layoutCode();
     if (layoutObj) {
-        this.layoutFromSheet(node);
+        this.layoutFromSheet(this.rootElement);
     } else {
-        this.layoutFromTags(node);
+        this.layoutFromTags(this.rootElement);
     }
 };
-
+/**
+ *
+ * @param {HTMLElement} node
+ */
 Page.prototype.layoutFromSheet = function (node) {
 
+    let disPage = this;
     let root = !node ? document.body : node;
     if (root === document.body) {
         root.id = BODY_ID;
@@ -275,7 +347,19 @@ Page.prototype.layoutFromSheet = function (node) {
 
         let refIds = new Map();
         Object.keys(constraints).forEach(function (key) {
-            refIds.set(key, constraints[key]);
+            let val = constraints[key];
+            refIds.set(key, val);
+            if (key === attrKeys.layout_src) {
+                let isPopup = constraints[attrKeys.layout_popup]
+                disPage.srcPaths.push(val);
+                disPage.sourcesLoaded = false;
+                let popupData = new RemoteLayoutData(val);
+                if(isPopup === true){
+                    disPage.popups.set(root.id, popupData);
+                }else{
+                    disPage.includes.set(root.id, popupData);
+                }
+            }
         });
         let view;
 
@@ -294,7 +378,7 @@ Page.prototype.layoutFromSheet = function (node) {
                 refIds.set(attrKeys.layout_height, sizes.WRAP_CONTENT);
                 view = new Guideline(this, root, refIds, root.parentNode.id);
             } else {
-                throw 'Invalid value for guide'
+                throw 'Invalid value for guide';
             }
 
         }
@@ -316,11 +400,17 @@ Page.prototype.layoutFromSheet = function (node) {
             if (view.topLevel === true) {
                 this.buildUI(view);
                 this.showRoot();
+                if(disPage.srcPaths.length > 0){
+                    var worker = BuildBridgedWorker(workerCode, ["loadAll"], ["layoutLoaded", "layoutError"], [layoutLoaded, layoutError]);
+                    worker.loadAll(projectURL, disPage.srcPaths);
+                }else{
+                    disPage.sourcesLoaded = true;
+                }
+
             }
         }
     }
 };
-
 
 /**
  *
@@ -328,6 +418,7 @@ Page.prototype.layoutFromSheet = function (node) {
  */
 Page.prototype.layoutFromTags = function (node) {
 
+    let disPage = this;
     let root = !node ? document.body : node;
     if (root === document.body) {
         root.id = BODY_ID;
@@ -355,14 +446,15 @@ Page.prototype.layoutFromTags = function (node) {
             }
         }
         constraints = constraints.trim();
-        if(endsWith(constraints, ";")){
+        if (endsWith(constraints, ";")) {
             constraints = constraints.substring(0, constraints.length - 1);
         }
-
         constraints = constraints.replace(/\s/g, "");
         constraints = constraints.split(";");
 
         let refIds = new Map();
+        let isPopup;
+        let src = null;
         for (let i = 0; i < constraints.length; i++) {
             let con = constraints[i];
             let indexColon;
@@ -370,10 +462,27 @@ Page.prototype.layoutFromTags = function (node) {
                 let attr = con.substring(0, indexColon);
                 let val = con.substring(indexColon + 1);
                 refIds.set(attr, val);
+                if (attr === attrKeys.layout_src) {
+                    disPage.srcPaths.push(val);
+                    disPage.sourcesLoaded = false;
+                    src = val;
+                }
+                if(attr === attrKeys.layout_popup){
+                    isPopup = true;
+                }
             } else {
-                throw 'invalid constraint definition... no colon found in ' + con;
+                throw 'invalid constraint definition... no colon found in ' + con + " on " + root.id;
             }
         }
+       if(src){
+           let popupData = new RemoteLayoutData(src);
+           if(isPopup === true){
+               disPage.popups.set(root.id, popupData);
+           }else{
+               disPage.includes.set(root.id, popupData);
+           }
+       }
+
         let view;
 
         let attr = root.getAttribute(attrKeys.layout_constraintGuide);
@@ -413,18 +522,29 @@ Page.prototype.layoutFromTags = function (node) {
             if (view.topLevel === true) {
                 this.buildUI(view);
                 this.showRoot();
+                if(disPage.srcPaths.length > 0){
+                    var worker = BuildBridgedWorker(workerCode, ["loadAll"], ["layoutLoaded", "layoutError"], [layoutLoaded, layoutError]);
+                    worker.loadAll(projectURL, disPage.srcPaths);
+                }else{
+                    disPage.sourcesLoaded = true;
+                }
             }
         }
     }
+
 };
 
 
 Page.prototype.buildUI = function (rootView) {
+    let pops = [];
     let layAll = function (v, page) {
         if (v.childrenIds.length > 0) {
             autoLayout(v.htmlNode === document.body ? undefined : v.htmlNode, v.layoutChildren(page));
             v.childrenIds.forEach(function (id) {
                 let cv = page.viewMap.get(id);
+                if(cv.isPopup()){
+                    pops.push(cv);
+                }
                 if (cv.childrenIds.length > 0) {
                     layAll(cv, page);
                 }
@@ -432,6 +552,13 @@ Page.prototype.buildUI = function (rootView) {
         }
     };
     layAll(rootView, this);
+    let currentPage = this;
+    pops.forEach(function (popup) {
+        let ppData = currentPage.popups.get(popup.id);
+        ppData.rect = popup.htmlNode.getBoundingClientRect();
+        currentPage.popups.set(popup.id, ppData);
+        popup.htmlNode.remove();
+    });
 };
 
 Page.prototype.showRoot = function () {
@@ -447,6 +574,894 @@ Page.prototype.hideRoot = function () {
     } else {
         this.rootElement.style.visibility = 'hidden';
     }
+};
+
+/**
+ *
+ * @param popupId The id of the popup.
+ */
+Page.prototype.openPopup = function(popupId){
+    let pg = this;
+    let ppData = this.popups.get(popupId);
+
+    let html = this.sources.get(ppData.path);
+    let r = ppData.rect;
+    if(!r || !r.width || !r.height){
+        throw 'specify width or height on popup: '+popupId;
+    }
+    let popup = new Popup({
+        id: popupId,
+        layout: html,
+        width: r.width,
+        height: r.height,
+        bg: "#fff"
+    });
+    popup.open();
+};
+
+/**
+ *
+ * Render the included html in its include
+ * @param includeID The id of the layout that the included html will be attached to
+ * @param htmlContent The html sublayout
+ */
+Page.prototype.renderInclude = function(includeID,htmlContent){
+    let layoutData = this.includes.get(includeID);
+    let path = layoutData.path;
+    let html = !htmlContent ? this.sources.get(path) : htmlContent;
+    let elem = document.getElementById(includeID);
+    elem.innerHTML = htmlContent;
+    let pg = new Page(elem);
+    pg.layout();
+    this.subPages.set(includeID, pg);
+};
+
+var workerCode = function () {
+
+    function loadAll(basePath,files) {
+        loadFiles(basePath, files, 0);
+    }
+
+    function loadFiles(basePath, files, i) {
+        if (Array.isArray(files)) {
+            if (i < files.length) {
+                var path = files[i];
+                loadFile(basePath, path, function (html) {
+                    main.layoutLoaded(path, html, false);
+                    loadFiles(basePath, files, i + 1);
+                });
+            } else {
+                main.layoutLoaded(null, '', true);
+            }
+        } else {
+            main.layoutError(new Error('Pass an array of filepaths here'));
+        }
+    }
+
+    function loadFile(basePath, layoutFile, callback) {
+
+        const absolute = new URL( layoutFile, basePath )
+        fetch(absolute, {
+            credentials: 'same-origin'
+        }).then(function (response) {
+            return response;
+        }).then(function (data) {
+            return data.text();
+        }).then(function (xmlLayout) {
+            callback(xmlLayout);
+        }).catch(function (err) {
+            setTimeout(function () {
+                main.layoutError(err);
+                throw err;
+            });
+        });
+    }
+
+//////////////////////////Promise-polyfill/////////////////////////////
+    !function (e, t) {
+        "object" == typeof exports && "undefined" != typeof module ? t() : "function" == typeof define && define.amd ? define(t) : t()
+    }(0, function () {
+        "use strict";
+
+        function e(e) {
+            var t = this.constructor;
+            return this.then(function (n) {
+                return t.resolve(e()).then(function () {
+                    return n
+                })
+            }, function (n) {
+                return t.resolve(e()).then(function () {
+                    return t.reject(n)
+                })
+            })
+        }
+
+        function t(e) {
+            return new this(function (t, n) {
+                function o(e, n) {
+                    if (n && ("object" == typeof n || "function" == typeof n)) {
+                        var f = n.then;
+                        if ("function" == typeof f) return void f.call(n, function (t) {
+                            o(e, t)
+                        }, function (n) {
+                            r[e] = {status: "rejected", reason: n}, 0 == --i && t(r)
+                        })
+                    }
+                    r[e] = {status: "fulfilled", value: n}, 0 == --i && t(r)
+                }
+
+                if (!e || "undefined" == typeof e.length) return n(new TypeError(typeof e + " " + e + " is not iterable(cannot read property Symbol(Symbol.iterator))"));
+                var r = Array.prototype.slice.call(e);
+                if (0 === r.length) return t([]);
+                for (var i = r.length, f = 0; r.length > f; f++) o(f, r[f])
+            })
+        }
+
+        function n(e) {
+            return !(!e || "undefined" == typeof e.length)
+        }
+
+        function o() {
+        }
+
+        function r(e) {
+            if (!(this instanceof r)) throw new TypeError("Promises must be constructed via new");
+            if ("function" != typeof e) throw new TypeError("not a function");
+            this._state = 0, this._handled = !1, this._value = undefined, this._deferreds = [], l(e, this)
+        }
+
+        function i(e, t) {
+            for (; 3 === e._state;) e = e._value;
+            0 !== e._state ? (e._handled = !0, r._immediateFn(function () {
+                var n = 1 === e._state ? t.onFulfilled : t.onRejected;
+                if (null !== n) {
+                    var o;
+                    try {
+                        o = n(e._value)
+                    } catch (r) {
+                        return void u(t.promise, r)
+                    }
+                    f(t.promise, o)
+                } else (1 === e._state ? f : u)(t.promise, e._value)
+            })) : e._deferreds.push(t)
+        }
+
+        function f(e, t) {
+            try {
+                if (t === e) throw new TypeError("A promise cannot be resolved with itself.");
+                if (t && ("object" == typeof t || "function" == typeof t)) {
+                    var n = t.then;
+                    if (t instanceof r) return e._state = 3, e._value = t, void c(e);
+                    if ("function" == typeof n) return void l(function (e, t) {
+                        return function () {
+                            e.apply(t, arguments)
+                        }
+                    }(n, t), e)
+                }
+                e._state = 1, e._value = t, c(e)
+            } catch (o) {
+                u(e, o)
+            }
+        }
+
+        function u(e, t) {
+            e._state = 2, e._value = t, c(e)
+        }
+
+        function c(e) {
+            2 === e._state && 0 === e._deferreds.length && r._immediateFn(function () {
+                e._handled || r._unhandledRejectionFn(e._value)
+            });
+            for (var t = 0, n = e._deferreds.length; n > t; t++) i(e, e._deferreds[t]);
+            e._deferreds = null
+        }
+
+        function l(e, t) {
+            var n = !1;
+            try {
+                e(function (e) {
+                    n || (n = !0, f(t, e))
+                }, function (e) {
+                    n || (n = !0, u(t, e))
+                })
+            } catch (o) {
+                if (n) return;
+                n = !0, u(t, o)
+            }
+        }
+
+        var a = setTimeout;
+        r.prototype["catch"] = function (e) {
+            return this.then(null, e)
+        }, r.prototype.then = function (e, t) {
+            var n = new this.constructor(o);
+            return i(this, new function (e, t, n) {
+                this.onFulfilled = "function" == typeof e ? e : null, this.onRejected = "function" == typeof t ? t : null, this.promise = n
+            }(e, t, n)), n
+        }, r.prototype["finally"] = e, r.all = function (e) {
+            return new r(function (t, o) {
+                function r(e, n) {
+                    try {
+                        if (n && ("object" == typeof n || "function" == typeof n)) {
+                            var u = n.then;
+                            if ("function" == typeof u) return void u.call(n, function (t) {
+                                r(e, t)
+                            }, o)
+                        }
+                        i[e] = n, 0 == --f && t(i)
+                    } catch (c) {
+                        o(c)
+                    }
+                }
+
+                if (!n(e)) return o(new TypeError("Promise.all accepts an array"));
+                var i = Array.prototype.slice.call(e);
+                if (0 === i.length) return t([]);
+                for (var f = i.length, u = 0; i.length > u; u++) r(u, i[u])
+            })
+        }, r.allSettled = t, r.resolve = function (e) {
+            return e && "object" == typeof e && e.constructor === r ? e : new r(function (t) {
+                t(e)
+            })
+        }, r.reject = function (e) {
+            return new r(function (t, n) {
+                n(e)
+            })
+        }, r.race = function (e) {
+            return new r(function (t, o) {
+                if (!n(e)) return o(new TypeError("Promise.race accepts an array"));
+                for (var i = 0, f = e.length; f > i; i++) r.resolve(e[i]).then(t, o)
+            })
+        }, r._immediateFn = "function" == typeof setImmediate && function (e) {
+            setImmediate(e)
+        } || function (e) {
+            a(e, 0)
+        }, r._unhandledRejectionFn = function (e) {
+            void 0 !== console && console && console.warn("Possible Unhandled Promise Rejection:", e)
+        };
+        var s = function () {
+            if ("undefined" != typeof self) return self;
+            if ("undefined" != typeof window) return window;
+            if ("undefined" != typeof global) return global;
+            throw Error("unable to locate global object")
+        }();
+        "function" != typeof s.Promise ? s.Promise = r : (s.Promise.prototype["finally"] || (s.Promise.prototype["finally"] = e), s.Promise.allSettled || (s.Promise.allSettled = t))
+    });
+
+//////////////////////////Promise-polyfill-ends/////////////////////////////
+
+
+//////////////////////////fetch-polyfill////////////////////////////////////
+    (function (global, factory) {
+        typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+            typeof define === 'function' && define.amd ? define(['exports'], factory) :
+                (factory((global.WHATWGFetch = {})));
+    }(this, (function (exports) {
+        'use strict';
+
+        var global = (typeof self !== 'undefined' && self) || (typeof global !== 'undefined' && global);
+
+        var support = {
+            searchParams: 'URLSearchParams' in global,
+            iterable: 'Symbol' in global && 'iterator' in Symbol,
+            blob:
+                'FileReader' in global &&
+                'Blob' in global &&
+                (function () {
+                    try {
+                        new Blob();
+                        return true
+                    } catch (e) {
+                        return false
+                    }
+                })(),
+            formData: 'FormData' in global,
+            arrayBuffer: 'ArrayBuffer' in global
+        };
+
+        function isDataView(obj) {
+            return obj && DataView.prototype.isPrototypeOf(obj)
+        }
+
+        if (support.arrayBuffer) {
+            var viewClasses = [
+                '[object Int8Array]',
+                '[object Uint8Array]',
+                '[object Uint8ClampedArray]',
+                '[object Int16Array]',
+                '[object Uint16Array]',
+                '[object Int32Array]',
+                '[object Uint32Array]',
+                '[object Float32Array]',
+                '[object Float64Array]'
+            ];
+
+            var isArrayBufferView =
+                ArrayBuffer.isView ||
+                function (obj) {
+                    return obj && viewClasses.indexOf(Object.prototype.toString.call(obj)) > -1
+                };
+        }
+
+        function normalizeName(name) {
+            if (typeof name !== 'string') {
+                name = String(name);
+            }
+            if (/[^a-z0-9\-#$%&'*+.^_`|~!]/i.test(name) || name === '') {
+                throw new TypeError('Invalid character in header field name')
+            }
+            return name.toLowerCase()
+        }
+
+        function normalizeValue(value) {
+            if (typeof value !== 'string') {
+                value = String(value);
+            }
+            return value
+        }
+
+        // Build a destructive iterator for the value list
+        function iteratorFor(items) {
+            var iterator = {
+                next: function () {
+                    var value = items.shift();
+                    return {done: value === undefined, value: value}
+                }
+            };
+
+            if (support.iterable) {
+                iterator[Symbol.iterator] = function () {
+                    return iterator
+                };
+            }
+
+            return iterator
+        }
+
+        function Headers(headers) {
+            this.map = {};
+
+            if (headers instanceof Headers) {
+                headers.forEach(function (value, name) {
+                    this.append(name, value);
+                }, this);
+            } else if (Array.isArray(headers)) {
+                headers.forEach(function (header) {
+                    this.append(header[0], header[1]);
+                }, this);
+            } else if (headers) {
+                Object.getOwnPropertyNames(headers).forEach(function (name) {
+                    this.append(name, headers[name]);
+                }, this);
+            }
+        }
+
+        Headers.prototype.append = function (name, value) {
+            name = normalizeName(name);
+            value = normalizeValue(value);
+            var oldValue = this.map[name];
+            this.map[name] = oldValue ? oldValue + ', ' + value : value;
+        };
+
+        Headers.prototype['delete'] = function (name) {
+            delete this.map[normalizeName(name)];
+        };
+
+        Headers.prototype.get = function (name) {
+            name = normalizeName(name);
+            return this.has(name) ? this.map[name] : null
+        };
+
+        Headers.prototype.has = function (name) {
+            return this.map.hasOwnProperty(normalizeName(name))
+        };
+
+        Headers.prototype.set = function (name, value) {
+            this.map[normalizeName(name)] = normalizeValue(value);
+        };
+
+        Headers.prototype.forEach = function (callback, thisArg) {
+            for (var name in this.map) {
+                if (this.map.hasOwnProperty(name)) {
+                    callback.call(thisArg, this.map[name], name, this);
+                }
+            }
+        };
+
+        Headers.prototype.keys = function () {
+            var items = [];
+            this.forEach(function (value, name) {
+                items.push(name);
+            });
+            return iteratorFor(items)
+        };
+
+        Headers.prototype.values = function () {
+            var items = [];
+            this.forEach(function (value) {
+                items.push(value);
+            });
+            return iteratorFor(items)
+        };
+
+        Headers.prototype.entries = function () {
+            var items = [];
+            this.forEach(function (value, name) {
+                items.push([name, value]);
+            });
+            return iteratorFor(items)
+        };
+
+        if (support.iterable) {
+            Headers.prototype[Symbol.iterator] = Headers.prototype.entries;
+        }
+
+        function consumed(body) {
+            if (body.bodyUsed) {
+                return Promise.reject(new TypeError('Already read'))
+            }
+            body.bodyUsed = true;
+        }
+
+        function fileReaderReady(reader) {
+            return new Promise(function (resolve, reject) {
+                reader.onload = function () {
+                    resolve(reader.result);
+                };
+                reader.onerror = function () {
+                    reject(reader.error);
+                };
+            })
+        }
+
+        function readBlobAsArrayBuffer(blob) {
+            var reader = new FileReader();
+            var promise = fileReaderReady(reader);
+            reader.readAsArrayBuffer(blob);
+            return promise
+        }
+
+        function readBlobAsText(blob) {
+            var reader = new FileReader();
+            var promise = fileReaderReady(reader);
+            reader.readAsText(blob);
+            return promise
+        }
+
+        function readArrayBufferAsText(buf) {
+            var view = new Uint8Array(buf);
+            var chars = new Array(view.length);
+
+            for (var i = 0; i < view.length; i++) {
+                chars[i] = String.fromCharCode(view[i]);
+            }
+            return chars.join('')
+        }
+
+        function bufferClone(buf) {
+            if (buf.slice) {
+                return buf.slice(0)
+            } else {
+                var view = new Uint8Array(buf.byteLength);
+                view.set(new Uint8Array(buf));
+                return view.buffer
+            }
+        }
+
+        function Body() {
+            this.bodyUsed = false;
+
+            this._initBody = function (body) {
+                /*
+                  fetch-mock wraps the Response object in an ES6 Proxy to
+                  provide useful test harness features such as flush. However, on
+                  ES5 browsers without fetch or Proxy support pollyfills must be used;
+                  the proxy-pollyfill is unable to proxy an attribute unless it exists
+                  on the object before the Proxy is created. This change ensures
+                  Response.bodyUsed exists on the instance, while maintaining the
+                  semantic of setting Request.bodyUsed in the constructor before
+                  _initBody is called.
+                */
+                this.bodyUsed = this.bodyUsed;
+                this._bodyInit = body;
+                if (!body) {
+                    this._bodyText = '';
+                } else if (typeof body === 'string') {
+                    this._bodyText = body;
+                } else if (support.blob && Blob.prototype.isPrototypeOf(body)) {
+                    this._bodyBlob = body;
+                } else if (support.formData && FormData.prototype.isPrototypeOf(body)) {
+                    this._bodyFormData = body;
+                } else if (support.searchParams && URLSearchParams.prototype.isPrototypeOf(body)) {
+                    this._bodyText = body.toString();
+                } else if (support.arrayBuffer && support.blob && isDataView(body)) {
+                    this._bodyArrayBuffer = bufferClone(body.buffer);
+                    // IE 10-11 can't handle a DataView body.
+                    this._bodyInit = new Blob([this._bodyArrayBuffer]);
+                } else if (support.arrayBuffer && (ArrayBuffer.prototype.isPrototypeOf(body) || isArrayBufferView(body))) {
+                    this._bodyArrayBuffer = bufferClone(body);
+                } else {
+                    this._bodyText = body = Object.prototype.toString.call(body);
+                }
+
+                if (!this.headers.get('content-type')) {
+                    if (typeof body === 'string') {
+                        this.headers.set('content-type', 'text/plain;charset=UTF-8');
+                    } else if (this._bodyBlob && this._bodyBlob.type) {
+                        this.headers.set('content-type', this._bodyBlob.type);
+                    } else if (support.searchParams && URLSearchParams.prototype.isPrototypeOf(body)) {
+                        this.headers.set('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+                    }
+                }
+            };
+
+            if (support.blob) {
+                this.blob = function () {
+                    var rejected = consumed(this);
+                    if (rejected) {
+                        return rejected
+                    }
+
+                    if (this._bodyBlob) {
+                        return Promise.resolve(this._bodyBlob)
+                    } else if (this._bodyArrayBuffer) {
+                        return Promise.resolve(new Blob([this._bodyArrayBuffer]))
+                    } else if (this._bodyFormData) {
+                        throw new Error('could not read FormData body as blob')
+                    } else {
+                        return Promise.resolve(new Blob([this._bodyText]))
+                    }
+                };
+
+                this.arrayBuffer = function () {
+                    if (this._bodyArrayBuffer) {
+                        var isConsumed = consumed(this);
+                        if (isConsumed) {
+                            return isConsumed
+                        }
+                        if (ArrayBuffer.isView(this._bodyArrayBuffer)) {
+                            return Promise.resolve(
+                                this._bodyArrayBuffer.buffer.slice(
+                                    this._bodyArrayBuffer.byteOffset,
+                                    this._bodyArrayBuffer.byteOffset + this._bodyArrayBuffer.byteLength
+                                )
+                            )
+                        } else {
+                            return Promise.resolve(this._bodyArrayBuffer)
+                        }
+                    } else {
+                        return this.blob().then(readBlobAsArrayBuffer)
+                    }
+                };
+            }
+
+            this.text = function () {
+                var rejected = consumed(this);
+                if (rejected) {
+                    return rejected
+                }
+
+                if (this._bodyBlob) {
+                    return readBlobAsText(this._bodyBlob)
+                } else if (this._bodyArrayBuffer) {
+                    return Promise.resolve(readArrayBufferAsText(this._bodyArrayBuffer))
+                } else if (this._bodyFormData) {
+                    throw new Error('could not read FormData body as text')
+                } else {
+                    return Promise.resolve(this._bodyText)
+                }
+            };
+
+            if (support.formData) {
+                this.formData = function () {
+                    return this.text().then(decode)
+                };
+            }
+
+            this.json = function () {
+                return this.text().then(JSON.parse)
+            };
+
+            return this
+        }
+
+        // HTTP methods whose capitalization should be normalized
+        var methods = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT'];
+
+        function normalizeMethod(method) {
+            var upcased = method.toUpperCase();
+            return methods.indexOf(upcased) > -1 ? upcased : method
+        }
+
+        function Request(input, options) {
+            if (!(this instanceof Request)) {
+                throw new TypeError('Please use the "new" operator, this DOM object constructor cannot be called as a function.')
+            }
+
+            options = options || {};
+            var body = options.body;
+
+            if (input instanceof Request) {
+                if (input.bodyUsed) {
+                    throw new TypeError('Already read')
+                }
+                this.url = input.url;
+                this.credentials = input.credentials;
+                if (!options.headers) {
+                    this.headers = new Headers(input.headers);
+                }
+                this.method = input.method;
+                this.mode = input.mode;
+                this.signal = input.signal;
+                if (!body && input._bodyInit != null) {
+                    body = input._bodyInit;
+                    input.bodyUsed = true;
+                }
+            } else {
+                this.url = String(input);
+            }
+
+            this.credentials = options.credentials || this.credentials || 'same-origin';
+            if (options.headers || !this.headers) {
+                this.headers = new Headers(options.headers);
+            }
+            this.method = normalizeMethod(options.method || this.method || 'GET');
+            this.mode = options.mode || this.mode || null;
+            this.signal = options.signal || this.signal;
+            this.referrer = null;
+
+            if ((this.method === 'GET' || this.method === 'HEAD') && body) {
+                throw new TypeError('Body not allowed for GET or HEAD requests')
+            }
+            this._initBody(body);
+
+            if (this.method === 'GET' || this.method === 'HEAD') {
+                if (options.cache === 'no-store' || options.cache === 'no-cache') {
+                    // Search for a '_' parameter in the query string
+                    var reParamSearch = /([?&])_=[^&]*/;
+                    if (reParamSearch.test(this.url)) {
+                        // If it already exists then set the value with the current time
+                        this.url = this.url.replace(reParamSearch, '$1_=' + new Date().getTime());
+                    } else {
+                        // Otherwise add a new '_' parameter to the end with the current time
+                        var reQueryString = /\?/;
+                        this.url += (reQueryString.test(this.url) ? '&' : '?') + '_=' + new Date().getTime();
+                    }
+                }
+            }
+        }
+
+        Request.prototype.clone = function () {
+            return new Request(this, {body: this._bodyInit})
+        };
+
+        function decode(body) {
+            var form = new FormData();
+            body
+                .trim()
+                .split('&')
+                .forEach(function (bytes) {
+                    if (bytes) {
+                        var split = bytes.split('=');
+                        var name = split.shift().replace(/\+/g, ' ');
+                        var value = split.join('=').replace(/\+/g, ' ');
+                        form.append(decodeURIComponent(name), decodeURIComponent(value));
+                    }
+                });
+            return form
+        }
+
+        function parseHeaders(rawHeaders) {
+            var headers = new Headers();
+            // Replace instances of \r\n and \n followed by at least one space or horizontal tab with a space
+            // https://tools.ietf.org/html/rfc7230#section-3.2
+            var preProcessedHeaders = rawHeaders.replace(/\r?\n[\t ]+/g, ' ');
+            preProcessedHeaders.split(/\r?\n/).forEach(function (line) {
+                var parts = line.split(':');
+                var key = parts.shift().trim();
+                if (key) {
+                    var value = parts.join(':').trim();
+                    headers.append(key, value);
+                }
+            });
+            return headers
+        }
+
+        Body.call(Request.prototype);
+
+        function Response(bodyInit, options) {
+            if (!(this instanceof Response)) {
+                throw new TypeError('Please use the "new" operator, this DOM object constructor cannot be called as a function.')
+            }
+            if (!options) {
+                options = {};
+            }
+
+            this.type = 'default';
+            this.status = options.status === undefined ? 200 : options.status;
+            this.ok = this.status >= 200 && this.status < 300;
+            this.statusText = 'statusText' in options ? options.statusText : '';
+            this.headers = new Headers(options.headers);
+            this.url = options.url || '';
+            this._initBody(bodyInit);
+        }
+
+        Body.call(Response.prototype);
+
+        Response.prototype.clone = function () {
+            return new Response(this._bodyInit, {
+                status: this.status,
+                statusText: this.statusText,
+                headers: new Headers(this.headers),
+                url: this.url
+            })
+        };
+
+        Response.error = function () {
+            var response = new Response(null, {status: 0, statusText: ''});
+            response.type = 'error';
+            return response
+        };
+
+        var redirectStatuses = [301, 302, 303, 307, 308];
+
+        Response.redirect = function (url, status) {
+            if (redirectStatuses.indexOf(status) === -1) {
+                throw new RangeError('Invalid status code')
+            }
+
+            return new Response(null, {status: status, headers: {location: url}})
+        };
+
+        exports.DOMException = global.DOMException;
+        try {
+            new exports.DOMException();
+        } catch (err) {
+            exports.DOMException = function (message, name) {
+                this.message = message;
+                this.name = name;
+                var error = Error(message);
+                this.stack = error.stack;
+            };
+            exports.DOMException.prototype = Object.create(Error.prototype);
+            exports.DOMException.prototype.constructor = exports.DOMException;
+        }
+
+        function fetch(input, init) {
+            return new Promise(function (resolve, reject) {
+                var request = new Request(input, init);
+
+                if (request.signal && request.signal.aborted) {
+                    return reject(new exports.DOMException('Aborted', 'AbortError'))
+                }
+
+                var xhr = new XMLHttpRequest();
+
+                function abortXhr() {
+                    xhr.abort();
+                }
+
+                xhr.onload = function () {
+                    var options = {
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        headers: parseHeaders(xhr.getAllResponseHeaders() || '')
+                    };
+                    options.url = 'responseURL' in xhr ? xhr.responseURL : options.headers.get('X-Request-URL');
+                    var body = 'response' in xhr ? xhr.response : xhr.responseText;
+                    setTimeout(function () {
+                        resolve(new Response(body, options));
+                    }, 0);
+                };
+
+                xhr.onerror = function () {
+                    setTimeout(function () {
+                        reject(new TypeError('Network request failed'));
+                    }, 0);
+                };
+
+                xhr.ontimeout = function () {
+                    setTimeout(function () {
+                        reject(new TypeError('Network request failed'));
+                    }, 0);
+                };
+
+                xhr.onabort = function () {
+                    setTimeout(function () {
+                        reject(new exports.DOMException('Aborted', 'AbortError'));
+                    }, 0);
+                };
+
+                function fixUrl(url) {
+                    try {
+                        return url === '' && global.location.href ? global.location.href : url
+                    } catch (e) {
+                        return url
+                    }
+                }
+
+                xhr.open(request.method, fixUrl(request.url), true);
+
+                if (request.credentials === 'include') {
+                    xhr.withCredentials = true;
+                } else if (request.credentials === 'omit') {
+                    xhr.withCredentials = false;
+                }
+
+                if ('responseType' in xhr) {
+                    if (support.blob) {
+                        xhr.responseType = 'blob';
+                    } else if (
+                        support.arrayBuffer &&
+                        request.headers.get('Content-Type') &&
+                        request.headers.get('Content-Type').indexOf('application/octet-stream') !== -1
+                    ) {
+                        xhr.responseType = 'arraybuffer';
+                    }
+                }
+
+                if (init && typeof init.headers === 'object' && !(init.headers instanceof Headers)) {
+                    Object.getOwnPropertyNames(init.headers).forEach(function (name) {
+                        xhr.setRequestHeader(name, normalizeValue(init.headers[name]));
+                    });
+                } else {
+                    request.headers.forEach(function (value, name) {
+                        xhr.setRequestHeader(name, value);
+                    });
+                }
+
+                if (request.signal) {
+                    request.signal.addEventListener('abort', abortXhr);
+
+                    xhr.onreadystatechange = function () {
+                        // DONE (success or failure)
+                        if (xhr.readyState === 4) {
+                            request.signal.removeEventListener('abort', abortXhr);
+                        }
+                    };
+                }
+
+                xhr.send(typeof request._bodyInit === 'undefined' ? null : request._bodyInit);
+            })
+        }
+
+        fetch.polyfill = true;
+
+        if (!global.fetch) {
+            global.fetch = fetch;
+            global.Headers = Headers;
+            global.Request = Request;
+            global.Response = Response;
+        }
+
+        exports.Headers = Headers;
+        exports.Request = Request;
+        exports.Response = Response;
+        exports.fetch = fetch;
+
+        Object.defineProperty(exports, '__esModule', {value: true});
+
+    })));
+
+//////////////////////////fetch-polyfill-ends////////////////////////////////////
+};
+
+var layoutLoaded = function (filePath, htmlContent, allLoaded) {
+  //  console.log('layoutLoaded:--> ', 'filepath: ', filePath, ", layout: ", htmlContent, ", allLoaded: ", allLoaded);
+    page.sources.set(filePath, htmlContent);
+    page.includes.forEach(function(layoutData, id){
+        if(layoutData.consumed === false){
+            if(layoutData.path === filePath){
+                page.renderInclude(id, htmlContent);
+                layoutData.consumed = true;
+            }
+        }
+    });
+    page.sourcesLoaded = allLoaded;
+};
+
+var layoutError = function (error) {
+    throw error;
 };
 
 /**
@@ -659,7 +1674,6 @@ function setAbsoluteSizeAndPosition(elm, left, top, width, height) {
 
 /* global AutoLayout, attrKeys, xmlKeys, orientations, sizes, dummyDiv, dummyCanvas, PATH_TO_LAYOUTS_FOLDER, PATH_TO_COMPILER_SCRIPTS, rootCount, CssSizeUnits, CssSizeUnitsValues, PATH_TO_USER_IMAGES, FontStyle, Gravity, styleSheet, ListAdapter, Alignments */
 
-
 /**
  * @param {Page} page
  * @param {HTMLElement} node
@@ -673,7 +1687,6 @@ function View(page, node, refIds, parentId) {
     if (typeof zaId === 'undefined' || zaId === null || zaId === '') {
         throw 'Please specify the view id properly';
     }
-
 
     if (typeof page.findViewById(zaId) !== 'undefined') {
         throw 'A view with this id(`' + zaId + '`) exists already';
@@ -703,7 +1716,7 @@ function View(page, node, refIds, parentId) {
             horMarginDiff: function () {
                 let s = parseNumberAndUnitsNoValidation(this.start, true);
                 let e = parseNumberAndUnitsNoValidation(this.end, true);
-                console.log((parseFloat(s.number) - parseFloat(e.number)) + s.units);
+               // console.log((parseFloat(s.number) - parseFloat(e.number)) + s.units);
                 if (!this.horUnitsSame) {
                     throw 'start and end margins must be same when using `cx, scx, cxs` etc.'
                 }
@@ -969,6 +1982,7 @@ function View(page, node, refIds, parentId) {
     page.viewMap.set(this.id, this);
 }
 
+
 function isDimensionRatio(val) {
     if (!isNaN(val)) {
         val = val + ':1';
@@ -989,6 +2003,102 @@ function isDimensionRatio(val) {
     let arr = val.split(':');
     return arr.length === 2 && !isNaN(arr[0]) && !isNaN(arr[1]);
 }
+
+View.prototype.isPopup = function(){
+    let check = this.refIds.get(attrKeys.layout_popup);
+    return typeof check !== "undefined" && (check === true || check === 'true') ;
+};
+
+View.prototype.makeBgImage = function () {
+    let refIds = this.refIds;
+
+    let useAutoBg = refIds.get(attrKeys.mi_useAutoBg);
+    if (!useAutoBg || useAutoBg === 'false') {
+        return;
+    }
+
+    let fgColor = refIds.get(attrKeys.mi_fg);
+    let bgColor = refIds.get(attrKeys.mi_bg);
+    let strokeWidth = refIds.get(attrKeys.mi_strokeWidth);
+    let minSize = refIds.get(attrKeys.mi_minSize);
+    let textArray = refIds.get(attrKeys.mi_textArray);
+    let fontName = refIds.get(attrKeys.mi_fontName);
+    let fontWeight = refIds.get(attrKeys.mi_fontWeight);//bold
+    let fontStyle = refIds.get(attrKeys.mi_fontStyle);//italic
+    let fontSize = refIds.get(attrKeys.mi_fontSize);
+    let numShapes = refIds.get(attrKeys.mi_numShapes);
+    let shapesDensity = refIds.get(attrKeys.mi_shapesDensity);
+    let opacityValue = refIds.get(attrKeys.mi_opacity);
+    let cacheAfterDraw = refIds.get(attrKeys.mi_cacheAfterDraw);
+    let bgOpacityEnabled = refIds.get(attrKeys.mi_opaqueBg);//allow the opacity to affect the background color also.
+    let mysteryMode = refIds.get(attrKeys.mi_mode);
+
+
+    let textOnly = refIds.get(attrKeys.mi_textOnly);
+
+    let style = null;
+    if (fontStyle) {
+        style = fontStyle;
+        if (fontWeight) {
+            style += (" " + fontWeight);
+        }
+    } else if (fontWeight) {
+        style = fontWeight;
+    }
+
+
+    if (textArray) {
+        if (typeof textArray === 'string') {
+            try {
+                textArray = JSON.parse(textArray);
+            } catch (e) {
+                throw e;
+            }
+        } else if (typeof textArray === "object") {
+            //no action... some validation in the future
+        }
+
+    }
+
+    cacheAfterDraw = cacheAfterDraw === true || cacheAfterDraw === 'true';
+    textOnly = textOnly === true || textOnly === 'true';
+    bgOpacityEnabled = bgOpacityEnabled === true || bgOpacityEnabled === 'true';
+
+
+    let rect = this.htmlNode.getBoundingClientRect();
+
+    let options = {
+        width: rect.width,
+        height: rect.height,
+        fontName: fontName,
+        fontSize: fontSize,
+        fontStyle: style,
+        fgColor: fgColor,
+        bgColor: bgColor,
+        mode: mysteryMode,
+        numShapes: numShapes, // Total number of shapes to generate
+        shapesDensity: shapesDensity, //Total number of shapes per unit area
+        strokeWidth: strokeWidth,
+        minSize: minSize, //The minimum size of the shapes drawn
+        opacity: opacityValue,
+        bgOpacityEnabled: bgOpacityEnabled,
+        textArray: textArray, //An array of words that can be rendered randomly on the view.
+        textOnly: textOnly, //Forces the view to render only text from the textArray attribute
+        cacheAfterDraw: cacheAfterDraw //Renders the image once for a view and uses it subsequently.If false, this view will always have a new set of patterns whenever it is refreshed.
+    };
+
+    options.width = rect.width;
+    options.height = rect.height;
+    let background = new MysteryImage(options);
+    background.draw();
+    let stl = new Style('#' + this.id, []);
+    stl.addFromOptions({
+        "background-image": "url('" + background.getImage() + "')",
+        "background-position": "0% 0%"
+    });
+    updateOrCreateSelectorInStyleSheet(styleSheet, stl);
+    background.cleanup();
+};
 
 View.prototype.getValueAndPriority = function (value) {
 
@@ -1021,6 +2131,7 @@ View.prototype.getValueAndPriority = function (value) {
         priority: parseInt(value.substring(index + 1))
     };
 };
+
 
 /**
  * Applies necessary constraints to itself, where necessary
@@ -1969,7 +3080,6 @@ View.prototype.setRightAlignEE = function (view1, marginRight, view2, priority, 
             });
         }
     }
-
 };
 
 
@@ -2091,6 +3201,7 @@ View.prototype.setRightAlignES = function (view1, marginRight, view2, priority, 
         }
     }
 };
+
 
 
 /**
@@ -3066,6 +4177,7 @@ View.prototype.setBottomAlignCY = function (view1, marginBottom, view2, priority
     }
 
 };
+
 /**
  * Sets the top align constraint for a top-top align situation...works with pixels, percents
  * @param {string} view1 The view whose top is being constrained
@@ -3571,7 +4683,6 @@ View.prototype.setBottomAlignBT = function (view1, marginBottom, view2, priority
 View.prototype.setSizeBoundariesConstraints = function (page, constraints, cid, maxWid, minWid, maxHei, minHei) {
 
     if (maxWid) {
-
         let idnpMaxWid = this.getValueAndPriority(maxWid);
         maxWid = idnpMaxWid.id;
         let priorityMaxWid = idnpMaxWid.priority;
@@ -5471,7 +6582,7 @@ const attrKeys = {
     layout_constraint: "data-const",
     layout_constraintGuide: "data-guide",
     layout_constraintGuideColor: "data-guide-color",
-    layout_popup: "data-popup",//true or false..default on any element is false
+    layout_popup: "popup",//true or false..default on any element is false
     layout_src: "src",// fetch the sub-layout to include in a popup or an include from the path specified here.
     layout_constraintGuide_percent: "guide-pct",
     layout_constraintGuide_begin: "guide-begin",
@@ -6308,18 +7419,329 @@ function getUrls() {
         let endLen = ender.length;
         //check if script.src ends with layit.js
         if (src.lastIndexOf(ender) === fullLen - endLen) {
-            let scriptsURL = src.substring(0, fullLen - endLen);
+            scriptURL = src.substring(0, fullLen - endLen);
 
             //let projectURL = scriptsURL.substring(0, scriptsURL.length - "layit/".length);
-            let projectURL = scriptsURL.substring(0, scriptsURL.lastIndexOf("/", scriptsURL.length - 2) + 1);
-            return [projectURL, scriptsURL];
+            projectURL = scriptURL.substring(0, scriptURL.lastIndexOf("/", scriptURL.length - 2) + 1);
+            return [projectURL, scriptURL];
         }
     }
     return null;
 }
 
 
-////////
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+//Popup code
+/**
+ * Stores a reference to all popups here.
+ * @type type
+ */
+var popupZIndex = 1000;
+
+
+/**
+ * A Popup object basically creates an overlay layout to
+ * which predesigned html forms or other layout can be appended
+ * quickly.
+ * @param {type} options The options required to render the popup:
+ * Format is:
+ *
+ *
+  ```
+ {
+    id: "id",
+    width : '10em',
+    height : '6em',
+    layout: '<div>...</div>',
+    bg: '#ffffff',
+
+    containerStyle: {
+      width: 23%,
+      border-radius : 1em,
+      xxx: blah-blah-blah
+    },
+    onOpen : function(){},
+    onClose : function(){}
+  }
+ ```
+ *
+ *
+ *
+ * @returns {undefined}
+ */
+function Popup(options) {
+
+    if (!options) {
+        throw new Error("No options specified for creating this popup");
+    }
+    if (!options.id || typeof options.id !== 'string') {
+        throw new Error("Hi! You have not specified a value for options.layitId! Popup cannot be created");
+    }
+    this.id = options.id;
+
+    if (typeof options.width !== 'string') {
+        console.log("Hi! options.width must be a valid css dimension! Defaulting to 90%");
+        options.width = "90%";
+    }
+    if (!options.width) {
+        options.width = "90%";
+    }
+
+    if (typeof options.height !== 'string') {
+        console.log("Hi! options.height must be a valid css dimension!  Defaulting to 90%");
+        options.height = "90%";
+    }
+    if (!options.height) {
+        options.height = "90%";
+    }
+
+    if (!options.bg || typeof options.bg !== 'string') {
+        console.log("Hi! options.bg must be a valid html color!  defaulting to white");
+        this.background = "#ffffff";
+    } else {
+        this.background = options.bg;
+    }
+
+    this.layout = '';
+
+    if (typeof options.layout === 'string') {
+        this.layout = options.layout;
+    } else {
+        throw new Error('Please supply the name of the xml layout');
+    }
+
+
+    if (options.onOpen && {}.toString.call(options.onOpen) === '[object Function]') {
+        this.onOpen = options.onOpen;
+    } else {
+        this.onOpen = function () {
+        };
+    }
+
+
+    if (options.onClose && {}.toString.call(options.onClose) === '[object Function]') {
+        this.onClose = options.onClose;
+    } else {
+        this.onClose = function () {
+        };
+    }
+
+    //this.injectableHTML = '<p style="padding: 1em;font-size: 1em; color : red;font-weight:bold">Home made OOP Popup!</p>';
+
+    this.registry = {};//register css classes and map them to their styles.
+
+    var body = document.body,
+        html = document.documentElement;
+
+    let bgWidth = Math.max(body.scrollWidth, body.offsetWidth,
+        html.clientWidth, html.scrollWidth, html.offsetWidth);
+    let bgHeight = Math.max(body.scrollHeight, body.offsetHeight,
+        html.clientHeight, html.scrollHeight, html.offsetHeight);
+
+
+    this.opaqueBgStyle = new Style('#' + this.overlayId(), []);
+    this.containerStyle = new Style('#' + this.containerId(), []);
+
+    this.noScrollStyle = new Style(".noscroll", []);
+    this.closeBtnStyle = new Style("#" + this.closeBtnId(), []);
+
+    popupZIndex += 10;
+    this.opaqueBgStyle.addFromOptions({
+        display: 'block',
+        visibility: 'visible',
+        opacity: '0.8',
+        position: 'fixed',
+        'background-color': "black",
+        top: '0',
+        left: '0',
+        bottom: '0',
+        right: '0',
+        'z-index': popupZIndex + '',
+        width: bgWidth + 'px',
+        height: bgHeight + 'px'
+    });
+    this.noScrollStyle.addFromOptions({
+        overflow: 'hidden'
+    });
+
+    this.width = options.width;
+    this.height = options.height;
+
+    var w = this.width;
+    var h = this.height;
+    var bg = this.background;
+
+
+    {
+
+        this.containerStyle.addFromOptions({
+            position: 'absolute',
+            'left': "calc(50% - " + w + " / 2 )",
+            'top': "calc(50% - " + h + " / 2 )",
+            visibility: 'visible',
+            display: 'block',
+            padding: '0px',
+            margin: '0px',
+            overflow: 'auto',
+            width: w,
+            height: h,
+            'background-color': bg,
+            'z-index': (popupZIndex + 1) + '',
+            'border-radius': '0.3em'
+        });
+
+        if (typeof options["containerStyle"] === "object") {
+            var containerCss = options.containerStyle;
+            for (var key in containerCss) {
+                this.containerStyle.addStyleElement(key, containerCss[key]);
+            }
+        }
+    }
+
+    {
+        this.closeBtnStyle.addFromOptions({
+            "top": "0.1em",
+            "right": "0.1em",
+            "position": "fixed",
+            "font-size": "6rem",
+            "font-weight": "bold",
+            "font-family": "monospace",
+            "cursor": "pointer",
+            "color": "white",
+            "background-color": "transparent",
+            "border": "none",
+            "padding": "none"
+        });
+    }
+
+    this.registerStyle(this.opaqueBgStyle);
+    this.registerStyle(this.containerStyle);
+    this.registerStyle(this.closeBtnStyle);
+    this.registerStyle(this.noScrollStyle);
+}
+
+
+Popup.prototype.registerStyle = function (style) {
+    this.registry[style.name] = style;
+};
+
+Popup.prototype.hide = function () {
+    var overlay = document.getElementById(this.overlayId());
+    var dialog = document.getElementById(this.containerId());
+
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    if (dialog) {
+        dialog.style.display = 'none';
+    }
+
+    removeClass(document.body, this.noScrollStyle.name.substring(1));
+    this.onClose();
+};
+
+Popup.prototype.open = function () {
+    this.build();
+};
+Popup.prototype.build = function () {
+
+    var popup = this;
+
+    let freshCall = false;
+
+    var overlay = document.getElementById(this.overlayId());
+    var dialog = document.getElementById(this.containerId());
+
+    if (!overlay) {
+        freshCall = true;
+        overlay = document.createElement('div');
+        overlay.setAttribute("id", this.overlayId());
+        addClass(overlay, this.overlayClass());
+        document.body.appendChild(overlay);
+    }
+
+    overlay.style.display = 'block';
+    overlay.onclick = function () {
+        popup.hide();
+    };
+
+
+    if (dialog) {
+        dialog.style.display = 'block';
+    }else{
+        dialog = document.createElement('div');
+        dialog.setAttribute("id", this.containerId());
+        addClass(dialog, this.containerClass());
+        dialog.innerHTML = this.layout;
+        document.body.appendChild(dialog);
+    }
+
+
+    let closeBtn = document.getElementById(this.closeBtnId());
+    if (!closeBtn) {
+        closeBtn = document.createElement("input");
+        closeBtn.setAttribute("id", this.closeBtnId());
+        addClass(closeBtn, this.closeBtnClass());
+        closeBtn.type = "button";
+        closeBtn.value = "\u02DF";
+        overlay.appendChild(closeBtn);
+    }
+
+    closeBtn.onclick = function () {
+        popup.hide();
+    };
+
+
+    if (freshCall) {
+        var style = document.createElement('style');
+        style.setAttribute('type', 'text/css');
+        var css = new StringBuffer();
+        for (var key in this.registry) {
+            css.append(this.registry[key].styleSheetEntry(key));
+        }
+        style.innerHTML = css.toString();
+        document.getElementsByTagName('head')[0].appendChild(style);
+
+        let p = new Page(dialog);
+        p.layout();
+
+        page.subPages.set(dialog.id, p);
+    }
+
+    addClass(document.body, this.noScrollStyle.name.substring(1));
+    popup.onOpen();
+};
+
+
+Popup.prototype.overlayId = function () {
+    return this.id + "_main_overlay";
+};
+
+
+Popup.prototype.overlayClass = function () {
+    return this.id + "_main_overlay_class";
+};
+
+
+Popup.prototype.containerId = function () {
+    return this.id;
+};
+
+
+Popup.prototype.containerClass = function () {
+    return this.id + "_container_class";
+};
+
+
+Popup.prototype.closeBtnClass = function () {
+    return this.id + "_close_btn_class";
+};
+
+Popup.prototype.closeBtnId = function () {
+    return this.id + "_close_btn_class";
+};
+
 
 //resize sensor js
 'use strict';
@@ -14515,7 +15937,7 @@ var BuildBridgedWorker = function (workerFunction, workerExportNames, mainExport
     extraWorkerStr.push("if(e.data.foo in foos) \n  foos[e.data.foo].apply(null, e.data.args); \n else \n throw(new Error('Main thread requested function ' + e.data.foo + '. But it is not available.'));\n");
     extraWorkerStr.push("\n};\n");
 
-    var fullWorkerStr = baseWorkerStr + "\n\n/*==== STUFF ADDED BY BuildBridgeWorker ==== */\n\n" + extraWorkerStr.join("");
+    var fullWorkerStr = baseWorkerStr + "\n\n/*==== AUTO-GENERATED-CODE ==== */\n\n" + extraWorkerStr.join("");
 
     // create the worker
     var blob;
@@ -14567,5 +15989,6 @@ var BuildBridgedWorker = function (workerFunction, workerExportNames, mainExport
     }
 
     return ret; //we return an object which lets the main thread call the worker.  The object will take care of the communication in the other direction.
-}
+};
+
 /////////////////////////////////////Bridged-Worker Ends/////////////////////////////////////////////////////

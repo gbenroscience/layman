@@ -7,26 +7,10 @@ styleSheet.setAttribute('type', 'text/css');
 
 
 let page;
-/**
- *
- * Stores all popup markup against their identifying ids here.
- * The key is the id of the popup definition,
- * The value is the html markup of the popup's  content.
- * The library reads out the popups, stores them here and removes every trace of the popups from the original page code.
- * @type {Map<any, any>}
- */
-let popups = new Map();
-/**
- *
- * Stores all includes markup against their identifying ids here.
- * The key is the id of the included div definition,
- * The value is the html markup of the include's  content.
- * The library lays out the includes with the main page and renders their content in their blank area as the layouts arrive via fetch
- * @type {Map<any, any>}
- */
-let includes = new Map();
 
-
+let projectURL , scriptURL;
+getUrls();
+console.log("projectURL: ", projectURL, " , scriptURL: ", scriptURL);
 /*
  * To change this license header, choose License Headers in Project Properties.
  * To change this template file, choose Tools | Templates
@@ -118,14 +102,79 @@ docReady(function () {
 
 /**
  *
+ * @param path The path to the popup's layout
+ * @constructor
+ */
+function RemoteLayoutData(path){
+    /**
+     * The path to the file that describes the sublayout of the include or popup
+     */
+    this.path = path;
+    /**
+     * The DOMRect that describes the parent include(or popup)
+     * @type {DOMRect[]}
+     */
+    this.rect = [];
+    /**
+     * If true, the
+     * @type {boolean}
+     */
+    this.consumed = false;
+}
+
+/**
+ *
  * @param {HTMLElement} rootNode May be undefined, or an htmlelement whose html content is to be parsed and laid out
  * @constructor
  */
 function Page(rootNode) {
     this.rootElement = rootNode;
+    /**
+     * A map of ids vs views
+     * @type {Map<String, View>}
+     */
     this.viewMap = new Map();
     this.hideRoot();
     this.layoutObj = layoutCode();
+    this.sourcesLoaded = true;
+    /**
+     * Store all subpages here by id.
+     * @type {Map<String, Page>}
+     */
+    this.subPages = new Map();
+    /**
+     * A map of filepaths against the file contents.
+     * The keys are the paths, the values are the file contents which define valid html sub-layouts
+     * @type {Map<any, any>}
+     */
+    this.sources = new Map();
+    /**
+     * Stores all source paths defined in html inline layout code or explicit layout code
+     * @type {*[]}
+     */
+    this.srcPaths = [];
+
+    /**
+     *
+     * Stores all popup ids against their layout paths here.
+     * The key is the id of the popup definition,
+     * The value is the src(filepath) to the html markup of the popup's  content.
+     * The library reads out the popups, stores them here and removes every trace of the popups from the original page code.
+     * @type {Map<String, RemoteLayoutData>}
+     */
+    this.popups = new Map();
+
+
+    /**
+     *
+     * Stores all included element ids against their layout path metadata here.
+     * The key is the id of the included div definition,
+     * The value is the src(filepath) to the html markup of the include's  content.
+     * The library lays out the includes with the main page and renders their content in their blank area as the layouts arrive via fetch
+     * @type {Map<String, RemoteLayoutData>}
+     */
+    this.includes = new Map();
+
     if (!rootNode) {
         let htmlBodyStyle = new Style('html,body', []);
         htmlBodyStyle.addFromOptions({
@@ -176,10 +225,6 @@ Page.prototype.findViewById = function (viewId) {
     return this.viewMap.get(viewId);
 };
 
-Page.prototype.fetchLayout = function(path){
-
-};
-
 /**
  * checks if the node is one of the nodes that should be ignored
  * @param node
@@ -190,7 +235,7 @@ function shouldIgnoreNode(node) {
     return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
         || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === '#text' || name === '#comment'
         || name === 'script' || name === 'option' || name === 'optgroup'
-        || name === 'b' || name === 'i' ||  name === 'strong' ||  name === 'u'
+        || name === 'b' || name === 'i' || name === 'strong' || name === 'u'
     );
 }
 
@@ -224,7 +269,7 @@ function shouldIgnoreSpecialChildElement(node) {
     let name = node.nodeName.toLowerCase();
     return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
         || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === 'option' || name === 'optgroup'
-        || name === 'b' || name === 'i' ||  name === 'strong' ||  name === 'u');
+        || name === 'b' || name === 'i' || name === 'strong' || name === 'u');
 }
 
 /**
@@ -242,17 +287,21 @@ function enforceIdOnChildElements(node) {
     }
 }
 
-Page.prototype.layout = function (node) {
+Page.prototype.layout = function () {
     let layoutObj = layoutCode();
     if (layoutObj) {
-        this.layoutFromSheet(node);
+        this.layoutFromSheet(this.rootElement);
     } else {
-        this.layoutFromTags(node);
+        this.layoutFromTags(this.rootElement);
     }
 };
-
+/**
+ *
+ * @param {HTMLElement} node
+ */
 Page.prototype.layoutFromSheet = function (node) {
 
+    let disPage = this;
     let root = !node ? document.body : node;
     if (root === document.body) {
         root.id = BODY_ID;
@@ -298,7 +347,19 @@ Page.prototype.layoutFromSheet = function (node) {
 
         let refIds = new Map();
         Object.keys(constraints).forEach(function (key) {
-            refIds.set(key, constraints[key]);
+            let val = constraints[key];
+            refIds.set(key, val);
+            if (key === attrKeys.layout_src) {
+                let isPopup = constraints[attrKeys.layout_popup]
+                disPage.srcPaths.push(val);
+                disPage.sourcesLoaded = false;
+                let popupData = new RemoteLayoutData(val);
+                if(isPopup === true){
+                    disPage.popups.set(root.id, popupData);
+                }else{
+                    disPage.includes.set(root.id, popupData);
+                }
+            }
         });
         let view;
 
@@ -339,6 +400,13 @@ Page.prototype.layoutFromSheet = function (node) {
             if (view.topLevel === true) {
                 this.buildUI(view);
                 this.showRoot();
+                if(disPage.srcPaths.length > 0){
+                    var worker = BuildBridgedWorker(workerCode, ["loadAll"], ["layoutLoaded", "layoutError"], [layoutLoaded, layoutError]);
+                    worker.loadAll(projectURL, disPage.srcPaths);
+                }else{
+                    disPage.sourcesLoaded = true;
+                }
+
             }
         }
     }
@@ -350,6 +418,7 @@ Page.prototype.layoutFromSheet = function (node) {
  */
 Page.prototype.layoutFromTags = function (node) {
 
+    let disPage = this;
     let root = !node ? document.body : node;
     if (root === document.body) {
         root.id = BODY_ID;
@@ -377,14 +446,15 @@ Page.prototype.layoutFromTags = function (node) {
             }
         }
         constraints = constraints.trim();
-        if(endsWith(constraints, ";")){
+        if (endsWith(constraints, ";")) {
             constraints = constraints.substring(0, constraints.length - 1);
         }
         constraints = constraints.replace(/\s/g, "");
         constraints = constraints.split(";");
 
-
         let refIds = new Map();
+        let isPopup;
+        let src = null;
         for (let i = 0; i < constraints.length; i++) {
             let con = constraints[i];
             let indexColon;
@@ -392,10 +462,27 @@ Page.prototype.layoutFromTags = function (node) {
                 let attr = con.substring(0, indexColon);
                 let val = con.substring(indexColon + 1);
                 refIds.set(attr, val);
+                if (attr === attrKeys.layout_src) {
+                    disPage.srcPaths.push(val);
+                    disPage.sourcesLoaded = false;
+                    src = val;
+                }
+                if(attr === attrKeys.layout_popup){
+                    isPopup = true;
+                }
             } else {
-                throw 'invalid constraint definition... no colon found in ' + con+ " on "+root.id;
+                throw 'invalid constraint definition... no colon found in ' + con + " on " + root.id;
             }
         }
+       if(src){
+           let popupData = new RemoteLayoutData(src);
+           if(isPopup === true){
+               disPage.popups.set(root.id, popupData);
+           }else{
+               disPage.includes.set(root.id, popupData);
+           }
+       }
+
         let view;
 
         let attr = root.getAttribute(attrKeys.layout_constraintGuide);
@@ -413,9 +500,8 @@ Page.prototype.layoutFromTags = function (node) {
                 refIds.set(attrKeys.layout_height, sizes.WRAP_CONTENT);
                 view = new Guideline(this, root, refIds, root.parentNode.id);
             } else {
-                throw 'Invalid value for data-guide'
+                throw 'Invalid value for data-guide';
             }
-
         }
 
         if (root.hasChildNodes()) {
@@ -436,19 +522,30 @@ Page.prototype.layoutFromTags = function (node) {
             if (view.topLevel === true) {
                 this.buildUI(view);
                 this.showRoot();
+                if(disPage.srcPaths.length > 0){
+                    var worker = BuildBridgedWorker(workerCode, ["loadAll"], ["layoutLoaded", "layoutError"], [layoutLoaded, layoutError]);
+                    worker.loadAll(projectURL, disPage.srcPaths);
+                }else{
+                    disPage.sourcesLoaded = true;
+                }
             }
         }
     }
+
 };
 
 
 Page.prototype.buildUI = function (rootView) {
     let bgEnabledViews = [];
+    let pops = [];
     let layAll = function (v, page) {
         if (v.childrenIds.length > 0) {
             autoLayout(v.htmlNode === document.body ? undefined : v.htmlNode, v.layoutChildren(page));
             v.childrenIds.forEach(function (id) {
                 let cv = page.viewMap.get(id);
+                if(cv.isPopup()){
+                    pops.push(cv);
+                }
                 if (cv.hasBgImage) {
                     bgEnabledViews.push(cv);
                 }
@@ -463,23 +560,917 @@ Page.prototype.buildUI = function (rootView) {
         child.makeBgImage();
     });
 
+    let currentPage = this;
+    pops.forEach(function (popup) {
+        let ppData = currentPage.popups.get(popup.id);
+        ppData.rect = popup.htmlNode.getBoundingClientRect();
+        currentPage.popups.set(popup.id, ppData);
+        popup.htmlNode.remove();
+    });
 };
 
-Page.prototype.showRoot = function(){
-    if(!this.rootElement || this.rootElement === document.body){
+Page.prototype.showRoot = function () {
+    if (!this.rootElement || this.rootElement === document.body) {
         document.body.style.visibility = 'visible';
-    }else{
+    } else {
         this.rootElement.style.visibility = 'visible';
     }
 };
-Page.prototype.hideRoot = function(){
-    if(!this.rootElement || this.rootElement === document.body){
+Page.prototype.hideRoot = function () {
+    if (!this.rootElement || this.rootElement === document.body) {
         document.body.style.visibility = 'hidden';
-    }else{
+    } else {
         this.rootElement.style.visibility = 'hidden';
     }
 };
 
+/**
+ *
+ * @param popupId The id of the popup.
+ */
+Page.prototype.openPopup = function(popupId){
+    let pg = this;
+    let ppData = this.popups.get(popupId);
+
+    let html = this.sources.get(ppData.path);
+    let r = ppData.rect;
+    if(!r || !r.width || !r.height){
+        throw 'specify width or height on popup: '+popupId;
+    }
+    let popup = new Popup({
+        id: popupId,
+        layout: html,
+        width: r.width,
+        height: r.height,
+        bg: "#fff"
+    });
+    popup.open();
+};
+
+/**
+ *
+ * Render the included html in its include
+ * @param includeID The id of the layout that the included html will be attached to
+ * @param htmlContent The html sublayout
+ */
+Page.prototype.renderInclude = function(includeID,htmlContent){
+    let layoutData = this.includes.get(includeID);
+    let path = layoutData.path;
+    let html = !htmlContent ? this.sources.get(path) : htmlContent;
+    let elem = document.getElementById(includeID);
+    elem.innerHTML = htmlContent;
+    let pg = new Page(elem);
+    pg.layout();
+    this.subPages.set(includeID, pg);
+};
+
+var workerCode = function () {
+
+    function loadAll(basePath,files) {
+        loadFiles(basePath, files, 0);
+    }
+
+    function loadFiles(basePath, files, i) {
+        if (Array.isArray(files)) {
+            if (i < files.length) {
+                var path = files[i];
+                loadFile(basePath, path, function (html) {
+                    main.layoutLoaded(path, html, false);
+                    loadFiles(basePath, files, i + 1);
+                });
+            } else {
+                main.layoutLoaded(null, '', true);
+            }
+        } else {
+            main.layoutError(new Error('Pass an array of filepaths here'));
+        }
+    }
+
+    function loadFile(basePath, layoutFile, callback) {
+
+        const absolute = new URL( layoutFile, basePath )
+        fetch(absolute, {
+            credentials: 'same-origin'
+        }).then(function (response) {
+            return response;
+        }).then(function (data) {
+            return data.text();
+        }).then(function (xmlLayout) {
+            callback(xmlLayout);
+        }).catch(function (err) {
+            setTimeout(function () {
+                main.layoutError(err);
+                throw err;
+            });
+        });
+    }
+
+//////////////////////////Promise-polyfill/////////////////////////////
+    !function (e, t) {
+        "object" == typeof exports && "undefined" != typeof module ? t() : "function" == typeof define && define.amd ? define(t) : t()
+    }(0, function () {
+        "use strict";
+
+        function e(e) {
+            var t = this.constructor;
+            return this.then(function (n) {
+                return t.resolve(e()).then(function () {
+                    return n
+                })
+            }, function (n) {
+                return t.resolve(e()).then(function () {
+                    return t.reject(n)
+                })
+            })
+        }
+
+        function t(e) {
+            return new this(function (t, n) {
+                function o(e, n) {
+                    if (n && ("object" == typeof n || "function" == typeof n)) {
+                        var f = n.then;
+                        if ("function" == typeof f) return void f.call(n, function (t) {
+                            o(e, t)
+                        }, function (n) {
+                            r[e] = {status: "rejected", reason: n}, 0 == --i && t(r)
+                        })
+                    }
+                    r[e] = {status: "fulfilled", value: n}, 0 == --i && t(r)
+                }
+
+                if (!e || "undefined" == typeof e.length) return n(new TypeError(typeof e + " " + e + " is not iterable(cannot read property Symbol(Symbol.iterator))"));
+                var r = Array.prototype.slice.call(e);
+                if (0 === r.length) return t([]);
+                for (var i = r.length, f = 0; r.length > f; f++) o(f, r[f])
+            })
+        }
+
+        function n(e) {
+            return !(!e || "undefined" == typeof e.length)
+        }
+
+        function o() {
+        }
+
+        function r(e) {
+            if (!(this instanceof r)) throw new TypeError("Promises must be constructed via new");
+            if ("function" != typeof e) throw new TypeError("not a function");
+            this._state = 0, this._handled = !1, this._value = undefined, this._deferreds = [], l(e, this)
+        }
+
+        function i(e, t) {
+            for (; 3 === e._state;) e = e._value;
+            0 !== e._state ? (e._handled = !0, r._immediateFn(function () {
+                var n = 1 === e._state ? t.onFulfilled : t.onRejected;
+                if (null !== n) {
+                    var o;
+                    try {
+                        o = n(e._value)
+                    } catch (r) {
+                        return void u(t.promise, r)
+                    }
+                    f(t.promise, o)
+                } else (1 === e._state ? f : u)(t.promise, e._value)
+            })) : e._deferreds.push(t)
+        }
+
+        function f(e, t) {
+            try {
+                if (t === e) throw new TypeError("A promise cannot be resolved with itself.");
+                if (t && ("object" == typeof t || "function" == typeof t)) {
+                    var n = t.then;
+                    if (t instanceof r) return e._state = 3, e._value = t, void c(e);
+                    if ("function" == typeof n) return void l(function (e, t) {
+                        return function () {
+                            e.apply(t, arguments)
+                        }
+                    }(n, t), e)
+                }
+                e._state = 1, e._value = t, c(e)
+            } catch (o) {
+                u(e, o)
+            }
+        }
+
+        function u(e, t) {
+            e._state = 2, e._value = t, c(e)
+        }
+
+        function c(e) {
+            2 === e._state && 0 === e._deferreds.length && r._immediateFn(function () {
+                e._handled || r._unhandledRejectionFn(e._value)
+            });
+            for (var t = 0, n = e._deferreds.length; n > t; t++) i(e, e._deferreds[t]);
+            e._deferreds = null
+        }
+
+        function l(e, t) {
+            var n = !1;
+            try {
+                e(function (e) {
+                    n || (n = !0, f(t, e))
+                }, function (e) {
+                    n || (n = !0, u(t, e))
+                })
+            } catch (o) {
+                if (n) return;
+                n = !0, u(t, o)
+            }
+        }
+
+        var a = setTimeout;
+        r.prototype["catch"] = function (e) {
+            return this.then(null, e)
+        }, r.prototype.then = function (e, t) {
+            var n = new this.constructor(o);
+            return i(this, new function (e, t, n) {
+                this.onFulfilled = "function" == typeof e ? e : null, this.onRejected = "function" == typeof t ? t : null, this.promise = n
+            }(e, t, n)), n
+        }, r.prototype["finally"] = e, r.all = function (e) {
+            return new r(function (t, o) {
+                function r(e, n) {
+                    try {
+                        if (n && ("object" == typeof n || "function" == typeof n)) {
+                            var u = n.then;
+                            if ("function" == typeof u) return void u.call(n, function (t) {
+                                r(e, t)
+                            }, o)
+                        }
+                        i[e] = n, 0 == --f && t(i)
+                    } catch (c) {
+                        o(c)
+                    }
+                }
+
+                if (!n(e)) return o(new TypeError("Promise.all accepts an array"));
+                var i = Array.prototype.slice.call(e);
+                if (0 === i.length) return t([]);
+                for (var f = i.length, u = 0; i.length > u; u++) r(u, i[u])
+            })
+        }, r.allSettled = t, r.resolve = function (e) {
+            return e && "object" == typeof e && e.constructor === r ? e : new r(function (t) {
+                t(e)
+            })
+        }, r.reject = function (e) {
+            return new r(function (t, n) {
+                n(e)
+            })
+        }, r.race = function (e) {
+            return new r(function (t, o) {
+                if (!n(e)) return o(new TypeError("Promise.race accepts an array"));
+                for (var i = 0, f = e.length; f > i; i++) r.resolve(e[i]).then(t, o)
+            })
+        }, r._immediateFn = "function" == typeof setImmediate && function (e) {
+            setImmediate(e)
+        } || function (e) {
+            a(e, 0)
+        }, r._unhandledRejectionFn = function (e) {
+            void 0 !== console && console && console.warn("Possible Unhandled Promise Rejection:", e)
+        };
+        var s = function () {
+            if ("undefined" != typeof self) return self;
+            if ("undefined" != typeof window) return window;
+            if ("undefined" != typeof global) return global;
+            throw Error("unable to locate global object")
+        }();
+        "function" != typeof s.Promise ? s.Promise = r : (s.Promise.prototype["finally"] || (s.Promise.prototype["finally"] = e), s.Promise.allSettled || (s.Promise.allSettled = t))
+    });
+
+//////////////////////////Promise-polyfill-ends/////////////////////////////
+
+
+//////////////////////////fetch-polyfill////////////////////////////////////
+    (function (global, factory) {
+        typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
+            typeof define === 'function' && define.amd ? define(['exports'], factory) :
+                (factory((global.WHATWGFetch = {})));
+    }(this, (function (exports) {
+        'use strict';
+
+        var global = (typeof self !== 'undefined' && self) || (typeof global !== 'undefined' && global);
+
+        var support = {
+            searchParams: 'URLSearchParams' in global,
+            iterable: 'Symbol' in global && 'iterator' in Symbol,
+            blob:
+                'FileReader' in global &&
+                'Blob' in global &&
+                (function () {
+                    try {
+                        new Blob();
+                        return true
+                    } catch (e) {
+                        return false
+                    }
+                })(),
+            formData: 'FormData' in global,
+            arrayBuffer: 'ArrayBuffer' in global
+        };
+
+        function isDataView(obj) {
+            return obj && DataView.prototype.isPrototypeOf(obj)
+        }
+
+        if (support.arrayBuffer) {
+            var viewClasses = [
+                '[object Int8Array]',
+                '[object Uint8Array]',
+                '[object Uint8ClampedArray]',
+                '[object Int16Array]',
+                '[object Uint16Array]',
+                '[object Int32Array]',
+                '[object Uint32Array]',
+                '[object Float32Array]',
+                '[object Float64Array]'
+            ];
+
+            var isArrayBufferView =
+                ArrayBuffer.isView ||
+                function (obj) {
+                    return obj && viewClasses.indexOf(Object.prototype.toString.call(obj)) > -1
+                };
+        }
+
+        function normalizeName(name) {
+            if (typeof name !== 'string') {
+                name = String(name);
+            }
+            if (/[^a-z0-9\-#$%&'*+.^_`|~!]/i.test(name) || name === '') {
+                throw new TypeError('Invalid character in header field name')
+            }
+            return name.toLowerCase()
+        }
+
+        function normalizeValue(value) {
+            if (typeof value !== 'string') {
+                value = String(value);
+            }
+            return value
+        }
+
+        // Build a destructive iterator for the value list
+        function iteratorFor(items) {
+            var iterator = {
+                next: function () {
+                    var value = items.shift();
+                    return {done: value === undefined, value: value}
+                }
+            };
+
+            if (support.iterable) {
+                iterator[Symbol.iterator] = function () {
+                    return iterator
+                };
+            }
+
+            return iterator
+        }
+
+        function Headers(headers) {
+            this.map = {};
+
+            if (headers instanceof Headers) {
+                headers.forEach(function (value, name) {
+                    this.append(name, value);
+                }, this);
+            } else if (Array.isArray(headers)) {
+                headers.forEach(function (header) {
+                    this.append(header[0], header[1]);
+                }, this);
+            } else if (headers) {
+                Object.getOwnPropertyNames(headers).forEach(function (name) {
+                    this.append(name, headers[name]);
+                }, this);
+            }
+        }
+
+        Headers.prototype.append = function (name, value) {
+            name = normalizeName(name);
+            value = normalizeValue(value);
+            var oldValue = this.map[name];
+            this.map[name] = oldValue ? oldValue + ', ' + value : value;
+        };
+
+        Headers.prototype['delete'] = function (name) {
+            delete this.map[normalizeName(name)];
+        };
+
+        Headers.prototype.get = function (name) {
+            name = normalizeName(name);
+            return this.has(name) ? this.map[name] : null
+        };
+
+        Headers.prototype.has = function (name) {
+            return this.map.hasOwnProperty(normalizeName(name))
+        };
+
+        Headers.prototype.set = function (name, value) {
+            this.map[normalizeName(name)] = normalizeValue(value);
+        };
+
+        Headers.prototype.forEach = function (callback, thisArg) {
+            for (var name in this.map) {
+                if (this.map.hasOwnProperty(name)) {
+                    callback.call(thisArg, this.map[name], name, this);
+                }
+            }
+        };
+
+        Headers.prototype.keys = function () {
+            var items = [];
+            this.forEach(function (value, name) {
+                items.push(name);
+            });
+            return iteratorFor(items)
+        };
+
+        Headers.prototype.values = function () {
+            var items = [];
+            this.forEach(function (value) {
+                items.push(value);
+            });
+            return iteratorFor(items)
+        };
+
+        Headers.prototype.entries = function () {
+            var items = [];
+            this.forEach(function (value, name) {
+                items.push([name, value]);
+            });
+            return iteratorFor(items)
+        };
+
+        if (support.iterable) {
+            Headers.prototype[Symbol.iterator] = Headers.prototype.entries;
+        }
+
+        function consumed(body) {
+            if (body.bodyUsed) {
+                return Promise.reject(new TypeError('Already read'))
+            }
+            body.bodyUsed = true;
+        }
+
+        function fileReaderReady(reader) {
+            return new Promise(function (resolve, reject) {
+                reader.onload = function () {
+                    resolve(reader.result);
+                };
+                reader.onerror = function () {
+                    reject(reader.error);
+                };
+            })
+        }
+
+        function readBlobAsArrayBuffer(blob) {
+            var reader = new FileReader();
+            var promise = fileReaderReady(reader);
+            reader.readAsArrayBuffer(blob);
+            return promise
+        }
+
+        function readBlobAsText(blob) {
+            var reader = new FileReader();
+            var promise = fileReaderReady(reader);
+            reader.readAsText(blob);
+            return promise
+        }
+
+        function readArrayBufferAsText(buf) {
+            var view = new Uint8Array(buf);
+            var chars = new Array(view.length);
+
+            for (var i = 0; i < view.length; i++) {
+                chars[i] = String.fromCharCode(view[i]);
+            }
+            return chars.join('')
+        }
+
+        function bufferClone(buf) {
+            if (buf.slice) {
+                return buf.slice(0)
+            } else {
+                var view = new Uint8Array(buf.byteLength);
+                view.set(new Uint8Array(buf));
+                return view.buffer
+            }
+        }
+
+        function Body() {
+            this.bodyUsed = false;
+
+            this._initBody = function (body) {
+                /*
+                  fetch-mock wraps the Response object in an ES6 Proxy to
+                  provide useful test harness features such as flush. However, on
+                  ES5 browsers without fetch or Proxy support pollyfills must be used;
+                  the proxy-pollyfill is unable to proxy an attribute unless it exists
+                  on the object before the Proxy is created. This change ensures
+                  Response.bodyUsed exists on the instance, while maintaining the
+                  semantic of setting Request.bodyUsed in the constructor before
+                  _initBody is called.
+                */
+                this.bodyUsed = this.bodyUsed;
+                this._bodyInit = body;
+                if (!body) {
+                    this._bodyText = '';
+                } else if (typeof body === 'string') {
+                    this._bodyText = body;
+                } else if (support.blob && Blob.prototype.isPrototypeOf(body)) {
+                    this._bodyBlob = body;
+                } else if (support.formData && FormData.prototype.isPrototypeOf(body)) {
+                    this._bodyFormData = body;
+                } else if (support.searchParams && URLSearchParams.prototype.isPrototypeOf(body)) {
+                    this._bodyText = body.toString();
+                } else if (support.arrayBuffer && support.blob && isDataView(body)) {
+                    this._bodyArrayBuffer = bufferClone(body.buffer);
+                    // IE 10-11 can't handle a DataView body.
+                    this._bodyInit = new Blob([this._bodyArrayBuffer]);
+                } else if (support.arrayBuffer && (ArrayBuffer.prototype.isPrototypeOf(body) || isArrayBufferView(body))) {
+                    this._bodyArrayBuffer = bufferClone(body);
+                } else {
+                    this._bodyText = body = Object.prototype.toString.call(body);
+                }
+
+                if (!this.headers.get('content-type')) {
+                    if (typeof body === 'string') {
+                        this.headers.set('content-type', 'text/plain;charset=UTF-8');
+                    } else if (this._bodyBlob && this._bodyBlob.type) {
+                        this.headers.set('content-type', this._bodyBlob.type);
+                    } else if (support.searchParams && URLSearchParams.prototype.isPrototypeOf(body)) {
+                        this.headers.set('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
+                    }
+                }
+            };
+
+            if (support.blob) {
+                this.blob = function () {
+                    var rejected = consumed(this);
+                    if (rejected) {
+                        return rejected
+                    }
+
+                    if (this._bodyBlob) {
+                        return Promise.resolve(this._bodyBlob)
+                    } else if (this._bodyArrayBuffer) {
+                        return Promise.resolve(new Blob([this._bodyArrayBuffer]))
+                    } else if (this._bodyFormData) {
+                        throw new Error('could not read FormData body as blob')
+                    } else {
+                        return Promise.resolve(new Blob([this._bodyText]))
+                    }
+                };
+
+                this.arrayBuffer = function () {
+                    if (this._bodyArrayBuffer) {
+                        var isConsumed = consumed(this);
+                        if (isConsumed) {
+                            return isConsumed
+                        }
+                        if (ArrayBuffer.isView(this._bodyArrayBuffer)) {
+                            return Promise.resolve(
+                                this._bodyArrayBuffer.buffer.slice(
+                                    this._bodyArrayBuffer.byteOffset,
+                                    this._bodyArrayBuffer.byteOffset + this._bodyArrayBuffer.byteLength
+                                )
+                            )
+                        } else {
+                            return Promise.resolve(this._bodyArrayBuffer)
+                        }
+                    } else {
+                        return this.blob().then(readBlobAsArrayBuffer)
+                    }
+                };
+            }
+
+            this.text = function () {
+                var rejected = consumed(this);
+                if (rejected) {
+                    return rejected
+                }
+
+                if (this._bodyBlob) {
+                    return readBlobAsText(this._bodyBlob)
+                } else if (this._bodyArrayBuffer) {
+                    return Promise.resolve(readArrayBufferAsText(this._bodyArrayBuffer))
+                } else if (this._bodyFormData) {
+                    throw new Error('could not read FormData body as text')
+                } else {
+                    return Promise.resolve(this._bodyText)
+                }
+            };
+
+            if (support.formData) {
+                this.formData = function () {
+                    return this.text().then(decode)
+                };
+            }
+
+            this.json = function () {
+                return this.text().then(JSON.parse)
+            };
+
+            return this
+        }
+
+        // HTTP methods whose capitalization should be normalized
+        var methods = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT'];
+
+        function normalizeMethod(method) {
+            var upcased = method.toUpperCase();
+            return methods.indexOf(upcased) > -1 ? upcased : method
+        }
+
+        function Request(input, options) {
+            if (!(this instanceof Request)) {
+                throw new TypeError('Please use the "new" operator, this DOM object constructor cannot be called as a function.')
+            }
+
+            options = options || {};
+            var body = options.body;
+
+            if (input instanceof Request) {
+                if (input.bodyUsed) {
+                    throw new TypeError('Already read')
+                }
+                this.url = input.url;
+                this.credentials = input.credentials;
+                if (!options.headers) {
+                    this.headers = new Headers(input.headers);
+                }
+                this.method = input.method;
+                this.mode = input.mode;
+                this.signal = input.signal;
+                if (!body && input._bodyInit != null) {
+                    body = input._bodyInit;
+                    input.bodyUsed = true;
+                }
+            } else {
+                this.url = String(input);
+            }
+
+            this.credentials = options.credentials || this.credentials || 'same-origin';
+            if (options.headers || !this.headers) {
+                this.headers = new Headers(options.headers);
+            }
+            this.method = normalizeMethod(options.method || this.method || 'GET');
+            this.mode = options.mode || this.mode || null;
+            this.signal = options.signal || this.signal;
+            this.referrer = null;
+
+            if ((this.method === 'GET' || this.method === 'HEAD') && body) {
+                throw new TypeError('Body not allowed for GET or HEAD requests')
+            }
+            this._initBody(body);
+
+            if (this.method === 'GET' || this.method === 'HEAD') {
+                if (options.cache === 'no-store' || options.cache === 'no-cache') {
+                    // Search for a '_' parameter in the query string
+                    var reParamSearch = /([?&])_=[^&]*/;
+                    if (reParamSearch.test(this.url)) {
+                        // If it already exists then set the value with the current time
+                        this.url = this.url.replace(reParamSearch, '$1_=' + new Date().getTime());
+                    } else {
+                        // Otherwise add a new '_' parameter to the end with the current time
+                        var reQueryString = /\?/;
+                        this.url += (reQueryString.test(this.url) ? '&' : '?') + '_=' + new Date().getTime();
+                    }
+                }
+            }
+        }
+
+        Request.prototype.clone = function () {
+            return new Request(this, {body: this._bodyInit})
+        };
+
+        function decode(body) {
+            var form = new FormData();
+            body
+                .trim()
+                .split('&')
+                .forEach(function (bytes) {
+                    if (bytes) {
+                        var split = bytes.split('=');
+                        var name = split.shift().replace(/\+/g, ' ');
+                        var value = split.join('=').replace(/\+/g, ' ');
+                        form.append(decodeURIComponent(name), decodeURIComponent(value));
+                    }
+                });
+            return form
+        }
+
+        function parseHeaders(rawHeaders) {
+            var headers = new Headers();
+            // Replace instances of \r\n and \n followed by at least one space or horizontal tab with a space
+            // https://tools.ietf.org/html/rfc7230#section-3.2
+            var preProcessedHeaders = rawHeaders.replace(/\r?\n[\t ]+/g, ' ');
+            preProcessedHeaders.split(/\r?\n/).forEach(function (line) {
+                var parts = line.split(':');
+                var key = parts.shift().trim();
+                if (key) {
+                    var value = parts.join(':').trim();
+                    headers.append(key, value);
+                }
+            });
+            return headers
+        }
+
+        Body.call(Request.prototype);
+
+        function Response(bodyInit, options) {
+            if (!(this instanceof Response)) {
+                throw new TypeError('Please use the "new" operator, this DOM object constructor cannot be called as a function.')
+            }
+            if (!options) {
+                options = {};
+            }
+
+            this.type = 'default';
+            this.status = options.status === undefined ? 200 : options.status;
+            this.ok = this.status >= 200 && this.status < 300;
+            this.statusText = 'statusText' in options ? options.statusText : '';
+            this.headers = new Headers(options.headers);
+            this.url = options.url || '';
+            this._initBody(bodyInit);
+        }
+
+        Body.call(Response.prototype);
+
+        Response.prototype.clone = function () {
+            return new Response(this._bodyInit, {
+                status: this.status,
+                statusText: this.statusText,
+                headers: new Headers(this.headers),
+                url: this.url
+            })
+        };
+
+        Response.error = function () {
+            var response = new Response(null, {status: 0, statusText: ''});
+            response.type = 'error';
+            return response
+        };
+
+        var redirectStatuses = [301, 302, 303, 307, 308];
+
+        Response.redirect = function (url, status) {
+            if (redirectStatuses.indexOf(status) === -1) {
+                throw new RangeError('Invalid status code')
+            }
+
+            return new Response(null, {status: status, headers: {location: url}})
+        };
+
+        exports.DOMException = global.DOMException;
+        try {
+            new exports.DOMException();
+        } catch (err) {
+            exports.DOMException = function (message, name) {
+                this.message = message;
+                this.name = name;
+                var error = Error(message);
+                this.stack = error.stack;
+            };
+            exports.DOMException.prototype = Object.create(Error.prototype);
+            exports.DOMException.prototype.constructor = exports.DOMException;
+        }
+
+        function fetch(input, init) {
+            return new Promise(function (resolve, reject) {
+                var request = new Request(input, init);
+
+                if (request.signal && request.signal.aborted) {
+                    return reject(new exports.DOMException('Aborted', 'AbortError'))
+                }
+
+                var xhr = new XMLHttpRequest();
+
+                function abortXhr() {
+                    xhr.abort();
+                }
+
+                xhr.onload = function () {
+                    var options = {
+                        status: xhr.status,
+                        statusText: xhr.statusText,
+                        headers: parseHeaders(xhr.getAllResponseHeaders() || '')
+                    };
+                    options.url = 'responseURL' in xhr ? xhr.responseURL : options.headers.get('X-Request-URL');
+                    var body = 'response' in xhr ? xhr.response : xhr.responseText;
+                    setTimeout(function () {
+                        resolve(new Response(body, options));
+                    }, 0);
+                };
+
+                xhr.onerror = function () {
+                    setTimeout(function () {
+                        reject(new TypeError('Network request failed'));
+                    }, 0);
+                };
+
+                xhr.ontimeout = function () {
+                    setTimeout(function () {
+                        reject(new TypeError('Network request failed'));
+                    }, 0);
+                };
+
+                xhr.onabort = function () {
+                    setTimeout(function () {
+                        reject(new exports.DOMException('Aborted', 'AbortError'));
+                    }, 0);
+                };
+
+                function fixUrl(url) {
+                    try {
+                        return url === '' && global.location.href ? global.location.href : url
+                    } catch (e) {
+                        return url
+                    }
+                }
+
+                xhr.open(request.method, fixUrl(request.url), true);
+
+                if (request.credentials === 'include') {
+                    xhr.withCredentials = true;
+                } else if (request.credentials === 'omit') {
+                    xhr.withCredentials = false;
+                }
+
+                if ('responseType' in xhr) {
+                    if (support.blob) {
+                        xhr.responseType = 'blob';
+                    } else if (
+                        support.arrayBuffer &&
+                        request.headers.get('Content-Type') &&
+                        request.headers.get('Content-Type').indexOf('application/octet-stream') !== -1
+                    ) {
+                        xhr.responseType = 'arraybuffer';
+                    }
+                }
+
+                if (init && typeof init.headers === 'object' && !(init.headers instanceof Headers)) {
+                    Object.getOwnPropertyNames(init.headers).forEach(function (name) {
+                        xhr.setRequestHeader(name, normalizeValue(init.headers[name]));
+                    });
+                } else {
+                    request.headers.forEach(function (value, name) {
+                        xhr.setRequestHeader(name, value);
+                    });
+                }
+
+                if (request.signal) {
+                    request.signal.addEventListener('abort', abortXhr);
+
+                    xhr.onreadystatechange = function () {
+                        // DONE (success or failure)
+                        if (xhr.readyState === 4) {
+                            request.signal.removeEventListener('abort', abortXhr);
+                        }
+                    };
+                }
+
+                xhr.send(typeof request._bodyInit === 'undefined' ? null : request._bodyInit);
+            })
+        }
+
+        fetch.polyfill = true;
+
+        if (!global.fetch) {
+            global.fetch = fetch;
+            global.Headers = Headers;
+            global.Request = Request;
+            global.Response = Response;
+        }
+
+        exports.Headers = Headers;
+        exports.Request = Request;
+        exports.Response = Response;
+        exports.fetch = fetch;
+
+        Object.defineProperty(exports, '__esModule', {value: true});
+
+    })));
+
+//////////////////////////fetch-polyfill-ends////////////////////////////////////
+};
+
+var layoutLoaded = function (filePath, htmlContent, allLoaded) {
+  //  console.log('layoutLoaded:--> ', 'filepath: ', filePath, ", layout: ", htmlContent, ", allLoaded: ", allLoaded);
+    page.sources.set(filePath, htmlContent);
+    page.includes.forEach(function(layoutData, id){
+        if(layoutData.consumed === false){
+            if(layoutData.path === filePath){
+                page.renderInclude(id, htmlContent);
+                layoutData.consumed = true;
+            }
+        }
+    });
+    page.sourcesLoaded = allLoaded;
+};
+
+var layoutError = function (error) {
+    throw error;
+};
 
 /**
  * Generates constraints needed to layout the root element of any layout on the physical DOM
@@ -705,7 +1696,6 @@ function View(page, node, refIds, parentId) {
         throw 'Please specify the view id properly';
     }
 
-
     if (typeof page.findViewById(zaId) !== 'undefined') {
         throw 'A view with this id(`' + zaId + '`) exists already';
     }
@@ -734,7 +1724,7 @@ function View(page, node, refIds, parentId) {
             horMarginDiff: function () {
                 let s = parseNumberAndUnitsNoValidation(this.start, true);
                 let e = parseNumberAndUnitsNoValidation(this.end, true);
-                console.log((parseFloat(s.number) - parseFloat(e.number)) + s.units);
+               // console.log((parseFloat(s.number) - parseFloat(e.number)) + s.units);
                 if (!this.horUnitsSame) {
                     throw 'start and end margins must be same when using `cx, scx, cxs` etc.'
                 }
@@ -1021,6 +2011,11 @@ function isDimensionRatio(val) {
     let arr = val.split(':');
     return arr.length === 2 && !isNaN(arr[0]) && !isNaN(arr[1]);
 }
+
+View.prototype.isPopup = function(){
+    let check = this.refIds.get(attrKeys.layout_popup);
+    return typeof check !== "undefined" && (check === true || check === 'true') ;
+};
 
 View.prototype.makeBgImage = function () {
     let refIds = this.refIds;
@@ -1455,14 +2450,14 @@ View.prototype.layoutChildren = function (page) {
                         this.setLeftAlignSS(hiddenViewForWidthId, child.margins.start, ss, AutoLayout.Priority.REQUIRED, constraints);
                     } else if (se) {
                         this.setLeftAlignSE(hiddenViewForWidthId, child.margins.start, se, AutoLayout.Priority.REQUIRED, constraints);
-                    } else if(scx){
+                    } else if (scx) {
                         this.setLeftAlignCX(hiddenViewForWidthId, child.margins.start, scx, AutoLayout.Priority.REQUIRED, constraints);
                     }
                     if (ee) {
                         this.setRightAlignEE(hiddenViewForWidthId, child.margins.end, ee, AutoLayout.Priority.REQUIRED, constraints);
                     } else if (es) {
                         this.setRightAlignES(hiddenViewForWidthId, child.margins.end, es, AutoLayout.Priority.REQUIRED, constraints);
-                    } else if(ecx){
+                    } else if (ecx) {
                         this.setRightAlignCX(hiddenViewForWidthId, child.margins.end, ecx, AutoLayout.Priority.REQUIRED, constraints);
                     }
                     constraints.push({
@@ -1508,7 +2503,7 @@ View.prototype.layoutChildren = function (page) {
                         this.setTopAlignTT(hiddenViewForHeightId, child.margins.top, tt, AutoLayout.Priority.REQUIRED, constraints);
                     } else if (tb) {
                         this.setTopAlignTB(hiddenViewForHeightId, child.margins.top, tb, AutoLayout.Priority.REQUIRED, constraints);
-                    } else if(tcy){
+                    } else if (tcy) {
                         this.setTopAlignCY(hiddenViewForHeightId, child.margins.top, tcy, AutoLayout.Priority.REQUIRED, constraints);
                     }
 
@@ -1516,7 +2511,7 @@ View.prototype.layoutChildren = function (page) {
                         this.setBottomAlignBB(hiddenViewForHeightId, child.margins.bottom, bb, AutoLayout.Priority.REQUIRED, constraints);
                     } else if (bt) {
                         this.setBottomAlignBT(hiddenViewForHeightId, child.margins.bottom, bt, AutoLayout.Priority.REQUIRED, constraints);
-                    } else if(bcy){
+                    } else if (bcy) {
                         this.setBottomAlignCY(hiddenViewForHeightId, child.margins.bottom, bcy, AutoLayout.Priority.REQUIRED, constraints);
                     }
 
@@ -1974,6 +2969,248 @@ View.prototype.setLeftAlignSE = function (view1, marginLeft, view2, priority, co
         }
     }
 };
+
+
+
+/**
+ * Sets the right align constraint for a right-right(end-end) align situation...works with pixels, percents
+ * @param {string} view1 The view whose right is being constrained
+ * @param {*} marginRight The right margin... supported units are px, % and no units(we assume px)
+ * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
+ * @param {number} priority The priority of the right-right anchor constraint
+ * @param {Array} constraints The array that holds the constraints generated here
+ */
+View.prototype.setRightAlignEE = function (view1, marginRight, view2, priority, constraints) {
+    marginRight = (marginRight === '0%' ? 0 : marginRight);
+    if (typeof marginRight === 'number') {
+        constraints.push({
+            view1: view1,
+            attr1: 'right',    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: 'right',    // see AutoLayout.Attribute
+            constant: -1 * marginRight,
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (isNumber(marginRight)) {//may be a number string
+        constraints.push({
+            view1: view1,
+            attr1: 'right',    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: 'right',    // see AutoLayout.Attribute
+            constant: -1 * parseFloat(marginRight),
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (endsWith(marginRight, "px")) {
+        constraints.push({
+            view1: view1,
+            attr1: 'right',    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: 'right',    // see AutoLayout.Attribute
+            constant: -1 * parseFloat(marginRight),
+            multiplier: 1,
+            priority: priority
+        });
+    } else {
+        let isPct = endsWith(marginRight, "%");
+
+        if (!isPct) {
+            throw 'margin-right can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
+        }
+
+        let val = parseFloat(marginRight) / 100.0;
+
+        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
+        if (view2 === 'parent') {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'right',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'right',    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'right',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'left',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        } else {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'right',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: view2,
+                attr2: 'right',    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'right',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'left',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        }
+    }
+};
+
+
+/**
+ * Sets the right align constraint for a right-left(end-start) align situation...works with pixels, percents
+ * @param {string} view1 The view whose right is being constrained
+ * @param {*} marginRight The right margin... supported units are px, % and no units(we assume px)
+ * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
+ * @param {number} priority The priority of the right-left anchor constraint
+ * @param {Array} constraints The array that holds the constraints generated here
+ */
+View.prototype.setRightAlignES = function (view1, marginRight, view2, priority, constraints) {
+    marginRight = (marginRight === '0%' ? 0 : marginRight);
+    if (typeof marginRight === 'number') {
+        constraints.push({
+            view1: view1,
+            attr1: 'right',    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: 'left',    // see AutoLayout.Attribute
+            constant: -1 * marginRight,
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (isNumber(marginRight)) {//may be a number string
+        constraints.push({
+            view1: view1,
+            attr1: 'right',    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: 'left',    // see AutoLayout.Attribute
+            constant: -1 * parseFloat(marginRight),
+            multiplier: 1,
+            priority: priority
+        });
+    } else if (endsWith(marginRight, "px")) {
+        constraints.push({
+            view1: view1,
+            attr1: 'right',    // see AutoLayout.Attribute
+            relation: 'equ',   // see AutoLayout.Relation
+            view2: view2 === 'parent' ? null : view2,
+            attr2: 'left',    // see AutoLayout.Attribute
+            constant: -1 * parseFloat(marginRight),
+            multiplier: 1,
+            priority: priority
+        });
+    } else {
+        let isPct = endsWith(marginRight, "%");
+
+        if (!isPct) {
+            throw 'margin-right can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
+        }
+
+        let val = parseFloat(marginRight) / 100.0;
+
+        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
+        if (view2 === 'parent') {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'right',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'left',    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'right',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'left',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        } else {
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'right',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: view2,
+                attr2: 'left',    // see AutoLayout.Attribute
+                constant: 0,
+                multiplier: 1,
+                priority: 1000
+            });
+            constraints.push({
+                view1: hiddenViewId,
+                attr1: 'width',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: null,
+                attr2: 'width',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: val,
+                priority: 1000
+            });
+            constraints.push({
+                view1: view1,
+                attr1: 'right',    // see AutoLayout.Attribute
+                relation: 'equ',   // see AutoLayout.Relation
+                view2: hiddenViewId,
+                attr2: 'left',    // see AutoLayout.Attribute
+                constant: 1,
+                multiplier: 1,
+                priority: 1000
+            });
+        }
+    }
+};
+
 
 
 /**
@@ -2951,246 +4188,6 @@ View.prototype.setBottomAlignCY = function (view1, marginBottom, view2, priority
 };
 
 /**
- * Sets the right align constraint for a right-right(end-end) align situation...works with pixels, percents
- * @param {string} view1 The view whose right is being constrained
- * @param {*} marginRight The right margin... supported units are px, % and no units(we assume px)
- * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
- * @param {number} priority The priority of the right-right anchor constraint
- * @param {Array} constraints The array that holds the constraints generated here
- */
-View.prototype.setRightAlignEE = function (view1, marginRight, view2, priority, constraints) {
-    marginRight = (marginRight === '0%' ? 0 : marginRight);
-    if (typeof marginRight === 'number') {
-        constraints.push({
-            view1: view1,
-            attr1: 'right',    // see AutoLayout.Attribute
-            relation: 'equ',   // see AutoLayout.Relation
-            view2: view2 === 'parent' ? null : view2,
-            attr2: 'right',    // see AutoLayout.Attribute
-            constant: -1 * marginRight,
-            multiplier: 1,
-            priority: priority
-        });
-    } else if (isNumber(marginRight)) {//may be a number string
-        constraints.push({
-            view1: view1,
-            attr1: 'right',    // see AutoLayout.Attribute
-            relation: 'equ',   // see AutoLayout.Relation
-            view2: view2 === 'parent' ? null : view2,
-            attr2: 'right',    // see AutoLayout.Attribute
-            constant: -1 * parseFloat(marginRight),
-            multiplier: 1,
-            priority: priority
-        });
-    } else if (endsWith(marginRight, "px")) {
-        constraints.push({
-            view1: view1,
-            attr1: 'right',    // see AutoLayout.Attribute
-            relation: 'equ',   // see AutoLayout.Relation
-            view2: view2 === 'parent' ? null : view2,
-            attr2: 'right',    // see AutoLayout.Attribute
-            constant: -1 * parseFloat(marginRight),
-            multiplier: 1,
-            priority: priority
-        });
-    } else {
-        let isPct = endsWith(marginRight, "%");
-
-        if (!isPct) {
-            throw 'margin-right can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
-        }
-
-        let val = parseFloat(marginRight) / 100.0;
-
-        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
-        if (view2 === 'parent') {
-            constraints.push({
-                view1: hiddenViewId,
-                attr1: 'right',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: null,
-                attr2: 'right',    // see AutoLayout.Attribute
-                constant: 0,
-                multiplier: 1,
-                priority: 1000
-            });
-            constraints.push({
-                view1: hiddenViewId,
-                attr1: 'width',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: null,
-                attr2: 'width',    // see AutoLayout.Attribute
-                constant: 1,
-                multiplier: val,
-                priority: 1000
-            });
-            constraints.push({
-                view1: view1,
-                attr1: 'right',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: hiddenViewId,
-                attr2: 'left',    // see AutoLayout.Attribute
-                constant: 1,
-                multiplier: 1,
-                priority: 1000
-            });
-        } else {
-            constraints.push({
-                view1: hiddenViewId,
-                attr1: 'right',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: view2,
-                attr2: 'right',    // see AutoLayout.Attribute
-                constant: 0,
-                multiplier: 1,
-                priority: 1000
-            });
-            constraints.push({
-                view1: hiddenViewId,
-                attr1: 'width',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: null,
-                attr2: 'width',    // see AutoLayout.Attribute
-                constant: 1,
-                multiplier: val,
-                priority: 1000
-            });
-            constraints.push({
-                view1: view1,
-                attr1: 'right',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: hiddenViewId,
-                attr2: 'left',    // see AutoLayout.Attribute
-                constant: 1,
-                multiplier: 1,
-                priority: 1000
-            });
-        }
-    }
-};
-
-
-/**
- * Sets the right align constraint for a right-left(end-start) align situation...works with pixels, percents
- * @param {string} view1 The view whose right is being constrained
- * @param {*} marginRight The right margin... supported units are px, % and no units(we assume px)
- * @param {string} view2 The id of the view being constrained to, or parent to refer to the parent element
- * @param {number} priority The priority of the right-left anchor constraint
- * @param {Array} constraints The array that holds the constraints generated here
- */
-View.prototype.setRightAlignES = function (view1, marginRight, view2, priority, constraints) {
-    marginRight = (marginRight === '0%' ? 0 : marginRight);
-    if (typeof marginRight === 'number') {
-        constraints.push({
-            view1: view1,
-            attr1: 'right',    // see AutoLayout.Attribute
-            relation: 'equ',   // see AutoLayout.Relation
-            view2: view2 === 'parent' ? null : view2,
-            attr2: 'left',    // see AutoLayout.Attribute
-            constant: -1 * marginRight,
-            multiplier: 1,
-            priority: priority
-        });
-    } else if (isNumber(marginRight)) {//may be a number string
-        constraints.push({
-            view1: view1,
-            attr1: 'right',    // see AutoLayout.Attribute
-            relation: 'equ',   // see AutoLayout.Relation
-            view2: view2 === 'parent' ? null : view2,
-            attr2: 'left',    // see AutoLayout.Attribute
-            constant: -1 * parseFloat(marginRight),
-            multiplier: 1,
-            priority: priority
-        });
-    } else if (endsWith(marginRight, "px")) {
-        constraints.push({
-            view1: view1,
-            attr1: 'right',    // see AutoLayout.Attribute
-            relation: 'equ',   // see AutoLayout.Relation
-            view2: view2 === 'parent' ? null : view2,
-            attr2: 'left',    // see AutoLayout.Attribute
-            constant: -1 * parseFloat(marginRight),
-            multiplier: 1,
-            priority: priority
-        });
-    } else {
-        let isPct = endsWith(marginRight, "%");
-
-        if (!isPct) {
-            throw 'margin-right can only be expressed in pixels, in percentage(%) or without units, on id: ' + view1;
-        }
-
-        let val = parseFloat(marginRight) / 100.0;
-
-        let hiddenViewId = view1 + "_dummy_" + ULID.ulid();
-        if (view2 === 'parent') {
-            constraints.push({
-                view1: hiddenViewId,
-                attr1: 'right',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: null,
-                attr2: 'left',    // see AutoLayout.Attribute
-                constant: 0,
-                multiplier: 1,
-                priority: 1000
-            });
-            constraints.push({
-                view1: hiddenViewId,
-                attr1: 'width',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: null,
-                attr2: 'width',    // see AutoLayout.Attribute
-                constant: 1,
-                multiplier: val,
-                priority: 1000
-            });
-            constraints.push({
-                view1: view1,
-                attr1: 'right',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: hiddenViewId,
-                attr2: 'left',    // see AutoLayout.Attribute
-                constant: 1,
-                multiplier: 1,
-                priority: 1000
-            });
-        } else {
-            constraints.push({
-                view1: hiddenViewId,
-                attr1: 'right',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: view2,
-                attr2: 'left',    // see AutoLayout.Attribute
-                constant: 0,
-                multiplier: 1,
-                priority: 1000
-            });
-            constraints.push({
-                view1: hiddenViewId,
-                attr1: 'width',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: null,
-                attr2: 'width',    // see AutoLayout.Attribute
-                constant: 1,
-                multiplier: val,
-                priority: 1000
-            });
-            constraints.push({
-                view1: view1,
-                attr1: 'right',    // see AutoLayout.Attribute
-                relation: 'equ',   // see AutoLayout.Relation
-                view2: hiddenViewId,
-                attr2: 'left',    // see AutoLayout.Attribute
-                constant: 1,
-                multiplier: 1,
-                priority: 1000
-            });
-        }
-    }
-};
-
-
-/**
  * Sets the top align constraint for a top-top align situation...works with pixels, percents
  * @param {string} view1 The view whose top is being constrained
  * @param {*} marginTop The top margin... supported units are px, % and no units(we assume px)
@@ -3681,6 +4678,7 @@ View.prototype.setBottomAlignBT = function (view1, marginBottom, view2, priority
 
 };
 
+
 /**
  *
  * @param {Page} page
@@ -4148,6 +5146,14 @@ function quickScan(dim, optimize) {
     return tokens;
 }
 
+/**
+ *
+ * @param {Page} page
+ * @param {Array} constraints
+ * @param {String} id
+ * @param {String|Number} w The width
+ * @param {Number} priority
+ */
 View.prototype.setWidthConstraints = function (page, constraints, id, w, priority) {
 
     let mulInd = w.indexOf("*");
@@ -4438,6 +5444,7 @@ View.prototype.setHeightConstraints = function (page, constraints, id, h, priori
 
     if (isNumber(h)) {
         h = typeof h === 'string' ? parseFloat(h) : h;
+
         if (h === 0) {
             let child = page.viewMap.get(id);
             if (child.dimRatio !== -1) {
@@ -5584,16 +6591,15 @@ const attrKeys = {
     layout_constraint: "data-const",
     layout_constraintGuide: "data-guide",
     layout_constraintGuideColor: "data-guide-color",
-    layout_popup: "data-popup",//true or false..default on any element is false
-    layout_src: "src",// fetch the child sublayout to include in a popup or an include from the path specified here.
+    layout_popup: "popup",//true or false..default on any element is false
+    layout_src: "src",// fetch the sub-layout to include in a popup or an include from the path specified here.
     layout_constraintGuide_percent: "guide-pct",
     layout_constraintGuide_begin: "guide-begin",
     layout_constraintGuide_end: "guide-end",
-    layout_horizontalBias: "hor-bias",// a floating point bumber between 0 and 1 specifying the priority of the horizontal constraint attributes
-    layout_verticalBias: "ver-bias",// a floating point bumber between 0 and 1 specifying the priority of the vertical constraint attributes
+    layout_horizontalBias: "hor-bias",// a floating point number between 0 and 1 specifying the priority of the horizontal constraint attributes
+    layout_verticalBias: "ver-bias",// a floating point number between 0 and 1 specifying the priority of the vertical constraint attributes
     dimension_ratio: "dim-ratio",
     orientation: "orient", //
-
 
     mi_useAutoBg: "mi-use-bg",//bool.. if true, will enable automatic backgrounds
     mi_mode: "mi-mode", //
@@ -6405,7 +7411,6 @@ function parseNumberAndUnitsNoValidation(val, seeNoUnitsAsPx) {
         if (seeNoUnitsAsPx && seeNoUnitsAsPx === true) {
             return {number: val, units: "px"};
         } else {
-            console.log("..................", val)
             return {number: null, units: null};
         }
     }
@@ -6443,11 +7448,11 @@ function getUrls() {
         let endLen = ender.length;
         //check if script.src ends with layit.js
         if (src.lastIndexOf(ender) === fullLen - endLen) {
-            let scriptsURL = src.substring(0, fullLen - endLen);
+            scriptURL = src.substring(0, fullLen - endLen);
 
             //let projectURL = scriptsURL.substring(0, scriptsURL.length - "layit/".length);
-            let projectURL = scriptsURL.substring(0, scriptsURL.lastIndexOf("/", scriptsURL.length - 2) + 1);
-            return [projectURL, scriptsURL];
+            projectURL = scriptURL.substring(0, scriptURL.lastIndexOf("/", scriptURL.length - 2) + 1);
+            return [projectURL, scriptURL];
         }
     }
     return null;
@@ -6456,13 +7461,7 @@ function getUrls() {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-
-
-
 //Popup code
-
-
-
 /**
  * Stores a reference to all popups here.
  * @type type
@@ -6477,20 +7476,24 @@ var popupZIndex = 1000;
  * @param {type} options The options required to render the popup:
  * Format is:
  *
- * {
- *   id: "id",
- *   width : '10em',
- *   height : '6em',
- *   layout: 'popup_xml_layout_name'
- *   bg: '#ffffff',
  *
- *   containerStyle{
- *     width: 23%,
- *     border-radius : 1em, blah-blah-blah
- *   },
- *   onOpen : function(){},
- *   onClose : function(){}
- * }
+  ```
+ {
+    id: "id",
+    width : '10em',
+    height : '6em',
+    layout: '<div>...</div>',
+    bg: '#ffffff',
+
+    containerStyle: {
+      width: 23%,
+      border-radius : 1em,
+      xxx: blah-blah-blah
+    },
+    onOpen : function(){},
+    onClose : function(){}
+  }
+ ```
  *
  *
  *
@@ -6504,7 +7507,7 @@ function Popup(options) {
     if (!options.id || typeof options.id !== 'string') {
         throw new Error("Hi! You have not specified a value for options.layitId! Popup cannot be created");
     }
-    this.id = options.id + '_popup';
+    this.id = options.id;
 
     if (typeof options.width !== 'string') {
         console.log("Hi! options.width must be a valid css dimension! Defaulting to 90%");
@@ -6538,18 +7541,19 @@ function Popup(options) {
     }
 
 
-
     if (options.onOpen && {}.toString.call(options.onOpen) === '[object Function]') {
         this.onOpen = options.onOpen;
     } else {
-        this.onOpen = function () {};
+        this.onOpen = function () {
+        };
     }
 
 
     if (options.onClose && {}.toString.call(options.onClose) === '[object Function]') {
         this.onClose = options.onClose;
     } else {
-        this.onClose = function () {};
+        this.onClose = function () {
+        };
     }
 
     //this.injectableHTML = '<p style="padding: 1em;font-size: 1em; color : red;font-weight:bold">Home made OOP Popup!</p>';
@@ -6598,10 +7602,7 @@ function Popup(options) {
     var bg = this.background;
 
 
-
-
-
-    initContainerCss:{
+    {
 
         this.containerStyle.addFromOptions({
             position: 'absolute',
@@ -6627,12 +7628,12 @@ function Popup(options) {
         }
     }
 
-    initCloseBtnStyle:{
+    {
         this.closeBtnStyle.addFromOptions({
             "top": "0.1em",
             "right": "0.1em",
             "position": "fixed",
-            "font-size": "4rem",
+            "font-size": "6rem",
             "font-weight": "bold",
             "font-family": "monospace",
             "cursor": "pointer",
@@ -6665,7 +7666,7 @@ Popup.prototype.hide = function () {
         dialog.style.display = 'none';
     }
 
-    removeClass(document.body , this.noScrollStyle.name.substring(1));
+    removeClass(document.body, this.noScrollStyle.name.substring(1));
     this.onClose();
 };
 
@@ -6695,17 +7696,18 @@ Popup.prototype.build = function () {
     };
 
 
-
-
-    if (!dialog) {
+    if (dialog) {
+        dialog.style.display = 'block';
+    }else{
         dialog = document.createElement('div');
         dialog.setAttribute("id", this.containerId());
         addClass(dialog, this.containerClass());
+        dialog.innerHTML = this.layout;
         document.body.appendChild(dialog);
     }
 
 
-    let closeBtn = document.createElement("input");
+    let closeBtn = document.getElementById(this.closeBtnId());
     if (!closeBtn) {
         closeBtn = document.createElement("input");
         closeBtn.setAttribute("id", this.closeBtnId());
@@ -6720,31 +7722,25 @@ Popup.prototype.build = function () {
     };
 
 
-
-
     if (freshCall) {
         var style = document.createElement('style');
         style.setAttribute('type', 'text/css');
         var css = new StringBuffer();
         for (var key in this.registry) {
-            css.append(this.registry[key].styleSheetEntry("." + key));
+            css.append(this.registry[key].styleSheetEntry(key));
         }
         style.innerHTML = css.toString();
         document.getElementsByTagName('head')[0].appendChild(style);
 
-        let workspace = getWorkspace({
-            layoutName: this.layout,
-            bindingElemId: dialog.id,
-            onComplete: function (rootView) {}});
-        let page = new Page(dialog);
-        page.buildUI()
+        let p = new Page(dialog);
+        p.layout();
 
+        page.subPages.set(dialog.id, p);
     }
 
-    addClass(document.body , this.noScrollStyle.name.substring(1));
+    addClass(document.body, this.noScrollStyle.name.substring(1));
     popup.onOpen();
 };
-
 
 
 Popup.prototype.overlayId = function () {
@@ -6757,11 +7753,8 @@ Popup.prototype.overlayClass = function () {
 };
 
 
-
-
-
 Popup.prototype.containerId = function () {
-    return this.id + "_container";
+    return this.id;
 };
 
 
@@ -6777,9 +7770,6 @@ Popup.prototype.closeBtnClass = function () {
 Popup.prototype.closeBtnId = function () {
     return this.id + "_close_btn_class";
 };
-
-
-
 
 
 //resize sensor js
@@ -14063,798 +15053,6 @@ Popup.prototype.closeBtnId = function () {
 //AUTOLAYOUT ENDS
 
 
-//////////////////////////Promise-polyfill/////////////////////////////
-!function (e, t) {
-    "object" == typeof exports && "undefined" != typeof module ? t() : "function" == typeof define && define.amd ? define(t) : t()
-}(0, function () {
-    "use strict";
-
-    function e(e) {
-        var t = this.constructor;
-        return this.then(function (n) {
-            return t.resolve(e()).then(function () {
-                return n
-            })
-        }, function (n) {
-            return t.resolve(e()).then(function () {
-                return t.reject(n)
-            })
-        })
-    }
-
-    function t(e) {
-        return new this(function (t, n) {
-            function o(e, n) {
-                if (n && ("object" == typeof n || "function" == typeof n)) {
-                    var f = n.then;
-                    if ("function" == typeof f) return void f.call(n, function (t) {
-                        o(e, t)
-                    }, function (n) {
-                        r[e] = {status: "rejected", reason: n}, 0 == --i && t(r)
-                    })
-                }
-                r[e] = {status: "fulfilled", value: n}, 0 == --i && t(r)
-            }
-
-            if (!e || "undefined" == typeof e.length) return n(new TypeError(typeof e + " " + e + " is not iterable(cannot read property Symbol(Symbol.iterator))"));
-            var r = Array.prototype.slice.call(e);
-            if (0 === r.length) return t([]);
-            for (var i = r.length, f = 0; r.length > f; f++) o(f, r[f])
-        })
-    }
-
-    function n(e) {
-        return !(!e || "undefined" == typeof e.length)
-    }
-
-    function o() {
-    }
-
-    function r(e) {
-        if (!(this instanceof r)) throw new TypeError("Promises must be constructed via new");
-        if ("function" != typeof e) throw new TypeError("not a function");
-        this._state = 0, this._handled = !1, this._value = undefined, this._deferreds = [], l(e, this)
-    }
-
-    function i(e, t) {
-        for (; 3 === e._state;) e = e._value;
-        0 !== e._state ? (e._handled = !0, r._immediateFn(function () {
-            var n = 1 === e._state ? t.onFulfilled : t.onRejected;
-            if (null !== n) {
-                var o;
-                try {
-                    o = n(e._value)
-                } catch (r) {
-                    return void u(t.promise, r)
-                }
-                f(t.promise, o)
-            } else (1 === e._state ? f : u)(t.promise, e._value)
-        })) : e._deferreds.push(t)
-    }
-
-    function f(e, t) {
-        try {
-            if (t === e) throw new TypeError("A promise cannot be resolved with itself.");
-            if (t && ("object" == typeof t || "function" == typeof t)) {
-                var n = t.then;
-                if (t instanceof r) return e._state = 3, e._value = t, void c(e);
-                if ("function" == typeof n) return void l(function (e, t) {
-                    return function () {
-                        e.apply(t, arguments)
-                    }
-                }(n, t), e)
-            }
-            e._state = 1, e._value = t, c(e)
-        } catch (o) {
-            u(e, o)
-        }
-    }
-
-    function u(e, t) {
-        e._state = 2, e._value = t, c(e)
-    }
-
-    function c(e) {
-        2 === e._state && 0 === e._deferreds.length && r._immediateFn(function () {
-            e._handled || r._unhandledRejectionFn(e._value)
-        });
-        for (var t = 0, n = e._deferreds.length; n > t; t++) i(e, e._deferreds[t]);
-        e._deferreds = null
-    }
-
-    function l(e, t) {
-        var n = !1;
-        try {
-            e(function (e) {
-                n || (n = !0, f(t, e))
-            }, function (e) {
-                n || (n = !0, u(t, e))
-            })
-        } catch (o) {
-            if (n) return;
-            n = !0, u(t, o)
-        }
-    }
-
-    var a = setTimeout;
-    r.prototype["catch"] = function (e) {
-        return this.then(null, e)
-    }, r.prototype.then = function (e, t) {
-        var n = new this.constructor(o);
-        return i(this, new function (e, t, n) {
-            this.onFulfilled = "function" == typeof e ? e : null, this.onRejected = "function" == typeof t ? t : null, this.promise = n
-        }(e, t, n)), n
-    }, r.prototype["finally"] = e, r.all = function (e) {
-        return new r(function (t, o) {
-            function r(e, n) {
-                try {
-                    if (n && ("object" == typeof n || "function" == typeof n)) {
-                        var u = n.then;
-                        if ("function" == typeof u) return void u.call(n, function (t) {
-                            r(e, t)
-                        }, o)
-                    }
-                    i[e] = n, 0 == --f && t(i)
-                } catch (c) {
-                    o(c)
-                }
-            }
-
-            if (!n(e)) return o(new TypeError("Promise.all accepts an array"));
-            var i = Array.prototype.slice.call(e);
-            if (0 === i.length) return t([]);
-            for (var f = i.length, u = 0; i.length > u; u++) r(u, i[u])
-        })
-    }, r.allSettled = t, r.resolve = function (e) {
-        return e && "object" == typeof e && e.constructor === r ? e : new r(function (t) {
-            t(e)
-        })
-    }, r.reject = function (e) {
-        return new r(function (t, n) {
-            n(e)
-        })
-    }, r.race = function (e) {
-        return new r(function (t, o) {
-            if (!n(e)) return o(new TypeError("Promise.race accepts an array"));
-            for (var i = 0, f = e.length; f > i; i++) r.resolve(e[i]).then(t, o)
-        })
-    }, r._immediateFn = "function" == typeof setImmediate && function (e) {
-        setImmediate(e)
-    } || function (e) {
-        a(e, 0)
-    }, r._unhandledRejectionFn = function (e) {
-        void 0 !== console && console && console.warn("Possible Unhandled Promise Rejection:", e)
-    };
-    var s = function () {
-        if ("undefined" != typeof self) return self;
-        if ("undefined" != typeof window) return window;
-        if ("undefined" != typeof global) return global;
-        throw Error("unable to locate global object")
-    }();
-    "function" != typeof s.Promise ? s.Promise = r : (s.Promise.prototype["finally"] || (s.Promise.prototype["finally"] = e), s.Promise.allSettled || (s.Promise.allSettled = t))
-});
-
-//////////////////////////Promise-polyfill-ends/////////////////////////////
-
-
-
-//////////////////////////fetch-polyfill////////////////////////////////////
-(function (global, factory) {
-    typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
-        typeof define === 'function' && define.amd ? define(['exports'], factory) :
-            (factory((global.WHATWGFetch = {})));
-}(this, (function (exports) { 'use strict';
-
-    var global = (typeof self !== 'undefined' && self) || (typeof global !== 'undefined' && global);
-
-    var support = {
-        searchParams: 'URLSearchParams' in global,
-        iterable: 'Symbol' in global && 'iterator' in Symbol,
-        blob:
-            'FileReader' in global &&
-            'Blob' in global &&
-            (function() {
-                try {
-                    new Blob();
-                    return true
-                } catch (e) {
-                    return false
-                }
-            })(),
-        formData: 'FormData' in global,
-        arrayBuffer: 'ArrayBuffer' in global
-    };
-
-    function isDataView(obj) {
-        return obj && DataView.prototype.isPrototypeOf(obj)
-    }
-
-    if (support.arrayBuffer) {
-        var viewClasses = [
-            '[object Int8Array]',
-            '[object Uint8Array]',
-            '[object Uint8ClampedArray]',
-            '[object Int16Array]',
-            '[object Uint16Array]',
-            '[object Int32Array]',
-            '[object Uint32Array]',
-            '[object Float32Array]',
-            '[object Float64Array]'
-        ];
-
-        var isArrayBufferView =
-            ArrayBuffer.isView ||
-            function(obj) {
-                return obj && viewClasses.indexOf(Object.prototype.toString.call(obj)) > -1
-            };
-    }
-
-    function normalizeName(name) {
-        if (typeof name !== 'string') {
-            name = String(name);
-        }
-        if (/[^a-z0-9\-#$%&'*+.^_`|~!]/i.test(name) || name === '') {
-            throw new TypeError('Invalid character in header field name')
-        }
-        return name.toLowerCase()
-    }
-
-    function normalizeValue(value) {
-        if (typeof value !== 'string') {
-            value = String(value);
-        }
-        return value
-    }
-
-    // Build a destructive iterator for the value list
-    function iteratorFor(items) {
-        var iterator = {
-            next: function() {
-                var value = items.shift();
-                return {done: value === undefined, value: value}
-            }
-        };
-
-        if (support.iterable) {
-            iterator[Symbol.iterator] = function() {
-                return iterator
-            };
-        }
-
-        return iterator
-    }
-
-    function Headers(headers) {
-        this.map = {};
-
-        if (headers instanceof Headers) {
-            headers.forEach(function(value, name) {
-                this.append(name, value);
-            }, this);
-        } else if (Array.isArray(headers)) {
-            headers.forEach(function(header) {
-                this.append(header[0], header[1]);
-            }, this);
-        } else if (headers) {
-            Object.getOwnPropertyNames(headers).forEach(function(name) {
-                this.append(name, headers[name]);
-            }, this);
-        }
-    }
-
-    Headers.prototype.append = function(name, value) {
-        name = normalizeName(name);
-        value = normalizeValue(value);
-        var oldValue = this.map[name];
-        this.map[name] = oldValue ? oldValue + ', ' + value : value;
-    };
-
-    Headers.prototype['delete'] = function(name) {
-        delete this.map[normalizeName(name)];
-    };
-
-    Headers.prototype.get = function(name) {
-        name = normalizeName(name);
-        return this.has(name) ? this.map[name] : null
-    };
-
-    Headers.prototype.has = function(name) {
-        return this.map.hasOwnProperty(normalizeName(name))
-    };
-
-    Headers.prototype.set = function(name, value) {
-        this.map[normalizeName(name)] = normalizeValue(value);
-    };
-
-    Headers.prototype.forEach = function(callback, thisArg) {
-        for (var name in this.map) {
-            if (this.map.hasOwnProperty(name)) {
-                callback.call(thisArg, this.map[name], name, this);
-            }
-        }
-    };
-
-    Headers.prototype.keys = function() {
-        var items = [];
-        this.forEach(function(value, name) {
-            items.push(name);
-        });
-        return iteratorFor(items)
-    };
-
-    Headers.prototype.values = function() {
-        var items = [];
-        this.forEach(function(value) {
-            items.push(value);
-        });
-        return iteratorFor(items)
-    };
-
-    Headers.prototype.entries = function() {
-        var items = [];
-        this.forEach(function(value, name) {
-            items.push([name, value]);
-        });
-        return iteratorFor(items)
-    };
-
-    if (support.iterable) {
-        Headers.prototype[Symbol.iterator] = Headers.prototype.entries;
-    }
-
-    function consumed(body) {
-        if (body.bodyUsed) {
-            return Promise.reject(new TypeError('Already read'))
-        }
-        body.bodyUsed = true;
-    }
-
-    function fileReaderReady(reader) {
-        return new Promise(function(resolve, reject) {
-            reader.onload = function() {
-                resolve(reader.result);
-            };
-            reader.onerror = function() {
-                reject(reader.error);
-            };
-        })
-    }
-
-    function readBlobAsArrayBuffer(blob) {
-        var reader = new FileReader();
-        var promise = fileReaderReady(reader);
-        reader.readAsArrayBuffer(blob);
-        return promise
-    }
-
-    function readBlobAsText(blob) {
-        var reader = new FileReader();
-        var promise = fileReaderReady(reader);
-        reader.readAsText(blob);
-        return promise
-    }
-
-    function readArrayBufferAsText(buf) {
-        var view = new Uint8Array(buf);
-        var chars = new Array(view.length);
-
-        for (var i = 0; i < view.length; i++) {
-            chars[i] = String.fromCharCode(view[i]);
-        }
-        return chars.join('')
-    }
-
-    function bufferClone(buf) {
-        if (buf.slice) {
-            return buf.slice(0)
-        } else {
-            var view = new Uint8Array(buf.byteLength);
-            view.set(new Uint8Array(buf));
-            return view.buffer
-        }
-    }
-
-    function Body() {
-        this.bodyUsed = false;
-
-        this._initBody = function(body) {
-            /*
-              fetch-mock wraps the Response object in an ES6 Proxy to
-              provide useful test harness features such as flush. However, on
-              ES5 browsers without fetch or Proxy support pollyfills must be used;
-              the proxy-pollyfill is unable to proxy an attribute unless it exists
-              on the object before the Proxy is created. This change ensures
-              Response.bodyUsed exists on the instance, while maintaining the
-              semantic of setting Request.bodyUsed in the constructor before
-              _initBody is called.
-            */
-            this.bodyUsed = this.bodyUsed;
-            this._bodyInit = body;
-            if (!body) {
-                this._bodyText = '';
-            } else if (typeof body === 'string') {
-                this._bodyText = body;
-            } else if (support.blob && Blob.prototype.isPrototypeOf(body)) {
-                this._bodyBlob = body;
-            } else if (support.formData && FormData.prototype.isPrototypeOf(body)) {
-                this._bodyFormData = body;
-            } else if (support.searchParams && URLSearchParams.prototype.isPrototypeOf(body)) {
-                this._bodyText = body.toString();
-            } else if (support.arrayBuffer && support.blob && isDataView(body)) {
-                this._bodyArrayBuffer = bufferClone(body.buffer);
-                // IE 10-11 can't handle a DataView body.
-                this._bodyInit = new Blob([this._bodyArrayBuffer]);
-            } else if (support.arrayBuffer && (ArrayBuffer.prototype.isPrototypeOf(body) || isArrayBufferView(body))) {
-                this._bodyArrayBuffer = bufferClone(body);
-            } else {
-                this._bodyText = body = Object.prototype.toString.call(body);
-            }
-
-            if (!this.headers.get('content-type')) {
-                if (typeof body === 'string') {
-                    this.headers.set('content-type', 'text/plain;charset=UTF-8');
-                } else if (this._bodyBlob && this._bodyBlob.type) {
-                    this.headers.set('content-type', this._bodyBlob.type);
-                } else if (support.searchParams && URLSearchParams.prototype.isPrototypeOf(body)) {
-                    this.headers.set('content-type', 'application/x-www-form-urlencoded;charset=UTF-8');
-                }
-            }
-        };
-
-        if (support.blob) {
-            this.blob = function() {
-                var rejected = consumed(this);
-                if (rejected) {
-                    return rejected
-                }
-
-                if (this._bodyBlob) {
-                    return Promise.resolve(this._bodyBlob)
-                } else if (this._bodyArrayBuffer) {
-                    return Promise.resolve(new Blob([this._bodyArrayBuffer]))
-                } else if (this._bodyFormData) {
-                    throw new Error('could not read FormData body as blob')
-                } else {
-                    return Promise.resolve(new Blob([this._bodyText]))
-                }
-            };
-
-            this.arrayBuffer = function() {
-                if (this._bodyArrayBuffer) {
-                    var isConsumed = consumed(this);
-                    if (isConsumed) {
-                        return isConsumed
-                    }
-                    if (ArrayBuffer.isView(this._bodyArrayBuffer)) {
-                        return Promise.resolve(
-                            this._bodyArrayBuffer.buffer.slice(
-                                this._bodyArrayBuffer.byteOffset,
-                                this._bodyArrayBuffer.byteOffset + this._bodyArrayBuffer.byteLength
-                            )
-                        )
-                    } else {
-                        return Promise.resolve(this._bodyArrayBuffer)
-                    }
-                } else {
-                    return this.blob().then(readBlobAsArrayBuffer)
-                }
-            };
-        }
-
-        this.text = function() {
-            var rejected = consumed(this);
-            if (rejected) {
-                return rejected
-            }
-
-            if (this._bodyBlob) {
-                return readBlobAsText(this._bodyBlob)
-            } else if (this._bodyArrayBuffer) {
-                return Promise.resolve(readArrayBufferAsText(this._bodyArrayBuffer))
-            } else if (this._bodyFormData) {
-                throw new Error('could not read FormData body as text')
-            } else {
-                return Promise.resolve(this._bodyText)
-            }
-        };
-
-        if (support.formData) {
-            this.formData = function() {
-                return this.text().then(decode)
-            };
-        }
-
-        this.json = function() {
-            return this.text().then(JSON.parse)
-        };
-
-        return this
-    }
-
-    // HTTP methods whose capitalization should be normalized
-    var methods = ['DELETE', 'GET', 'HEAD', 'OPTIONS', 'POST', 'PUT'];
-
-    function normalizeMethod(method) {
-        var upcased = method.toUpperCase();
-        return methods.indexOf(upcased) > -1 ? upcased : method
-    }
-
-    function Request(input, options) {
-        if (!(this instanceof Request)) {
-            throw new TypeError('Please use the "new" operator, this DOM object constructor cannot be called as a function.')
-        }
-
-        options = options || {};
-        var body = options.body;
-
-        if (input instanceof Request) {
-            if (input.bodyUsed) {
-                throw new TypeError('Already read')
-            }
-            this.url = input.url;
-            this.credentials = input.credentials;
-            if (!options.headers) {
-                this.headers = new Headers(input.headers);
-            }
-            this.method = input.method;
-            this.mode = input.mode;
-            this.signal = input.signal;
-            if (!body && input._bodyInit != null) {
-                body = input._bodyInit;
-                input.bodyUsed = true;
-            }
-        } else {
-            this.url = String(input);
-        }
-
-        this.credentials = options.credentials || this.credentials || 'same-origin';
-        if (options.headers || !this.headers) {
-            this.headers = new Headers(options.headers);
-        }
-        this.method = normalizeMethod(options.method || this.method || 'GET');
-        this.mode = options.mode || this.mode || null;
-        this.signal = options.signal || this.signal;
-        this.referrer = null;
-
-        if ((this.method === 'GET' || this.method === 'HEAD') && body) {
-            throw new TypeError('Body not allowed for GET or HEAD requests')
-        }
-        this._initBody(body);
-
-        if (this.method === 'GET' || this.method === 'HEAD') {
-            if (options.cache === 'no-store' || options.cache === 'no-cache') {
-                // Search for a '_' parameter in the query string
-                var reParamSearch = /([?&])_=[^&]*/;
-                if (reParamSearch.test(this.url)) {
-                    // If it already exists then set the value with the current time
-                    this.url = this.url.replace(reParamSearch, '$1_=' + new Date().getTime());
-                } else {
-                    // Otherwise add a new '_' parameter to the end with the current time
-                    var reQueryString = /\?/;
-                    this.url += (reQueryString.test(this.url) ? '&' : '?') + '_=' + new Date().getTime();
-                }
-            }
-        }
-    }
-
-    Request.prototype.clone = function() {
-        return new Request(this, {body: this._bodyInit})
-    };
-
-    function decode(body) {
-        var form = new FormData();
-        body
-            .trim()
-            .split('&')
-            .forEach(function(bytes) {
-                if (bytes) {
-                    var split = bytes.split('=');
-                    var name = split.shift().replace(/\+/g, ' ');
-                    var value = split.join('=').replace(/\+/g, ' ');
-                    form.append(decodeURIComponent(name), decodeURIComponent(value));
-                }
-            });
-        return form
-    }
-
-    function parseHeaders(rawHeaders) {
-        var headers = new Headers();
-        // Replace instances of \r\n and \n followed by at least one space or horizontal tab with a space
-        // https://tools.ietf.org/html/rfc7230#section-3.2
-        var preProcessedHeaders = rawHeaders.replace(/\r?\n[\t ]+/g, ' ');
-        preProcessedHeaders.split(/\r?\n/).forEach(function(line) {
-            var parts = line.split(':');
-            var key = parts.shift().trim();
-            if (key) {
-                var value = parts.join(':').trim();
-                headers.append(key, value);
-            }
-        });
-        return headers
-    }
-
-    Body.call(Request.prototype);
-
-    function Response(bodyInit, options) {
-        if (!(this instanceof Response)) {
-            throw new TypeError('Please use the "new" operator, this DOM object constructor cannot be called as a function.')
-        }
-        if (!options) {
-            options = {};
-        }
-
-        this.type = 'default';
-        this.status = options.status === undefined ? 200 : options.status;
-        this.ok = this.status >= 200 && this.status < 300;
-        this.statusText = 'statusText' in options ? options.statusText : '';
-        this.headers = new Headers(options.headers);
-        this.url = options.url || '';
-        this._initBody(bodyInit);
-    }
-
-    Body.call(Response.prototype);
-
-    Response.prototype.clone = function() {
-        return new Response(this._bodyInit, {
-            status: this.status,
-            statusText: this.statusText,
-            headers: new Headers(this.headers),
-            url: this.url
-        })
-    };
-
-    Response.error = function() {
-        var response = new Response(null, {status: 0, statusText: ''});
-        response.type = 'error';
-        return response
-    };
-
-    var redirectStatuses = [301, 302, 303, 307, 308];
-
-    Response.redirect = function(url, status) {
-        if (redirectStatuses.indexOf(status) === -1) {
-            throw new RangeError('Invalid status code')
-        }
-
-        return new Response(null, {status: status, headers: {location: url}})
-    };
-
-    exports.DOMException = global.DOMException;
-    try {
-        new exports.DOMException();
-    } catch (err) {
-        exports.DOMException = function(message, name) {
-            this.message = message;
-            this.name = name;
-            var error = Error(message);
-            this.stack = error.stack;
-        };
-        exports.DOMException.prototype = Object.create(Error.prototype);
-        exports.DOMException.prototype.constructor = exports.DOMException;
-    }
-
-    function fetch(input, init) {
-        return new Promise(function(resolve, reject) {
-            var request = new Request(input, init);
-
-            if (request.signal && request.signal.aborted) {
-                return reject(new exports.DOMException('Aborted', 'AbortError'))
-            }
-
-            var xhr = new XMLHttpRequest();
-
-            function abortXhr() {
-                xhr.abort();
-            }
-
-            xhr.onload = function() {
-                var options = {
-                    status: xhr.status,
-                    statusText: xhr.statusText,
-                    headers: parseHeaders(xhr.getAllResponseHeaders() || '')
-                };
-                options.url = 'responseURL' in xhr ? xhr.responseURL : options.headers.get('X-Request-URL');
-                var body = 'response' in xhr ? xhr.response : xhr.responseText;
-                setTimeout(function() {
-                    resolve(new Response(body, options));
-                }, 0);
-            };
-
-            xhr.onerror = function() {
-                setTimeout(function() {
-                    reject(new TypeError('Network request failed'));
-                }, 0);
-            };
-
-            xhr.ontimeout = function() {
-                setTimeout(function() {
-                    reject(new TypeError('Network request failed'));
-                }, 0);
-            };
-
-            xhr.onabort = function() {
-                setTimeout(function() {
-                    reject(new exports.DOMException('Aborted', 'AbortError'));
-                }, 0);
-            };
-
-            function fixUrl(url) {
-                try {
-                    return url === '' && global.location.href ? global.location.href : url
-                } catch (e) {
-                    return url
-                }
-            }
-
-            xhr.open(request.method, fixUrl(request.url), true);
-
-            if (request.credentials === 'include') {
-                xhr.withCredentials = true;
-            } else if (request.credentials === 'omit') {
-                xhr.withCredentials = false;
-            }
-
-            if ('responseType' in xhr) {
-                if (support.blob) {
-                    xhr.responseType = 'blob';
-                } else if (
-                    support.arrayBuffer &&
-                    request.headers.get('Content-Type') &&
-                    request.headers.get('Content-Type').indexOf('application/octet-stream') !== -1
-                ) {
-                    xhr.responseType = 'arraybuffer';
-                }
-            }
-
-            if (init && typeof init.headers === 'object' && !(init.headers instanceof Headers)) {
-                Object.getOwnPropertyNames(init.headers).forEach(function(name) {
-                    xhr.setRequestHeader(name, normalizeValue(init.headers[name]));
-                });
-            } else {
-                request.headers.forEach(function(value, name) {
-                    xhr.setRequestHeader(name, value);
-                });
-            }
-
-            if (request.signal) {
-                request.signal.addEventListener('abort', abortXhr);
-
-                xhr.onreadystatechange = function() {
-                    // DONE (success or failure)
-                    if (xhr.readyState === 4) {
-                        request.signal.removeEventListener('abort', abortXhr);
-                    }
-                };
-            }
-
-            xhr.send(typeof request._bodyInit === 'undefined' ? null : request._bodyInit);
-        })
-    }
-
-    fetch.polyfill = true;
-
-    if (!global.fetch) {
-        global.fetch = fetch;
-        global.Headers = Headers;
-        global.Request = Request;
-        global.Response = Response;
-    }
-
-    exports.Headers = Headers;
-    exports.Request = Request;
-    exports.Response = Response;
-    exports.fetch = fetch;
-
-    Object.defineProperty(exports, '__esModule', { value: true });
-
-})));
-
-
-//////////////////////////fetch-polyfill-ends////////////////////////////////////
-
-
-
-
 //////////////////////////Map-polyfill////////////////////////////////////
 
 /**
@@ -17164,7 +17362,7 @@ Popup.prototype.closeBtnId = function () {
                 } else {
                     throw 'Error: ' + typeof arg + 'is not a valid argument to Path';
                 }
-            };
+            }
 
             // TODO(jcgregorio) test for arcTo and implement via something.
 
@@ -17921,7 +18119,7 @@ Quadratic.prototype.solutionArray = function () {
     var b = this.b;
     var c = this.c;
 
-    var arr = new Array();
+    var arr = [];
 
 
     if ((Math.pow(b, 2) - 4 * a * c) >= 0) {
@@ -18403,7 +18601,7 @@ EllipseModel.prototype.area = function () {
  * @return the 2 possible x coordinates of that point in a number array.
  */
 EllipseModel.prototype.getX = function (y) {
-    var x = new Array();
+    var x = [];
     var evalYPart = Math.pow((y - this.center.y) / this.size.height, 2);
     x.push(this.center.x + this.size.width * sqrt(1 - evalYPart));
     x.push(this.center.x - this.size.width * sqrt(1 - evalYPart));
@@ -18417,7 +18615,7 @@ EllipseModel.prototype.getX = function (y) {
  * @return the 2 possible y coordinates of that point.
  */
 EllipseModel.prototype.getY = function (x) {
-    var y = new Array();
+    var y = [];
 
     var evalXPart = pow((x - this.center.x) / this.size.width, 2);
 
@@ -18494,7 +18692,7 @@ EllipseModel.prototype.contains = function (p) {
  */
 EllipseModel.prototype.lineIntersection = function (line) {
     if (line.constructor.name === 'Line') {
-        var str = new Array();
+        var str = [];
         var m = line.m;
         var c = line.c;
 
@@ -18511,7 +18709,7 @@ EllipseModel.prototype.lineIntersection = function (line) {
             str[2] = String.valueOf(m * parseFloat(str1[0]) + c);
             str[3] = String.valueOf(m * parseFloat(str1[1]) + c);
 
-            var str1 = new Array();
+            var str1 = [];
 
             str1[0].push(str[0]);
             str1[1].push(str[2]);
@@ -18615,11 +18813,11 @@ EllipseModel.prototype.intersection = function (rect) {
     var b = getHeight();
 
 
-    var pts = new Array();
-    var p1 = new Array(new FloatPoint(), new FloatPoint());//intersection of the top line of the rectangle with the ellipse
-    var p2 = new Array(new FloatPoint(), new FloatPoint());//intersection of the bottom line  of the rectangle with the ellipse
-    var p3 = new Array(new FloatPoint(), new FloatPoint());//intersection of the left line  of the rectangle with the ellipse
-    var p4 = new Array(new FloatPoint(), new FloatPoint()); //intersection of the right line  of the rectangle with the ellipse
+    var pts = [];
+    var p1 = [new FloatPoint(), new FloatPoint()];//intersection of the top line of the rectangle with the ellipse
+    var p2 = [new FloatPoint(), new FloatPoint()];//intersection of the bottom line  of the rectangle with the ellipse
+    var p3 = [new FloatPoint(), new FloatPoint()];//intersection of the left line  of the rectangle with the ellipse
+    var p4 = [new FloatPoint(), new FloatPoint()]; //intersection of the right line  of the rectangle with the ellipse
     var val = 0;
 
     try {
@@ -18708,10 +18906,10 @@ EllipseModel.prototype.intersectsWith = function (rect) {
     var b = getHeight();
 
 
-    var p1 = new Array(new FloatPoint(), new FloatPoint());//intersection of the top line of the rectangle with the ellipse
-    var p2 = new Array(new FloatPoint(), new FloatPoint());//intersection of the bottom line  of the rectangle with the ellipse
-    var p3 = new Array(new FloatPoint(), new FloatPoint());//intersection of the left line  of the rectangle with the ellipse
-    var p4 = new Array(new FloatPoint(), new FloatPoint()); //intersection of the right line  of the rectangle with the ellipse
+    var p1 = [new FloatPoint(), new FloatPoint()];//intersection of the top line of the rectangle with the ellipse
+    var p2 = [new FloatPoint(), new FloatPoint()];//intersection of the bottom line  of the rectangle with the ellipse
+    var p3 = [new FloatPoint(), new FloatPoint()];//intersection of the left line  of the rectangle with the ellipse
+    var p4 = [new FloatPoint(), new FloatPoint()]; //intersection of the right line  of the rectangle with the ellipse
     var val = 0;
     var intersects1 = false;
     var intersects2 = false;
@@ -19332,7 +19530,7 @@ function Graphics(canvas) {
     //canvas = createHiDPICanvas(canvas , canvas.offsetWidth , canvas.offsetHeight, scaleFactor );
     this.ctx = canvas.getContext('2d');
 
-    codeForScale:{
+    {
         // Get the size of the canvas in CSS pixels.
         let canvasRect = canvas.getBoundingClientRect();
 
@@ -21912,7 +22110,7 @@ MysteryImage.prototype.baseDraw = function (w, h) {
 
         if (clashOccurred) {
             attempts++;
-            continue;
+
         } else {
             rects.push(r);
             g.setColor(this.fgColor);
@@ -22791,7 +22989,7 @@ Quadratic.prototype.solutionArray = function () {
     var b = this.b;
     var c = this.c;
 
-    var arr = new Array();
+    var arr = [];
 
 
     if ((Math.pow(b, 2) - 4 * a * c) >= 0) {
@@ -23273,7 +23471,7 @@ EllipseModel.prototype.area = function () {
  * @return the 2 possible x coordinates of that point in a number array.
  */
 EllipseModel.prototype.getX = function (y) {
-    var x = new Array();
+    var x = [];
     var evalYPart = Math.pow((y - this.center.y) / this.size.height, 2);
     x.push(this.center.x + this.size.width * sqrt(1 - evalYPart));
     x.push(this.center.x - this.size.width * sqrt(1 - evalYPart));
@@ -23287,7 +23485,7 @@ EllipseModel.prototype.getX = function (y) {
  * @return the 2 possible y coordinates of that point.
  */
 EllipseModel.prototype.getY = function (x) {
-    var y = new Array();
+    var y = [];
 
     var evalXPart = pow((x - this.center.x) / this.size.width, 2);
 
@@ -23364,7 +23562,7 @@ EllipseModel.prototype.contains = function (p) {
  */
 EllipseModel.prototype.lineIntersection = function (line) {
     if (line.constructor.name === 'Line') {
-        var str = new Array();
+        var str = [];
         var m = line.m;
         var c = line.c;
 
@@ -23381,7 +23579,7 @@ EllipseModel.prototype.lineIntersection = function (line) {
             str[2] = String.valueOf(m * parseFloat(str1[0]) + c);
             str[3] = String.valueOf(m * parseFloat(str1[1]) + c);
 
-            var str1 = new Array();
+            var str1 = [];
 
             str1[0].push(str[0]);
             str1[1].push(str[2]);
@@ -23485,11 +23683,11 @@ EllipseModel.prototype.intersection = function (rect) {
     var b = getHeight();
 
 
-    var pts = new Array();
-    var p1 = new Array(new FloatPoint(), new FloatPoint());//intersection of the top line of the rectangle with the ellipse
-    var p2 = new Array(new FloatPoint(), new FloatPoint());//intersection of the bottom line  of the rectangle with the ellipse
-    var p3 = new Array(new FloatPoint(), new FloatPoint());//intersection of the left line  of the rectangle with the ellipse
-    var p4 = new Array(new FloatPoint(), new FloatPoint()); //intersection of the right line  of the rectangle with the ellipse
+    var pts = [];
+    var p1 = [new FloatPoint(), new FloatPoint()];//intersection of the top line of the rectangle with the ellipse
+    var p2 = [new FloatPoint(), new FloatPoint()];//intersection of the bottom line  of the rectangle with the ellipse
+    var p3 = [new FloatPoint(), new FloatPoint()];//intersection of the left line  of the rectangle with the ellipse
+    var p4 = [new FloatPoint(), new FloatPoint()]; //intersection of the right line  of the rectangle with the ellipse
     var val = 0;
 
     try {
@@ -23578,10 +23776,10 @@ EllipseModel.prototype.intersectsWith = function (rect) {
     var b = getHeight();
 
 
-    var p1 = new Array(new FloatPoint(), new FloatPoint());//intersection of the top line of the rectangle with the ellipse
-    var p2 = new Array(new FloatPoint(), new FloatPoint());//intersection of the bottom line  of the rectangle with the ellipse
-    var p3 = new Array(new FloatPoint(), new FloatPoint());//intersection of the left line  of the rectangle with the ellipse
-    var p4 = new Array(new FloatPoint(), new FloatPoint()); //intersection of the right line  of the rectangle with the ellipse
+    var p1 = [new FloatPoint(), new FloatPoint()];//intersection of the top line of the rectangle with the ellipse
+    var p2 = [new FloatPoint(), new FloatPoint()];//intersection of the bottom line  of the rectangle with the ellipse
+    var p3 = [new FloatPoint(), new FloatPoint()];//intersection of the left line  of the rectangle with the ellipse
+    var p4 = [new FloatPoint(), new FloatPoint()]; //intersection of the right line  of the rectangle with the ellipse
     var val = 0;
     var intersects1 = false;
     var intersects2 = false;
@@ -23851,7 +24049,6 @@ let getTextSize = function (text, font) {
 };
 
 
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bridged Worker... https://github.com/blittle/bridged-worker, originally authored at https://gist.github.com/d1manson/6714892
 var BuildBridgedWorker = function (workerFunction, workerExportNames, mainExportNames, mainExportHandles) {
@@ -23884,7 +24081,7 @@ var BuildBridgedWorker = function (workerFunction, workerExportNames, mainExport
     extraWorkerStr.push("if(e.data.foo in foos) \n  foos[e.data.foo].apply(null, e.data.args); \n else \n throw(new Error('Main thread requested function ' + e.data.foo + '. But it is not available.'));\n");
     extraWorkerStr.push("\n};\n");
 
-    var fullWorkerStr = baseWorkerStr + "\n\n/*==== STUFF ADDED BY BuildBridgeWorker ==== */\n\n" + extraWorkerStr.join("");
+    var fullWorkerStr = baseWorkerStr + "\n\n/*==== AUTO-GENERATED-CODE ==== */\n\n" + extraWorkerStr.join("");
 
     // create the worker
     var blob;
@@ -23937,4 +24134,5 @@ var BuildBridgedWorker = function (workerFunction, workerExportNames, mainExport
 
     return ret; //we return an object which lets the main thread call the worker.  The object will take care of the communication in the other direction.
 };
-    /////////////////////////////////////Bridged-Worker Ends/////////////////////////////////////////////////////
+
+/////////////////////////////////////Bridged-Worker Ends/////////////////////////////////////////////////////
