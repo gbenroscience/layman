@@ -20,6 +20,8 @@ What problem does **_layman_** solve?
 content without having to create additional xml files, or having to learn the syntax of android xml.
 In **_layman_**, no new xml files are created.
 
+Modular design has also been added, with the addition of client-side includes for `tags > 0.1.1`.
+
 #### NOTE:
 
 `layman.js` includes a merge of original project files with the following files(**with attribution)**,
@@ -418,3 +420,51 @@ are both
 ids of html elements on the page.
 
 [Here is the former example that uses the `onLayoutComplete` function, but with its constraints abstracted into a JS object](https://gbenroscience.github.io/layman/layoutstyles.html)
+
+### Modular design.
+
+For `tags > v0.1.1`, you can now use client-side includes in your design.
+Page sections can be defined in other files and referenced via the `src` attribute...e.g.
+
+```HTML
+<div id="profile-section" data-const="w: 30%;h:300px;src="/path/to/profile.html"></div>
+```
+Define the path relative to the current html document.
+
+When using client side includes, you can only use inline constraints within the included files.
+You cannot use the 
+```javascript
+layoutCode = function () {}
+```
+ as for the main document.
+ 
+### Modular Popups
+Using client-side includes, you can define sub-layouts that will be used to create modular popups also.
+For instance:
+```HTML
+<div id="success-popup" data-const="w: 30%;h:300px;src="/path/to/popup.html;popup:true"></div>
+```
+Notice the `popup:true;` that needs to be added in addition to the `src` attribute for popups.
+This is the only difference between showing popups and rendering included files within the page.
+To show your popup, use the global `page` object and call `openPopup` like so:
+
+```Javascript
+ var popup = page.openPopup('success-popup');
+```
+
+Store the reference to the popup, so you can use it when you want to close it.
+
+To close the popup, do:
+```Javascript
+ page.closePopup(popup);
+```
+
+Or:
+```Javascript
+popup.hide();
+```
+
+## Nested Includes Disallowed
+When using included files, do not define additional includes in includes. We do not support
+nested includes for performance reasons.
+If a good case can be made for it, we will include its support.

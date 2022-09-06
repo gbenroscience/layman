@@ -604,7 +604,15 @@ Page.prototype.openPopup = function(popupId){
         height: r.height,
         bg: "#fff"
     });
-    popup.open();
+    return popup.open();
+};
+
+/**
+ * Close a popup
+ * @param popup The popup.
+ */
+Page.prototype.closePopup = function(popup){
+    popup.hide();
 };
 
 /**
@@ -7668,10 +7676,11 @@ Popup.prototype.hide = function () {
 
     removeClass(document.body, this.noScrollStyle.name.substring(1));
     this.onClose();
+    return this;
 };
 
 Popup.prototype.open = function () {
-    this.build();
+   return this.build();
 };
 Popup.prototype.build = function () {
 
@@ -7740,6 +7749,7 @@ Popup.prototype.build = function () {
 
     addClass(document.body, this.noScrollStyle.name.substring(1));
     popup.onOpen();
+    return popup;
 };
 
 

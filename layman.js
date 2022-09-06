@@ -2963,6 +2963,7 @@ View.prototype.setLeftAlignSE = function (view1, marginLeft, view2, priority, co
 };
 
 
+
 /**
  * Sets the right align constraint for a right-right(end-end) align situation...works with pixels, percents
  * @param {string} view1 The view whose right is being constrained
@@ -7639,10 +7640,11 @@ Popup.prototype.hide = function () {
 
     removeClass(document.body, this.noScrollStyle.name.substring(1));
     this.onClose();
+    return this;
 };
 
 Popup.prototype.open = function () {
-    this.build();
+   return this.build();
 };
 Popup.prototype.build = function () {
 
@@ -7711,6 +7713,7 @@ Popup.prototype.build = function () {
 
     addClass(document.body, this.noScrollStyle.name.substring(1));
     popup.onOpen();
+    return popup;
 };
 
 
