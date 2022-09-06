@@ -299,7 +299,6 @@ Page.prototype.layout = function () {
         this.layoutFromTags(this.rootElement);
     }
 };
-
 /**
  *
  * @param {HTMLElement} node
@@ -584,8 +583,10 @@ Page.prototype.hideRoot = function () {
 /**
  *
  * @param popupId The id of the popup.
+ * @param closeOnClickOutSide If true, will close the popup if the user clicks outside its layout(on the overlay).
+ * @return {Popup}
  */
-Page.prototype.openPopup = function(popupId){
+Page.prototype.openPopup = function(popupId, closeOnClickOutSide){
     let pg = this;
     let ppData = this.popups.get(popupId);
 
@@ -599,9 +600,18 @@ Page.prototype.openPopup = function(popupId){
         layout: html,
         width: r.width,
         height: r.height,
+        closeOnClickOutside: typeof closeOnClickOutSide === "boolean" ? closeOnClickOutSide : false,
         bg: "#fff"
     });
-    popup.open();
+    return popup.open();
+};
+
+/**
+ * Close a popup
+ * @param popup The popup.
+ */
+Page.prototype.closePopup = function(popup){
+    popup.hide();
 };
 
 /**
@@ -7423,7 +7433,7 @@ function getUrls() {
         let ender = 'layman.js';
         let fullLen = src.length;
         let endLen = ender.length;
-        //check if script.src ends with layit.js
+        //check if script.src ends with script file name
         if (src.lastIndexOf(ender) === fullLen - endLen) {
             scriptURL = src.substring(0, fullLen - endLen);
 
@@ -7461,7 +7471,7 @@ var popupZIndex = 1000;
     height : '6em',
     layout: '<div>...</div>',
     bg: '#ffffff',
-
+    closeOnClickOutside: true|false,
     containerStyle: {
       width: 23%,
       border-radius : 1em,
@@ -7515,6 +7525,10 @@ function Popup(options) {
         this.layout = options.layout;
     } else {
         throw new Error('Please supply the name of the xml layout');
+    }
+    this.closeOnClickOutside = true;
+    if(typeof options.closeOnClickOutside === "boolean"){
+        this.closeOnClickOutside = options.closeOnClickOutside;
     }
 
 
@@ -7649,8 +7663,8 @@ Popup.prototype.hide = function () {
 };
 
 Popup.prototype.open = function () {
-   this.build();
-   return this;
+    this.build();
+    return this;
 };
 Popup.prototype.build = function () {
 
@@ -7671,7 +7685,9 @@ Popup.prototype.build = function () {
 
     overlay.style.display = 'block';
     overlay.onclick = function () {
-        popup.hide();
+        if(popup.closeOnClickOutside){
+            popup.hide();
+        }
     };
 
 
@@ -7713,7 +7729,6 @@ Popup.prototype.build = function () {
 
         let p = new Page(dialog);
         p.layout();
-
         page.subPages.set(dialog.id, p);
     }
 

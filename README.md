@@ -451,6 +451,12 @@ To show your popup, use the global `page` object and call `openPopup` like so:
 ```Javascript
  var popup = page.openPopup('success-popup');
 ```
+OR
+```Javascript
+ var popup = page.openPopup('success-popup', true);
+```
+The second argument tells the library if you want the popup to be dismissed when the user clicks
+outside its layout.
 
 Store the reference to the popup, so you can use it when you want to close it.
 
@@ -465,6 +471,6 @@ popup.hide();
 ```
 
 ## Nested Includes Disallowed
-When using included files, do not define additional includes in includes. We do not support
+When using included files, do not define additional includes in included files. We do not support
 nested includes for performance reasons.
 If a good case can be made for it, we will include its support.
