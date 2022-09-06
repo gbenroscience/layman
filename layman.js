@@ -288,13 +288,18 @@ function enforceIdOnChildElements(node) {
 }
 
 Page.prototype.layout = function () {
-    let layoutObj = layoutCode();
-    if (layoutObj) {
-        this.layoutFromSheet(this.rootElement);
-    } else {
+    if(this === page) {
+        let layoutObj = layoutCode();
+        if (layoutObj) {
+            this.layoutFromSheet(this.rootElement);
+        } else {
+            this.layoutFromTags(this.rootElement);
+        }
+    }else{
         this.layoutFromTags(this.rootElement);
     }
 };
+
 /**
  *
  * @param {HTMLElement} node
@@ -7644,7 +7649,8 @@ Popup.prototype.hide = function () {
 };
 
 Popup.prototype.open = function () {
-   return this.build();
+   this.build();
+   return this;
 };
 Popup.prototype.build = function () {
 
@@ -7713,7 +7719,7 @@ Popup.prototype.build = function () {
 
     addClass(document.body, this.noScrollStyle.name.substring(1));
     popup.onOpen();
-    return popup;
+    return this;
 };
 
 
