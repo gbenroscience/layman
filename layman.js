@@ -7345,37 +7345,30 @@ Style.prototype.getValue = function (attr) {
 
 };
 
-
 /**
- * Credits to http://www.alexandre-gomes.com/?p=115
+ * Credits to http://jsfiddle.net/slavafomin/tsrmgcu9/
  * @return {number}
  */
 function getScrollBarWidth() {
-    let inner = document.createElement('p');
-    inner.style.width = "100%";
-    inner.style.height = "200px";
+    // Creating invisible container
+    var outer = document.createElement('div');
+    outer.style.visibility = 'hidden';
+    outer.style.overflow = 'scroll'; // forcing scrollbar to appear
+    outer.style.msOverflowStyle = 'scrollbar'; // needed for WinJS apps
+    document.body.appendChild(outer);
 
-    let outer = document.createElement('div');
-    outer.style.position = "absolute";
-    outer.style.top = "0px";
-    outer.style.left = "0px";
-    outer.style.visibility = "hidden";
-    outer.style.width = "200px";
-    outer.style.height = "150px";
-    outer.style.overflow = "hidden";
+    // Creating inner element and placing it in the container
+    var inner = document.createElement('div');
     outer.appendChild(inner);
 
-    document.body.appendChild(outer);
-    let w1 = inner.offsetWidth;
-    outer.style.overflow = 'scroll';
-    let w2 = inner.offsetWidth;
-    if (w1 === w2) {
-        w2 = outer.clientWidth;
-    }
+    // Calculating difference between container's full width and the child width
+    var scrollbarWidth = (outer.offsetWidth - inner.offsetWidth);
 
-    document.body.removeChild(outer);
+    // Removing temporary elements from the DOM
+    outer.parentNode.removeChild(outer);
 
-    return (w1 - w2);
+    return scrollbarWidth;
+
 }
 
 
