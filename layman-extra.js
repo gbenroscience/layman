@@ -19577,7 +19577,7 @@ function Graphics(canvas) {
     this.height = canvas.height;
 
     // For quick reuse when drawing many pixels
-    this.cache1PixelImage = this.createImageData(1, 1);
+    this.cachePixelImage = this.createImageData(1, 1);
 }
 
 
@@ -20961,12 +20961,48 @@ Graphics.prototype.drawPixel = function (x, y, r, g, b, a) {
         g = g ? g : 0;
         b = b ? b : 0;
         a = a ? a : 0;
-        let data = this.cache1PixelImage.data;
+        if (this.cachePixelImage.width !== 1 || this.cachePixelImage.height !== 1) {
+            this.cachePixelImage = this.createImageData(1, 1);
+        }
+        let data = this.cachePixelImage.data;
         data[0] = r;
         data[1] = g;
         data[2] = b;
         data[3] = a;
-        this.ctx.putImageData(this.cache1PixelImage, x, y);
+        this.ctx.putImageData(this.cachePixelImage, x, y);
+    }
+};
+
+/**
+ * @param {number} x The horizontal coordinates where are drawing the pixel
+ * @param {number} y The vertical coordinates where we are drawing the pixel
+ * @param {number} r Optional The red component of the color (0-255)
+ * @param {number} g Optional The green component of the color (0-255)
+ * @param {number} b Optional The blue component of the color (0-255)
+ * @param {number} a Optional The alpha component of the color (0-255)
+ */
+Graphics.prototype.drawDoublePixel = function (x, y, r, g, b, a) {
+    if (typeof x === 'number' && typeof y === 'number') {
+        r = r ? r : 0;
+        g = g ? g : 0;
+        b = b ? b : 0;
+        a = a ? a : 0;
+        if (this.cachePixelImage.width !== 2 || this.cachePixelImage.height !== 2) {
+            this.cachePixelImage = this.createImageData(2, 2);
+        }
+
+        let data = this.cachePixelImage.data;
+        data[0] = r;
+        data[1] = g;
+        data[2] = b;
+        data[3] = a;
+
+        data[4] = r;
+        data[5] = g;
+        data[6] = b;
+        data[7] = a;
+
+        this.ctx.putImageData(this.cachePixelImage, x, y);
     }
 };
 
