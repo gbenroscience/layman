@@ -8,7 +8,7 @@ styleSheet.setAttribute('type', 'text/css');
 
 let page;
 
-let projectURL , scriptURL;
+let projectURL, scriptURL;
 getUrls();
 console.log("projectURL: ", projectURL, " , scriptURL: ", scriptURL);
 /*
@@ -105,7 +105,7 @@ docReady(function () {
  * @param path The path to the popup's layout
  * @constructor
  */
-function RemoteLayoutData(path){
+function RemoteLayoutData(path) {
     /**
      * The path to the file that describes the sublayout of the include or popup
      */
@@ -288,14 +288,14 @@ function enforceIdOnChildElements(node) {
 }
 
 Page.prototype.layout = function () {
-    if(this === page) {
+    if (this === page) {
         let layoutObj = layoutCode();
         if (layoutObj) {
             this.layoutFromSheet(this.rootElement);
         } else {
             this.layoutFromTags(this.rootElement);
         }
-    }else{
+    } else {
         this.layoutFromTags(this.rootElement);
     }
 };
@@ -358,9 +358,9 @@ Page.prototype.layoutFromSheet = function (node) {
                 disPage.srcPaths.push(val);
                 disPage.sourcesLoaded = false;
                 let popupData = new RemoteLayoutData(val);
-                if(isPopup === true){
+                if (isPopup === true) {
                     disPage.popups.set(root.id, popupData);
-                }else{
+                } else {
                     disPage.includes.set(root.id, popupData);
                 }
             }
@@ -404,10 +404,10 @@ Page.prototype.layoutFromSheet = function (node) {
             if (view.topLevel === true) {
                 this.buildUI(view);
                 this.showRoot();
-                if(disPage.srcPaths.length > 0){
+                if (disPage.srcPaths.length > 0) {
                     var worker = BuildBridgedWorker(workerCode, ["loadAll"], ["layoutLoaded", "layoutError"], [layoutLoaded, layoutError]);
                     worker.loadAll(projectURL, disPage.srcPaths);
-                }else{
+                } else {
                     disPage.sourcesLoaded = true;
                 }
 
@@ -471,21 +471,21 @@ Page.prototype.layoutFromTags = function (node) {
                     disPage.sourcesLoaded = false;
                     src = val;
                 }
-                if(attr === attrKeys.layout_popup){
+                if (attr === attrKeys.layout_popup) {
                     isPopup = true;
                 }
             } else {
                 throw 'invalid constraint definition... no colon found in ' + con + " on " + root.id;
             }
         }
-       if(src){
-           let popupData = new RemoteLayoutData(src);
-           if(isPopup === true){
-               disPage.popups.set(root.id, popupData);
-           }else{
-               disPage.includes.set(root.id, popupData);
-           }
-       }
+        if (src) {
+            let popupData = new RemoteLayoutData(src);
+            if (isPopup === true) {
+                disPage.popups.set(root.id, popupData);
+            } else {
+                disPage.includes.set(root.id, popupData);
+            }
+        }
 
         let view;
 
@@ -526,10 +526,10 @@ Page.prototype.layoutFromTags = function (node) {
             if (view.topLevel === true) {
                 this.buildUI(view);
                 this.showRoot();
-                if(disPage.srcPaths.length > 0){
+                if (disPage.srcPaths.length > 0) {
                     var worker = BuildBridgedWorker(workerCode, ["loadAll"], ["layoutLoaded", "layoutError"], [layoutLoaded, layoutError]);
                     worker.loadAll(projectURL, disPage.srcPaths);
-                }else{
+                } else {
                     disPage.sourcesLoaded = true;
                 }
             }
@@ -547,7 +547,7 @@ Page.prototype.buildUI = function (rootView) {
             autoLayout(v.htmlNode === document.body ? undefined : v.htmlNode, v.layoutChildren(page));
             v.childrenIds.forEach(function (id) {
                 let cv = page.viewMap.get(id);
-                if(cv.isPopup()){
+                if (cv.isPopup()) {
                     pops.push(cv);
                 }
                 if (cv.hasBgImage) {
@@ -594,14 +594,14 @@ Page.prototype.hideRoot = function () {
  * @param closeOnClickOutSide If true, will close the popup if the user clicks outside its layout(on the overlay).
  * @return {Popup}
  */
-Page.prototype.openPopup = function(popupId, closeOnClickOutSide){
+Page.prototype.openPopup = function (popupId, closeOnClickOutSide) {
     let pg = this;
     let ppData = this.popups.get(popupId);
 
     let html = this.sources.get(ppData.path);
     let r = ppData.rect;
-    if(!r || !r.width || !r.height){
-        throw 'specify width or height on popup: '+popupId;
+    if (!r || !r.width || !r.height) {
+        throw 'specify width or height on popup: ' + popupId;
     }
     let popup = new Popup({
         id: popupId,
@@ -618,7 +618,7 @@ Page.prototype.openPopup = function(popupId, closeOnClickOutSide){
  * Close a popup
  * @param popup The popup.
  */
-Page.prototype.closePopup = function(popup){
+Page.prototype.closePopup = function (popup) {
     popup.hide();
 };
 
@@ -628,7 +628,7 @@ Page.prototype.closePopup = function(popup){
  * @param includeID The id of the layout that the included html will be attached to
  * @param htmlContent The html sublayout
  */
-Page.prototype.renderInclude = function(includeID,htmlContent){
+Page.prototype.renderInclude = function (includeID, htmlContent) {
     let layoutData = this.includes.get(includeID);
     let path = layoutData.path;
     let html = !htmlContent ? this.sources.get(path) : htmlContent;
@@ -641,7 +641,7 @@ Page.prototype.renderInclude = function(includeID,htmlContent){
 
 var workerCode = function () {
 
-    function loadAll(basePath,files) {
+    function loadAll(basePath, files) {
         loadFiles(basePath, files, 0);
     }
 
@@ -663,7 +663,7 @@ var workerCode = function () {
 
     function loadFile(basePath, layoutFile, callback) {
 
-        const absolute = new URL( layoutFile, basePath )
+        const absolute = new URL(layoutFile, basePath)
         fetch(absolute, {
             credentials: 'same-origin'
         }).then(function (response) {
@@ -680,7 +680,7 @@ var workerCode = function () {
         });
     }
 
-//////////////////////////Promise-polyfill/////////////////////////////
+    //////////////////////////Promise-polyfill/////////////////////////////
     !function (e, t) {
         "object" == typeof exports && "undefined" != typeof module ? t() : "function" == typeof define && define.amd ? define(t) : t()
     }(0, function () {
@@ -707,10 +707,10 @@ var workerCode = function () {
                         if ("function" == typeof f) return void f.call(n, function (t) {
                             o(e, t)
                         }, function (n) {
-                            r[e] = {status: "rejected", reason: n}, 0 == --i && t(r)
+                            r[e] = { status: "rejected", reason: n }, 0 == --i && t(r)
                         })
                     }
-                    r[e] = {status: "fulfilled", value: n}, 0 == --i && t(r)
+                    r[e] = { status: "fulfilled", value: n }, 0 == --i && t(r)
                 }
 
                 if (!e || "undefined" == typeof e.length) return n(new TypeError(typeof e + " " + e + " is not iterable(cannot read property Symbol(Symbol.iterator))"));
@@ -851,10 +851,10 @@ var workerCode = function () {
         "function" != typeof s.Promise ? s.Promise = r : (s.Promise.prototype["finally"] || (s.Promise.prototype["finally"] = e), s.Promise.allSettled || (s.Promise.allSettled = t))
     });
 
-//////////////////////////Promise-polyfill-ends/////////////////////////////
+    //////////////////////////Promise-polyfill-ends/////////////////////////////
 
 
-//////////////////////////fetch-polyfill////////////////////////////////////
+    //////////////////////////fetch-polyfill////////////////////////////////////
     (function (global, factory) {
         typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
             typeof define === 'function' && define.amd ? define(['exports'], factory) :
@@ -928,7 +928,7 @@ var workerCode = function () {
             var iterator = {
                 next: function () {
                     var value = items.shift();
-                    return {done: value === undefined, value: value}
+                    return { done: value === undefined, value: value }
                 }
             };
 
@@ -1255,7 +1255,7 @@ var workerCode = function () {
         }
 
         Request.prototype.clone = function () {
-            return new Request(this, {body: this._bodyInit})
+            return new Request(this, { body: this._bodyInit })
         };
 
         function decode(body) {
@@ -1321,7 +1321,7 @@ var workerCode = function () {
         };
 
         Response.error = function () {
-            var response = new Response(null, {status: 0, statusText: ''});
+            var response = new Response(null, { status: 0, statusText: '' });
             response.type = 'error';
             return response
         };
@@ -1333,7 +1333,7 @@ var workerCode = function () {
                 throw new RangeError('Invalid status code')
             }
 
-            return new Response(null, {status: status, headers: {location: url}})
+            return new Response(null, { status: status, headers: { location: url } })
         };
 
         exports.DOMException = global.DOMException;
@@ -1462,19 +1462,19 @@ var workerCode = function () {
         exports.Response = Response;
         exports.fetch = fetch;
 
-        Object.defineProperty(exports, '__esModule', {value: true});
+        Object.defineProperty(exports, '__esModule', { value: true });
 
     })));
 
-//////////////////////////fetch-polyfill-ends////////////////////////////////////
+    //////////////////////////fetch-polyfill-ends////////////////////////////////////
 };
 
 var layoutLoaded = function (filePath, htmlContent, allLoaded) {
-  //  console.log('layoutLoaded:--> ', 'filepath: ', filePath, ", layout: ", htmlContent, ", allLoaded: ", allLoaded);
+    //  console.log('layoutLoaded:--> ', 'filepath: ', filePath, ", layout: ", htmlContent, ", allLoaded: ", allLoaded);
     page.sources.set(filePath, htmlContent);
-    page.includes.forEach(function(layoutData, id){
-        if(layoutData.consumed === false){
-            if(layoutData.path === filePath){
+    page.includes.forEach(function (layoutData, id) {
+        if (layoutData.consumed === false) {
+            if (layoutData.path === filePath) {
                 page.renderInclude(id, htmlContent);
                 layoutData.consumed = true;
             }
@@ -1559,7 +1559,7 @@ function autoLayout(parentElm, constraints) {
     let AutoLayout = window.AutoLayout;
     let view = new AutoLayout.View();
     if (isVisualFormat === true) {
-        view.addConstraints(AutoLayout.VisualFormat.parse(constraints, {extended: true}));
+        view.addConstraints(AutoLayout.VisualFormat.parse(constraints, { extended: true }));
     } else if (isOptionsFormat) {
         view.addConstraints(constraints);
     } else {
@@ -1739,7 +1739,7 @@ function View(page, node, refIds, parentId) {
             horMarginDiff: function () {
                 let s = parseNumberAndUnitsNoValidation(this.start, true);
                 let e = parseNumberAndUnitsNoValidation(this.end, true);
-               // console.log((parseFloat(s.number) - parseFloat(e.number)) + s.units);
+                // console.log((parseFloat(s.number) - parseFloat(e.number)) + s.units);
                 if (!this.horUnitsSame) {
                     throw 'start and end margins must be same when using `cx, scx, cxs` etc.'
                 }
@@ -1809,7 +1809,7 @@ function View(page, node, refIds, parentId) {
             this.margins.bottom = 0;
         }
 
-        enforceSameUnitsOnMargins:{
+        enforceSameUnitsOnMargins: {
             let ms = parseNumberAndUnitsNoValidation(this.margins.start, true);
             let me = parseNumberAndUnitsNoValidation(this.margins.end, true);
             let mt = parseNumberAndUnitsNoValidation(this.margins.top, true);
@@ -2027,9 +2027,9 @@ function isDimensionRatio(val) {
     return arr.length === 2 && !isNaN(arr[0]) && !isNaN(arr[1]);
 }
 
-View.prototype.isPopup = function(){
+View.prototype.isPopup = function () {
     let check = this.refIds.get(attrKeys.layout_popup);
-    return typeof check !== "undefined" && (check === true || check === 'true') ;
+    return typeof check !== "undefined" && (check === true || check === 'true');
 };
 
 View.prototype.makeBgImage = function () {
@@ -2453,7 +2453,7 @@ View.prototype.layoutChildren = function (page) {
         let hiddenViewForWidthId = undefined;
         let hiddenViewForHeightId = undefined;
 
-//scx, ecx, cxs, cxe,|
+        //scx, ecx, cxs, cxe,|
         if (idnpWid.defaultUsed) {//user specified no priority
             if ((ss && ee) || (ss && es) || (ss && ecx) || (se && ee) || (se && es) || (se && ecx) ||
                 (scx && ee) || (scx && es) || (scx && ecx)) {
@@ -2504,7 +2504,7 @@ View.prototype.layoutChildren = function (page) {
         let idnpHei = this.getValueAndPriority(h);
         h = idnpHei.id;
         let priorityHei = idnpHei.priority;
-//tcy, bcy, cyt, cyb
+        //tcy, bcy, cyt, cyb
         if (idnpHei.defaultUsed) {//user specified no priority
             if ((tt && bb) || (tt && bt) || (tt && bcy) || (tb && bb) || (tb && bt) || (tb && bcy) || (tcy && bb) || (tcy && bt) || (tcy && bcy)) {
                 if (parseInt(h) === 0) {
@@ -7413,13 +7413,13 @@ function parseNumberAndUnitsNoValidation(val, seeNoUnitsAsPx) {
         val = val + "";
     }
     if (typeof val !== "string") {
-        return {number: null, units: null};
+        return { number: null, units: null };
     }
     if (isNumber(val)) {
         if (seeNoUnitsAsPx && seeNoUnitsAsPx === true) {
-            return {number: val, units: "px"};
+            return { number: val, units: "px" };
         } else {
-            return {number: null, units: null};
+            return { number: null, units: null };
         }
     }
 
@@ -7437,12 +7437,12 @@ function parseNumberAndUnitsNoValidation(val, seeNoUnitsAsPx) {
     }
     let units = val.substring(i + 1);
     if (CssSizeUnitsValues.indexOf(units) === -1) {
-        return {number: null, units: null};
+        return { number: null, units: null };
     }
     if (!isNumber(number)) {
-        return {number: null, units: null};
+        return { number: null, units: null };
     }
-    return {number: number, units: units};
+    return { number: number, units: units };
 }
 
 
@@ -7548,7 +7548,7 @@ function Popup(options) {
         throw new Error('Please supply the name of the xml layout');
     }
     this.closeOnClickOutside = true;
-    if(typeof options.closeOnClickOutside === "boolean"){
+    if (typeof options.closeOnClickOutside === "boolean") {
         this.closeOnClickOutside = options.closeOnClickOutside;
     }
 
@@ -7706,7 +7706,7 @@ Popup.prototype.build = function () {
 
     overlay.style.display = 'block';
     overlay.onclick = function () {
-        if(popup.closeOnClickOutside){
+        if (popup.closeOnClickOutside) {
             popup.hide();
         }
     };
@@ -7714,7 +7714,7 @@ Popup.prototype.build = function () {
 
     if (dialog) {
         dialog.style.display = 'block';
-    }else{
+    } else {
         dialog = document.createElement('div');
         dialog.setAttribute("id", this.containerId());
         addClass(dialog, this.containerClass());
@@ -7987,7 +7987,7 @@ Popup.prototype.closeBtnId = function () {
 
             var shrinkChild = document.createElement('div');
             setStyle(shrinkChild, styleChild);
-            setStyle(shrinkChild, {width: '200%', height: '200%'});
+            setStyle(shrinkChild, { width: '200%', height: '200%' });
             shrink.appendChild(shrinkChild);
 
             element.resizeSensor.appendChild(expand);
@@ -8184,8 +8184,8 @@ Popup.prototype.closeBtnId = function () {
         return err;
     }
 
-// These values should NEVER change. If
-// they do, we're no longer making ulids!
+    // These values should NEVER change. If
+    // they do, we're no longer making ulids!
     var ENCODING = "0123456789ABCDEFGHJKMNPQRSTVWXYZ"; // Crockford's Base32
     var ENCODING_LEN = ENCODING.length;
     var TIME_MAX = Math.pow(2, 48) - 1;
@@ -8359,7 +8359,7 @@ Popup.prototype.closeBtnId = function () {
     exports.monotonicFactory = monotonicFactory;
     exports.ulid = ulid;
 
-    Object.defineProperty(exports, '__esModule', {value: true});
+    Object.defineProperty(exports, '__esModule', { value: true });
 
 })));
 
@@ -8413,7 +8413,7 @@ Popup.prototype.closeBtnId = function () {
                     var f = new Error("Cannot find module '" + o + "'");
                     throw f.code = "MODULE_NOT_FOUND", f
                 }
-                var l = n[o] = {exports: {}};
+                var l = n[o] = { exports: {} };
                 t[o][0].call(l.exports, function (e) {
                     var n = t[o][1][e];
                     return s(n ? n : e)
@@ -8534,12 +8534,12 @@ Popup.prototype.closeBtnId = function () {
                 function parse(input) {
                     var options = arguments.length > 1 ? arguments[1] : {},
                         peg$FAILED = {},
-                        peg$startRuleFunctions = {visualFormatString: peg$parsevisualFormatString},
+                        peg$startRuleFunctions = { visualFormatString: peg$parsevisualFormatString },
                         peg$startRuleFunction = peg$parsevisualFormatString,
                         peg$c0 = peg$FAILED,
                         peg$c1 = null,
                         peg$c2 = ":",
-                        peg$c3 = {type: "literal", value: ":", description: "\":\""},
+                        peg$c3 = { type: "literal", value: ":", description: "\":\"" },
                         peg$c4 = [],
                         peg$c5 = function peg$c5(o, superto, view, views, tosuper) {
                             return {
@@ -8548,87 +8548,87 @@ Popup.prototype.closeBtnId = function () {
                             };
                         },
                         peg$c6 = "H",
-                        peg$c7 = {type: "literal", value: "H", description: "\"H\""},
+                        peg$c7 = { type: "literal", value: "H", description: "\"H\"" },
                         peg$c8 = "V",
-                        peg$c9 = {type: "literal", value: "V", description: "\"V\""},
+                        peg$c9 = { type: "literal", value: "V", description: "\"V\"" },
                         peg$c10 = function peg$c10(orient) {
                             return orient == 'H' ? 'horizontal' : 'vertical';
                         },
                         peg$c11 = "|",
-                        peg$c12 = {type: "literal", value: "|", description: "\"|\""},
+                        peg$c12 = { type: "literal", value: "|", description: "\"|\"" },
                         peg$c13 = function peg$c13() {
-                            return {view: null};
+                            return { view: null };
                         },
                         peg$c14 = "[",
-                        peg$c15 = {type: "literal", value: "[", description: "\"[\""},
+                        peg$c15 = { type: "literal", value: "[", description: "\"[\"" },
                         peg$c16 = "]",
-                        peg$c17 = {type: "literal", value: "]", description: "\"]\""},
+                        peg$c17 = { type: "literal", value: "]", description: "\"]\"" },
                         peg$c18 = function peg$c18(view, predicates) {
-                            return extend(view, predicates ? {constraints: predicates} : {});
+                            return extend(view, predicates ? { constraints: predicates } : {});
                         },
                         peg$c19 = "-",
-                        peg$c20 = {type: "literal", value: "-", description: "\"-\""},
+                        peg$c20 = { type: "literal", value: "-", description: "\"-\"" },
                         peg$c21 = function peg$c21(predicateList) {
                             return predicateList;
                         },
                         peg$c22 = function peg$c22() {
-                            return [{relation: 'equ', constant: 'default', $parserOffset: offset()}];
+                            return [{ relation: 'equ', constant: 'default', $parserOffset: offset() }];
                         },
                         peg$c23 = "",
                         peg$c24 = function peg$c24() {
-                            return [{relation: 'equ', constant: 0, $parserOffset: offset()}];
+                            return [{ relation: 'equ', constant: 0, $parserOffset: offset() }];
                         },
                         peg$c25 = function peg$c25(n) {
-                            return [{relation: 'equ', constant: n, $parserOffset: offset()}];
+                            return [{ relation: 'equ', constant: n, $parserOffset: offset() }];
                         },
                         peg$c26 = "(",
-                        peg$c27 = {type: "literal", value: "(", description: "\"(\""},
+                        peg$c27 = { type: "literal", value: "(", description: "\"(\"" },
                         peg$c28 = ",",
-                        peg$c29 = {type: "literal", value: ",", description: "\",\""},
+                        peg$c29 = { type: "literal", value: ",", description: "\",\"" },
                         peg$c30 = ")",
-                        peg$c31 = {type: "literal", value: ")", description: "\")\""},
+                        peg$c31 = { type: "literal", value: ")", description: "\")\"" },
                         peg$c32 = function peg$c32(p, ps) {
                             return [p].concat(ps.map(function (p) {
                                 return p[1];
                             }));
                         },
                         peg$c33 = "@",
-                        peg$c34 = {type: "literal", value: "@", description: "\"@\""},
+                        peg$c34 = { type: "literal", value: "@", description: "\"@\"" },
                         peg$c35 = function peg$c35(r, o, p) {
-                            return extend({relation: 'equ'}, r || {}, o, p ? p[1] : {});
+                            return extend({ relation: 'equ' }, r || {}, o, p ? p[1] : {});
                         },
                         peg$c36 = "==",
-                        peg$c37 = {type: "literal", value: "==", description: "\"==\""},
+                        peg$c37 = { type: "literal", value: "==", description: "\"==\"" },
                         peg$c38 = function peg$c38() {
-                            return {relation: 'equ', $parserOffset: offset()};
+                            return { relation: 'equ', $parserOffset: offset() };
                         },
                         peg$c39 = "<=",
-                        peg$c40 = {type: "literal", value: "<=", description: "\"<=\""},
+                        peg$c40 = { type: "literal", value: "<=", description: "\"<=\"" },
                         peg$c41 = function peg$c41() {
-                            return {relation: 'leq', $parserOffset: offset()};
+                            return { relation: 'leq', $parserOffset: offset() };
                         },
                         peg$c42 = ">=",
-                        peg$c43 = {type: "literal", value: ">=", description: "\">=\""},
+                        peg$c43 = { type: "literal", value: ">=", description: "\">=\"" },
                         peg$c44 = function peg$c44() {
-                            return {relation: 'geq', $parserOffset: offset()};
+                            return { relation: 'geq', $parserOffset: offset() };
                         },
                         peg$c45 = /^[0-9]/,
-                        peg$c46 = {type: "class", value: "[0-9]", description: "[0-9]"},
+                        peg$c46 = { type: "class", value: "[0-9]", description: "[0-9]" },
                         peg$c47 = function peg$c47(digits) {
-                            return {priority: parseInt(digits.join(""), 10)};
+                            return { priority: parseInt(digits.join(""), 10) };
                         },
                         peg$c48 = function peg$c48(n) {
-                            return {constant: n};
+                            return { constant: n };
                         },
                         peg$c49 = /^[a-zA-Z_]/,
-                        peg$c50 = {type: "class", value: "[a-zA-Z_]", description: "[a-zA-Z_]"},
+                        peg$c50 = { type: "class", value: "[a-zA-Z_]", description: "[a-zA-Z_]" },
                         peg$c51 = /^[a-zA-Z0-9_]/,
-                        peg$c52 = {type: "class", value: "[a-zA-Z0-9_]", description: "[a-zA-Z0-9_]"},
+                        peg$c52 = { type: "class", value: "[a-zA-Z0-9_]", description: "[a-zA-Z0-9_]" },
                         peg$c53 = function peg$c53(f, v) {
-                            return {view: f + v};
+                            return { view: f + v };
                         },
                         peg$c54 = ".",
-                        peg$c55 = {type: "literal", value: ".", description: "\".\""},
+                        peg$c55 = { type: "literal", value: ".", description: "\".\"" },
                         peg$c56 = function peg$c56(digits, decimals) {
                             return parseFloat(digits.concat(".").concat(decimals).join(""), 10);
                         },
@@ -8638,7 +8638,7 @@ Popup.prototype.closeBtnId = function () {
                         peg$currPos = 0,
                         peg$reportedPos = 0,
                         peg$cachedPos = 0,
-                        peg$cachedPosDetails = {line: 1, column: 1, seenCR: false},
+                        peg$cachedPosDetails = { line: 1, column: 1, seenCR: false },
                         peg$maxFailPos = 0,
                         peg$maxFailExpected = [],
                         peg$silentFails = 0,
@@ -8669,7 +8669,7 @@ Popup.prototype.closeBtnId = function () {
                     }
 
                     function expected(description) {
-                        throw peg$buildException(null, [{type: "other", description: description}], peg$reportedPos);
+                        throw peg$buildException(null, [{ type: "other", description: description }], peg$reportedPos);
                     }
 
                     function error(message) {
@@ -8702,7 +8702,7 @@ Popup.prototype.closeBtnId = function () {
                         if (peg$cachedPos !== pos) {
                             if (peg$cachedPos > pos) {
                                 peg$cachedPos = 0;
-                                peg$cachedPosDetails = {line: 1, column: 1, seenCR: false};
+                                peg$cachedPosDetails = { line: 1, column: 1, seenCR: false };
                             }
                             advance(peg$cachedPosDetails, peg$cachedPos, pos);
                             peg$cachedPos = pos;
@@ -9620,7 +9620,7 @@ Popup.prototype.closeBtnId = function () {
                         return peg$result;
                     } else {
                         if (peg$result !== peg$FAILED && peg$currPos < input.length) {
-                            peg$fail({type: "end", description: "end of input"});
+                            peg$fail({ type: "end", description: "end of input" });
                         }
 
                         throw peg$buildException(null, peg$maxFailExpected, peg$maxFailPos);
@@ -9665,11 +9665,11 @@ Popup.prototype.closeBtnId = function () {
                 function parse(input) {
                     var options = arguments.length > 1 ? arguments[1] : {},
                         peg$FAILED = {},
-                        peg$startRuleFunctions = {visualFormatStringExt: peg$parsevisualFormatStringExt},
+                        peg$startRuleFunctions = { visualFormatStringExt: peg$parsevisualFormatStringExt },
                         peg$startRuleFunction = peg$parsevisualFormatStringExt,
                         peg$c0 = peg$FAILED,
                         peg$c1 = "C:",
-                        peg$c2 = {type: "literal", value: "C:", description: "\"C:\""},
+                        peg$c2 = { type: "literal", value: "C:", description: "\"C:\"" },
                         peg$c3 = [],
                         peg$c4 = null,
                         peg$c5 = function peg$c5(view, attribute, attributes, comments) {
@@ -9680,10 +9680,10 @@ Popup.prototype.closeBtnId = function () {
                             };
                         },
                         peg$c6 = function peg$c6(attr, predicates) {
-                            return {attr: attr, predicates: predicates};
+                            return { attr: attr, predicates: predicates };
                         },
                         peg$c7 = ":",
-                        peg$c8 = {type: "literal", value: ":", description: "\":\""},
+                        peg$c8 = { type: "literal", value: ":", description: "\":\"" },
                         peg$c9 = function peg$c9(o, superto, view, views, tosuper, comments) {
                             return {
                                 type: 'vfl',
@@ -9692,46 +9692,46 @@ Popup.prototype.closeBtnId = function () {
                             };
                         },
                         peg$c10 = "HV",
-                        peg$c11 = {type: "literal", value: "HV", description: "\"HV\""},
+                        peg$c11 = { type: "literal", value: "HV", description: "\"HV\"" },
                         peg$c12 = function peg$c12() {
                             return 'horzvert';
                         },
                         peg$c13 = "H",
-                        peg$c14 = {type: "literal", value: "H", description: "\"H\""},
+                        peg$c14 = { type: "literal", value: "H", description: "\"H\"" },
                         peg$c15 = function peg$c15() {
                             return 'horizontal';
                         },
                         peg$c16 = "V",
-                        peg$c17 = {type: "literal", value: "V", description: "\"V\""},
+                        peg$c17 = { type: "literal", value: "V", description: "\"V\"" },
                         peg$c18 = function peg$c18() {
                             return 'vertical';
                         },
                         peg$c19 = "Z",
-                        peg$c20 = {type: "literal", value: "Z", description: "\"Z\""},
+                        peg$c20 = { type: "literal", value: "Z", description: "\"Z\"" },
                         peg$c21 = function peg$c21() {
                             return 'zIndex';
                         },
                         peg$c22 = " ",
-                        peg$c23 = {type: "literal", value: " ", description: "\" \""},
+                        peg$c23 = { type: "literal", value: " ", description: "\" \"" },
                         peg$c24 = "//",
-                        peg$c25 = {type: "literal", value: "//", description: "\"//\""},
-                        peg$c26 = {type: "any", description: "any character"},
+                        peg$c25 = { type: "literal", value: "//", description: "\"//\"" },
+                        peg$c26 = { type: "any", description: "any character" },
                         peg$c27 = "|",
-                        peg$c28 = {type: "literal", value: "|", description: "\"|\""},
+                        peg$c28 = { type: "literal", value: "|", description: "\"|\"" },
                         peg$c29 = function peg$c29() {
-                            return {view: null};
+                            return { view: null };
                         },
                         peg$c30 = "[",
-                        peg$c31 = {type: "literal", value: "[", description: "\"[\""},
+                        peg$c31 = { type: "literal", value: "[", description: "\"[\"" },
                         peg$c32 = ",",
-                        peg$c33 = {type: "literal", value: ",", description: "\",\""},
+                        peg$c33 = { type: "literal", value: ",", description: "\",\"" },
                         peg$c34 = "]",
-                        peg$c35 = {type: "literal", value: "]", description: "\"]\""},
+                        peg$c35 = { type: "literal", value: "]", description: "\"]\"" },
                         peg$c36 = function peg$c36(view, views) {
                             return views.length ? [view].concat([].concat.apply([], views)) : view;
                         },
                         peg$c37 = function peg$c37(view, predicates, cascadedViews) {
-                            return extend(extend(view, predicates ? {constraints: predicates} : {}), cascadedViews ? {
+                            return extend(extend(view, predicates ? { constraints: predicates } : {}), cascadedViews ? {
                                 cascade: cascadedViews
                             } : {});
                         },
@@ -9739,85 +9739,85 @@ Popup.prototype.closeBtnId = function () {
                             return [].concat([].concat.apply([], views), [connection]);
                         },
                         peg$c39 = "->",
-                        peg$c40 = {type: "literal", value: "->", description: "\"->\""},
+                        peg$c40 = { type: "literal", value: "->", description: "\"->\"" },
                         peg$c41 = function peg$c41() {
-                            return [{relation: 'none'}];
+                            return [{ relation: 'none' }];
                         },
                         peg$c42 = "-",
-                        peg$c43 = {type: "literal", value: "-", description: "\"-\""},
+                        peg$c43 = { type: "literal", value: "-", description: "\"-\"" },
                         peg$c44 = function peg$c44(predicateList) {
                             return predicateList;
                         },
                         peg$c45 = function peg$c45() {
-                            return [{relation: 'equ', constant: 'default'}];
+                            return [{ relation: 'equ', constant: 'default' }];
                         },
                         peg$c46 = "~",
-                        peg$c47 = {type: "literal", value: "~", description: "\"~\""},
+                        peg$c47 = { type: "literal", value: "~", description: "\"~\"" },
                         peg$c48 = function peg$c48() {
-                            return [{relation: 'equ', equalSpacing: true}];
+                            return [{ relation: 'equ', equalSpacing: true }];
                         },
                         peg$c49 = "",
                         peg$c50 = function peg$c50() {
-                            return [{relation: 'equ', constant: 0}];
+                            return [{ relation: 'equ', constant: 0 }];
                         },
                         peg$c51 = function peg$c51(p) {
-                            return [{relation: 'equ', multiplier: p.multiplier}];
+                            return [{ relation: 'equ', multiplier: p.multiplier }];
                         },
                         peg$c52 = function peg$c52(n) {
-                            return [{relation: 'equ', constant: n}];
+                            return [{ relation: 'equ', constant: n }];
                         },
                         peg$c53 = "(",
-                        peg$c54 = {type: "literal", value: "(", description: "\"(\""},
+                        peg$c54 = { type: "literal", value: "(", description: "\"(\"" },
                         peg$c55 = ")",
-                        peg$c56 = {type: "literal", value: ")", description: "\")\""},
+                        peg$c56 = { type: "literal", value: ")", description: "\")\"" },
                         peg$c57 = function peg$c57(p, ps) {
                             return [p].concat(ps.map(function (p) {
                                 return p[1];
                             }));
                         },
                         peg$c58 = "@",
-                        peg$c59 = {type: "literal", value: "@", description: "\"@\""},
+                        peg$c59 = { type: "literal", value: "@", description: "\"@\"" },
                         peg$c60 = function peg$c60(r, o, p) {
-                            return extend({relation: 'equ'}, r || {}, o, p ? p[1] : {});
+                            return extend({ relation: 'equ' }, r || {}, o, p ? p[1] : {});
                         },
                         peg$c61 = function peg$c61(r, o, p) {
-                            return extend({relation: 'equ', equalSpacing: true}, r || {}, o, p ? p[1] : {});
+                            return extend({ relation: 'equ', equalSpacing: true }, r || {}, o, p ? p[1] : {});
                         },
                         peg$c62 = "==",
-                        peg$c63 = {type: "literal", value: "==", description: "\"==\""},
+                        peg$c63 = { type: "literal", value: "==", description: "\"==\"" },
                         peg$c64 = function peg$c64() {
-                            return {relation: 'equ'};
+                            return { relation: 'equ' };
                         },
                         peg$c65 = "<=",
-                        peg$c66 = {type: "literal", value: "<=", description: "\"<=\""},
+                        peg$c66 = { type: "literal", value: "<=", description: "\"<=\"" },
                         peg$c67 = function peg$c67() {
-                            return {relation: 'leq'};
+                            return { relation: 'leq' };
                         },
                         peg$c68 = ">=",
-                        peg$c69 = {type: "literal", value: ">=", description: "\">=\""},
+                        peg$c69 = { type: "literal", value: ">=", description: "\">=\"" },
                         peg$c70 = function peg$c70() {
-                            return {relation: 'geq'};
+                            return { relation: 'geq' };
                         },
                         peg$c71 = /^[0-9]/,
-                        peg$c72 = {type: "class", value: "[0-9]", description: "[0-9]"},
+                        peg$c72 = { type: "class", value: "[0-9]", description: "[0-9]" },
                         peg$c73 = function peg$c73(digits) {
-                            return {priority: parseInt(digits.join(""), 10)};
+                            return { priority: parseInt(digits.join(""), 10) };
                         },
                         peg$c74 = function peg$c74(n) {
-                            return {constant: n};
+                            return { constant: n };
                         },
                         peg$c75 = function peg$c75(n) {
-                            return {constant: -n};
+                            return { constant: -n };
                         },
                         peg$c76 = "+",
-                        peg$c77 = {type: "literal", value: "+", description: "\"+\""},
+                        peg$c77 = { type: "literal", value: "+", description: "\"+\"" },
                         peg$c78 = "%",
-                        peg$c79 = {type: "literal", value: "%", description: "\"%\""},
+                        peg$c79 = { type: "literal", value: "%", description: "\"%\"" },
                         peg$c80 = function peg$c80(n) {
-                            return {view: null, multiplier: n / 100};
+                            return { view: null, multiplier: n / 100 };
                         },
                         peg$c81 = function peg$c81(n) {
-                            return {view: null, multiplier: n / -100};
+                            return { view: null, multiplier: n / -100 };
                         },
                         peg$c82 = function peg$c82(vn, a, m, c) {
                             return {
@@ -9828,86 +9828,86 @@ Popup.prototype.closeBtnId = function () {
                             };
                         },
                         peg$c83 = ".left",
-                        peg$c84 = {type: "literal", value: ".left", description: "\".left\""},
+                        peg$c84 = { type: "literal", value: ".left", description: "\".left\"" },
                         peg$c85 = function peg$c85() {
                             return 'left';
                         },
                         peg$c86 = ".right",
-                        peg$c87 = {type: "literal", value: ".right", description: "\".right\""},
+                        peg$c87 = { type: "literal", value: ".right", description: "\".right\"" },
                         peg$c88 = function peg$c88() {
                             return 'right';
                         },
                         peg$c89 = ".top",
-                        peg$c90 = {type: "literal", value: ".top", description: "\".top\""},
+                        peg$c90 = { type: "literal", value: ".top", description: "\".top\"" },
                         peg$c91 = function peg$c91() {
                             return 'top';
                         },
                         peg$c92 = ".bottom",
-                        peg$c93 = {type: "literal", value: ".bottom", description: "\".bottom\""},
+                        peg$c93 = { type: "literal", value: ".bottom", description: "\".bottom\"" },
                         peg$c94 = function peg$c94() {
                             return 'bottom';
                         },
                         peg$c95 = ".width",
-                        peg$c96 = {type: "literal", value: ".width", description: "\".width\""},
+                        peg$c96 = { type: "literal", value: ".width", description: "\".width\"" },
                         peg$c97 = function peg$c97() {
                             return 'width';
                         },
                         peg$c98 = ".height",
-                        peg$c99 = {type: "literal", value: ".height", description: "\".height\""},
+                        peg$c99 = { type: "literal", value: ".height", description: "\".height\"" },
                         peg$c100 = function peg$c100() {
                             return 'height';
                         },
                         peg$c101 = ".centerX",
-                        peg$c102 = {type: "literal", value: ".centerX", description: "\".centerX\""},
+                        peg$c102 = { type: "literal", value: ".centerX", description: "\".centerX\"" },
                         peg$c103 = function peg$c103() {
                             return 'centerX';
                         },
                         peg$c104 = ".centerY",
-                        peg$c105 = {type: "literal", value: ".centerY", description: "\".centerY\""},
+                        peg$c105 = { type: "literal", value: ".centerY", description: "\".centerY\"" },
                         peg$c106 = function peg$c106() {
                             return 'centerY';
                         },
                         peg$c107 = "/",
-                        peg$c108 = {type: "literal", value: "/", description: "\"/\""},
+                        peg$c108 = { type: "literal", value: "/", description: "\"/\"" },
                         peg$c109 = function peg$c109(n) {
                             return 1 / n;
                         },
                         peg$c110 = "/+",
-                        peg$c111 = {type: "literal", value: "/+", description: "\"/+\""},
+                        peg$c111 = { type: "literal", value: "/+", description: "\"/+\"" },
                         peg$c112 = "/-",
-                        peg$c113 = {type: "literal", value: "/-", description: "\"/-\""},
+                        peg$c113 = { type: "literal", value: "/-", description: "\"/-\"" },
                         peg$c114 = function peg$c114(n) {
                             return -1 / n;
                         },
                         peg$c115 = "*",
-                        peg$c116 = {type: "literal", value: "*", description: "\"*\""},
+                        peg$c116 = { type: "literal", value: "*", description: "\"*\"" },
                         peg$c117 = function peg$c117(n) {
                             return n;
                         },
                         peg$c118 = "*+",
-                        peg$c119 = {type: "literal", value: "*+", description: "\"*+\""},
+                        peg$c119 = { type: "literal", value: "*+", description: "\"*+\"" },
                         peg$c120 = "*-",
-                        peg$c121 = {type: "literal", value: "*-", description: "\"*-\""},
+                        peg$c121 = { type: "literal", value: "*-", description: "\"*-\"" },
                         peg$c122 = function peg$c122(n) {
                             return -n;
                         },
                         peg$c123 = /^[a-zA-Z_]/,
-                        peg$c124 = {type: "class", value: "[a-zA-Z_]", description: "[a-zA-Z_]"},
+                        peg$c124 = { type: "class", value: "[a-zA-Z_]", description: "[a-zA-Z_]" },
                         peg$c125 = /^[a-zA-Z0-9_]/,
-                        peg$c126 = {type: "class", value: "[a-zA-Z0-9_]", description: "[a-zA-Z0-9_]"},
+                        peg$c126 = { type: "class", value: "[a-zA-Z0-9_]", description: "[a-zA-Z0-9_]" },
                         peg$c127 = function peg$c127(f, v, r) {
-                            return {view: f + v, range: r, $parserOffset: offset()};
+                            return { view: f + v, range: r, $parserOffset: offset() };
                         },
                         peg$c128 = function peg$c128(f, v) {
-                            return {view: f + v, $parserOffset: offset()};
+                            return { view: f + v, $parserOffset: offset() };
                         },
                         peg$c129 = "..",
-                        peg$c130 = {type: "literal", value: "..", description: "\"..\""},
+                        peg$c130 = { type: "literal", value: "..", description: "\"..\"" },
                         peg$c131 = function peg$c131(d) {
                             return parseInt(d);
                         },
                         peg$c132 = ".",
-                        peg$c133 = {type: "literal", value: ".", description: "\".\""},
+                        peg$c133 = { type: "literal", value: ".", description: "\".\"" },
                         peg$c134 = function peg$c134(digits, decimals) {
                             return parseFloat(digits.concat(".").concat(decimals).join(""), 10);
                         },
@@ -9917,7 +9917,7 @@ Popup.prototype.closeBtnId = function () {
                         peg$currPos = 0,
                         peg$reportedPos = 0,
                         peg$cachedPos = 0,
-                        peg$cachedPosDetails = {line: 1, column: 1, seenCR: false},
+                        peg$cachedPosDetails = { line: 1, column: 1, seenCR: false },
                         peg$maxFailPos = 0,
                         peg$maxFailExpected = [],
                         peg$silentFails = 0,
@@ -9948,7 +9948,7 @@ Popup.prototype.closeBtnId = function () {
                     }
 
                     function expected(description) {
-                        throw peg$buildException(null, [{type: "other", description: description}], peg$reportedPos);
+                        throw peg$buildException(null, [{ type: "other", description: description }], peg$reportedPos);
                     }
 
                     function error(message) {
@@ -9981,7 +9981,7 @@ Popup.prototype.closeBtnId = function () {
                         if (peg$cachedPos !== pos) {
                             if (peg$cachedPos > pos) {
                                 peg$cachedPos = 0;
-                                peg$cachedPosDetails = {line: 1, column: 1, seenCR: false};
+                                peg$cachedPosDetails = { line: 1, column: 1, seenCR: false };
                             }
                             advance(peg$cachedPosDetails, peg$cachedPos, pos);
                             peg$cachedPos = pos;
@@ -12296,7 +12296,7 @@ Popup.prototype.closeBtnId = function () {
                         return peg$result;
                     } else {
                         if (peg$result !== peg$FAILED && peg$currPos < input.length) {
-                            peg$fail({type: "end", description: "end of input"});
+                            peg$fail({ type: "end", description: "end of input" });
                         }
 
                         throw peg$buildException(null, peg$maxFailExpected, peg$maxFailPos);
@@ -12528,7 +12528,7 @@ Popup.prototype.closeBtnId = function () {
                 var curViews = [];
                 var subView = void 0;
                 if (stackView) {
-                    cascade.push({view: stackView});
+                    cascade.push({ view: stackView });
                     curViews.push(stackView);
                 }
                 for (var i = 0; i < cascade.length; i++) {
@@ -12549,7 +12549,7 @@ Popup.prototype.closeBtnId = function () {
                                     subViews.push(curView);
                                     subView = context.subViews[curView];
                                     if (!subView) {
-                                        subView = {orientations: 0};
+                                        subView = { orientations: 0 };
                                         context.subViews[curView] = subView;
                                     }
                                     subView.orientations = subView.orientations | context.orientation;
@@ -12641,7 +12641,7 @@ Popup.prototype.closeBtnId = function () {
                 if (stackView) {
                     subView = context.subViews[stackView];
                     if (!subView) {
-                        subView = {orientations: context.orientation};
+                        subView = { orientations: context.orientation };
                         context.subViews[stackView] = subView;
                     } else if (subView.stack) {
                         var err = new Error('A stack named "' + stackView + '" has already been created');
@@ -13297,7 +13297,7 @@ Popup.prototype.closeBtnId = function () {
 
             function _getConst(name, value) {
                 if (true) {
-                    var vr = new c.Variable({value: value});
+                    var vr = new c.Variable({ value: value });
                     this._solver.addConstraint(new c.StayConstraint(vr, c.Strength.required, 0));
                     return vr;
                 } else {
@@ -13752,7 +13752,7 @@ Popup.prototype.closeBtnId = function () {
                 return View;
             }();
 
-//import DOM from './DOM';
+            //import DOM from './DOM';
 
             /**
              * AutoLayout.
@@ -13779,7 +13779,7 @@ Popup.prototype.closeBtnId = function () {
 
             module.exports = AutoLayout;
 
-        }, {"cassowary/bin/c": 2}], 2: [function (require, module, exports) {
+        }, { "cassowary/bin/c": 2 }], 2: [function (require, module, exports) {
             /**
              * Parts Copyright (C) 2011-2012, Alex Russell (slightlyoff@chromium.org)
              * Parts Copyright (C) Copyright (C) 1998-2000 Greg J. Badros
@@ -13850,9 +13850,9 @@ Popup.prototype.closeBtnId = function () {
                                 var j = h, k = d(i), l = function (a) {
                                     return a.__proto__ = i, j.apply(a, arguments), i.created && a.created(), i.decorate && a.decorate(), a
                                 };
-                                this.extend(i, {upgrade: l}), h = function () {
+                                this.extend(i, { upgrade: l }), h = function () {
                                     return l(a.document.createElement(k))
-                                }, h.prototype = i, this.extend(h, {ctor: j})
+                                }, h.prototype = i, this.extend(h, { ctor: j })
                             }
                             return h
                         },
@@ -14012,7 +14012,7 @@ Popup.prototype.closeBtnId = function () {
                             var a = [];
                             return this.each(function (b) {
                                 a.push(b.toJSON())
-                            }), {_t: "c.HashSet", data: a}
+                            }), { _t: "c.HashSet", data: a }
                         }, fromJSON: function (b) {
                             var c = new a.HashSet;
                             return b.data && (c.size = b.data.length, c.storage = b.data), c
@@ -14049,7 +14049,7 @@ Popup.prototype.closeBtnId = function () {
                             this.value = 0;
                             for (var a = 1, c = arguments.length - 1; c >= 0; --c) this.value += arguments[c] * a, a *= b
                         }, toJSON: function () {
-                            return {_t: this._t, value: this.value}
+                            return { _t: this._t, value: this.value }
                         }
                     })
                 }(this.c || module.parent.exports || {}), function (a) {
@@ -14126,11 +14126,11 @@ Popup.prototype.closeBtnId = function () {
                     a.Point = a.inherit({
                         initialize: function (b, c, d) {
                             if (b instanceof a.Variable) this._x = b; else {
-                                var e = {value: b};
+                                var e = { value: b };
                                 d && (e.name = "x" + d), this._x = new a.Variable(e)
                             }
                             if (c instanceof a.Variable) this._y = c; else {
-                                var f = {value: c};
+                                var f = { value: c };
                                 d && (f.name = "y" + d), this._y = new a.Variable(f)
                             }
                         }, get x() {
@@ -14197,7 +14197,7 @@ Popup.prototype.closeBtnId = function () {
                         }, anyPivotableVariable: function () {
                             if (this.isConstant) throw new a.InternalError("anyPivotableVariable called on a constant");
                             var b = this.terms.escapingEach(function (a) {
-                                return a.isPivotable ? {retval: a} : void 0
+                                return a.isPivotable ? { retval: a } : void 0
                             });
                             return b && void 0 !== b.retval ? b.retval : null
                         }, substituteOut: function (b, c, d, e) {
@@ -14338,7 +14338,7 @@ Popup.prototype.closeBtnId = function () {
                                 var h = b, g = c, i = e, j = f;
                                 d.call(this, h.clone(), i, j), this.expression.addVariable(g, -1)
                             } else {
-                                if (!(b instanceof a.Expression || b instanceof a.AbstractVariable || "number" == typeof b) || !(c instanceof a.Expression || c instanceof a.AbstractVariable || "number" == typeof c)) throw"Bad initializer to c.Equation";
+                                if (!(b instanceof a.Expression || b instanceof a.AbstractVariable || "number" == typeof b) || !(c instanceof a.Expression || c instanceof a.AbstractVariable || "number" == typeof c)) throw "Bad initializer to c.Equation";
                                 b = b instanceof a.Expression ? b.clone() : new a.Expression(b), c = c instanceof a.Expression ? c.clone() : new a.Expression(c), d.call(this, b, e, f), this.expression.addExpression(c, -1)
                             }
                             a.assert(this.strength instanceof a.Strength, "_strength not set")
@@ -14410,7 +14410,7 @@ Popup.prototype.closeBtnId = function () {
                     var b = a.Tableau, c = b.prototype, d = 1e-8, e = a.Strength.weak;
                     a.SimplexSolver = a.inherit({
                         "extends": a.Tableau, initialize: function () {
-                            a.Tableau.call(this), this._stayMinusErrorVars = [], this._stayPlusErrorVars = [], this._errorVars = new a.HashTable, this._markerVars = new a.HashTable, this._objective = new a.ObjectiveVariable({name: "Z"}), this._editVarMap = new a.HashTable, this._editVarList = [], this._slackCounter = 0, this._artificialCounter = 0, this._dummyCounter = 0, this.autoSolve = !0, this._fNeedsSolving = !1, this._optimizeCount = 0, this.rows.set(this._objective, new a.Expression), this._stkCedcns = [0], a.trace && a.traceprint("objective expr == " + this.rows.get(this._objective))
+                            a.Tableau.call(this), this._stayMinusErrorVars = [], this._stayPlusErrorVars = [], this._errorVars = new a.HashTable, this._markerVars = new a.HashTable, this._objective = new a.ObjectiveVariable({ name: "Z" }), this._editVarMap = new a.HashTable, this._editVarList = [], this._slackCounter = 0, this._artificialCounter = 0, this._dummyCounter = 0, this.autoSolve = !0, this._fNeedsSolving = !1, this._optimizeCount = 0, this.rows.set(this._objective, new a.Expression), this._stkCedcns = [0], a.trace && a.traceprint("objective expr == " + this.rows.get(this._objective))
                         }, addLowerBound: function (b, c) {
                             var d = new a.Inequality(b, a.GEQ, new a.Expression(c));
                             return this.addConstraint(d)
@@ -14429,7 +14429,7 @@ Popup.prototype.closeBtnId = function () {
                                 var f = this._editVarMap.size, g = c[0], h = c[1];
                                 !g instanceof a.SlackVariable && console.warn("cvEplus not a slack variable =", g), !h instanceof a.SlackVariable && console.warn("cvEminus not a slack variable =", h), a.debug && console.log("new c.EditInfo(" + b + ", " + g + ", " + h + ", " + d + ", " + f + ")");
                                 var i = new a.EditInfo(b, g, h, d, f);
-                                this._editVarMap.set(b.variable, i), this._editVarList[f] = {v: b.variable, info: i}
+                                this._editVarMap.set(b.variable, i), this._editVarList[f] = { v: b.variable, info: i }
                             }
                             return this.autoSolve && (this.optimize(this._objective), this._setExternalVariables()), this
                         }, addConstraintNoException: function (b) {
@@ -14490,7 +14490,7 @@ Popup.prototype.closeBtnId = function () {
                                         (null == g || h > d) && (h = d, g = a)
                                     }
                                 }, this)), null == g && (0 == f.size ? this.removeColumn(e) : f.escapingEach(function (a) {
-                                    return a != this._objective ? (g = a, {brk: !0}) : void 0
+                                    return a != this._objective ? (g = a, { brk: !0 }) : void 0
                                 }, this)), null != g && this.pivot(e, g)
                             }
                             if (null != this.rows.get(e) && this.removeRow(e), null != d && d.each(function (a) {
@@ -14558,8 +14558,8 @@ Popup.prototype.closeBtnId = function () {
                             return this._markerVars
                         }, addWithArtificialVariable: function (b) {
                             a.trace && a.fnenterprint("addWithArtificialVariable: " + b);
-                            var c = new a.SlackVariable({value: ++this._artificialCounter, prefix: "a"}),
-                                d = new a.ObjectiveVariable({name: "az"}), e = b.clone();
+                            var c = new a.SlackVariable({ value: ++this._artificialCounter, prefix: "a" }),
+                                d = new a.ObjectiveVariable({ name: "az" }), e = b.clone();
                             a.trace && a.traceprint("before addRows:\n" + this), this.addRow(d, e), this.addRow(c, b), a.trace && a.traceprint("after addRows:\n" + this), this.optimize(d);
                             var f = this.rows.get(d);
                             if (a.trace && a.traceprint("azTableauRow.constant == " + f.constant), !a.approx(f.constant, 0)) throw this.removeRow(d), this.removeColumn(c), new a.RequiredFailure;
@@ -14578,7 +14578,7 @@ Popup.prototype.closeBtnId = function () {
                             a.trace && a.fnenterprint("chooseSubject: " + b);
                             var c = null, d = !1, e = !1, f = b.terms, g = f.escapingEach(function (a, b) {
                                 if (d) {
-                                    if (!a.isRestricted && !this.columnsHasKey(a)) return {retval: a}
+                                    if (!a.isRestricted && !this.columnsHasKey(a)) return { retval: a }
                                 } else if (a.isRestricted) {
                                     if (!e && !a.isDummy && 0 > b) {
                                         var f = this.columns.get(a);
@@ -14589,7 +14589,7 @@ Popup.prototype.closeBtnId = function () {
                             if (g && void 0 !== g.retval) return g.retval;
                             if (null != c) return c;
                             var h = 0, g = f.escapingEach(function (a, b) {
-                                return a.isDummy ? (this.columnsHasKey(a) || (c = a, h = b), void 0) : {retval: null}
+                                return a.isDummy ? (this.columnsHasKey(a) || (c = a, h = b), void 0) : { retval: null }
                             }, this);
                             if (g && void 0 !== g.retval) return g.retval;
                             if (!a.approx(b.constant, 0)) throw new a.RequiredFailure;
@@ -14664,7 +14664,7 @@ Popup.prototype.closeBtnId = function () {
                             a.assert(null != c, "zRow != null");
                             for (var g, h, e = null, f = null; ;) {
                                 if (g = 0, h = c.terms, h.escapingEach(function (a, b) {
-                                    return a.isPivotable && g > b ? (g = b, e = a, {brk: 1}) : void 0
+                                    return a.isPivotable && g > b ? (g = b, e = a, { brk: 1 }) : void 0
                                 }, this), g >= -d) return;
                                 a.trace && console.log("entryVar:", e, "objectiveCoeff:", g);
                                 var i = Number.MAX_VALUE, j = this.columns.get(e), k = 0;
@@ -14828,7 +14828,7 @@ Popup.prototype.closeBtnId = function () {
                             function A() {
                                 var a, b;
                                 return b = e, a = C(), null === a && (a = B()), null !== a && (a = function (a, b) {
-                                    return {type: "NumericLiteral", value: b}
+                                    return { type: "NumericLiteral", value: b }
                                 }(b, a)), null === a && (e = b), a
                             }
 
@@ -14877,7 +14877,7 @@ Popup.prototype.closeBtnId = function () {
                             function G() {
                                 var a, c, d, g, h, i, j;
                                 return i = e, a = E(), null !== a && (a = function (a, b) {
-                                    return {type: "Variable", name: b}
+                                    return { type: "Variable", name: b }
                                 }(i, a)), null === a && (e = i), null === a && (a = A(), null === a && (i = e, j = e, 40 === b.charCodeAt(e) ? (a = "(", e++) : (a = null, 0 === f && k('"("')), null !== a ? (c = z(), null !== c ? (d = P(), null !== d ? (g = z(), null !== g ? (41 === b.charCodeAt(e) ? (h = ")", e++) : (h = null, 0 === f && k('")"')), null !== h ? a = [a, c, d, g, h] : (a = null, e = j)) : (a = null, e = j)) : (a = null, e = j)) : (a = null, e = j)) : (a = null, e = j), null !== a && (a = function (a, b) {
                                     return b
                                 }(i, a[2])), null === a && (e = i))), a
@@ -14886,7 +14886,7 @@ Popup.prototype.closeBtnId = function () {
                             function H() {
                                 var a, b, c, d, f;
                                 return a = G(), null === a && (d = e, f = e, a = I(), null !== a ? (b = z(), null !== b ? (c = H(), null !== c ? a = [a, b, c] : (a = null, e = f)) : (a = null, e = f)) : (a = null, e = f), null !== a && (a = function (a, b, c) {
-                                    return {type: "UnaryExpression", operator: b, expression: c}
+                                    return { type: "UnaryExpression", operator: b, expression: c }
                                 }(d, a[0], a[2])), null === a && (e = d)), a
                             }
 
@@ -14989,7 +14989,7 @@ Popup.prototype.closeBtnId = function () {
                                     var h = b.charAt(f);
                                     "\n" === h ? (d || a++, c = 1, d = !1) : "\r" === h || "\u2028" === h || "\u2029" === h ? (a++, c = 1, d = !0) : (c++, d = !1)
                                 }
-                                return {line: a, column: c}
+                                return { line: a, column: c }
                             }
 
                             var d = {
@@ -15080,7 +15080,7 @@ Popup.prototype.closeBtnId = function () {
 
     function t(t, e) {
         if (e === e) return t.indexOf(e);
-        for (i = 0, n = t.length; t[i] === t[i] && ++i !== n;) ;
+        for (i = 0, n = t.length; t[i] === t[i] && ++i !== n;);
         return i
     }
 
@@ -15102,21 +15102,21 @@ Popup.prototype.closeBtnId = function () {
             var t = 0, e = this;
             return {
                 next: function () {
-                    return t !== e.size ? {value: [e.k[t++], e.v[t]], done: !1} : {done: !0}
+                    return t !== e.size ? { value: [e.k[t++], e.v[t]], done: !1 } : { done: !0 }
                 }
             }
         }, keys: function () {
             var t = 0, e = this;
             return {
                 next: function () {
-                    return t !== e.size ? {value: e.k[t++], done: !1} : {done: !0}
+                    return t !== e.size ? { value: e.k[t++], done: !1 } : { done: !0 }
                 }
             }
         }, values: function () {
             var t = 0, e = this;
             return {
                 next: function () {
-                    return t !== e.size ? {value: e.v[t++], done: !1} : {done: !0}
+                    return t !== e.size ? { value: e.v[t++], done: !1 } : { done: !0 }
                 }
             }
         }, toString: function () {
@@ -15230,7 +15230,7 @@ Popup.prototype.closeBtnId = function () {
 
                         peg$FAILED = {},
 
-                        peg$startRuleFunctions = {svg_path: peg$parsesvg_path},
+                        peg$startRuleFunctions = { svg_path: peg$parsesvg_path },
                         peg$startRuleFunction = peg$parsesvg_path,
 
                         peg$c0 = peg$FAILED,
@@ -15240,7 +15240,7 @@ Popup.prototype.closeBtnId = function () {
                             return ops;
                         },
                         peg$c4 = /^[Mm]/,
-                        peg$c5 = {type: "class", value: "[Mm]", description: "[Mm]"},
+                        peg$c5 = { type: "class", value: "[Mm]", description: "[Mm]" },
                         peg$c6 = function (ch, args) {
                             var moveCh = ch
                             // If this is the first move cmd then force it to be absolute.
@@ -15248,54 +15248,54 @@ Popup.prototype.closeBtnId = function () {
                                 moveCh = 'M';
                                 firstSubPath = false;
                             }
-                            ops.push({type: 'moveTo', args: makeAbsolute(moveCh, args[0])});
+                            ops.push({ type: 'moveTo', args: makeAbsolute(moveCh, args[0]) });
                             for (var i = 1; i < args.length; i++) {
                                 // The lineTo args are either abs or relative, depending on the
                                 // original moveto command.
-                                ops.push({type: 'lineTo', args: makeAbsolute(ch, args[i])});
+                                ops.push({ type: 'lineTo', args: makeAbsolute(ch, args[i]) });
                             }
                         },
                         peg$c7 = function (one, rest) {
                             return concatSequence(one, rest);
                         },
                         peg$c8 = /^[Zz]/,
-                        peg$c9 = {type: "class", value: "[Zz]", description: "[Zz]"},
+                        peg$c9 = { type: "class", value: "[Zz]", description: "[Zz]" },
                         peg$c10 = function () {
-                            ops.push({type: 'closePath', args: []});
+                            ops.push({ type: 'closePath', args: [] });
                         },
                         peg$c11 = /^[Ll]/,
-                        peg$c12 = {type: "class", value: "[Ll]", description: "[Ll]"},
+                        peg$c12 = { type: "class", value: "[Ll]", description: "[Ll]" },
                         peg$c13 = function (ch, args) {
                             for (var i = 0; i < args.length; i++) {
-                                ops.push({type: 'lineTo', args: makeAbsolute(ch, args[i])});
+                                ops.push({ type: 'lineTo', args: makeAbsolute(ch, args[i]) });
                             }
                         },
                         peg$c14 = /^[Hh]/,
-                        peg$c15 = {type: "class", value: "[Hh]", description: "[Hh]"},
+                        peg$c15 = { type: "class", value: "[Hh]", description: "[Hh]" },
                         peg$c16 = function (ch, args) {
                             for (var i = 0; i < args.length; i++) {
-                                ops.push({type: 'lineTo', args: makeAbsoluteFromX(ch, args[i])});
+                                ops.push({ type: 'lineTo', args: makeAbsoluteFromX(ch, args[i]) });
                             }
                         },
                         peg$c17 = /^[Vv]/,
-                        peg$c18 = {type: "class", value: "[Vv]", description: "[Vv]"},
+                        peg$c18 = { type: "class", value: "[Vv]", description: "[Vv]" },
                         peg$c19 = function (ch, args) {
                             for (var i = 0; i < args.length; i++) {
-                                ops.push({type: 'lineTo', args: makeAbsoluteFromY(ch, args[i])});
+                                ops.push({ type: 'lineTo', args: makeAbsoluteFromY(ch, args[i]) });
                             }
                         },
                         peg$c20 = /^[Cc]/,
-                        peg$c21 = {type: "class", value: "[Cc]", description: "[Cc]"},
+                        peg$c21 = { type: "class", value: "[Cc]", description: "[Cc]" },
                         peg$c22 = function (ch, args) {
                             for (var i = 0; i < args.length; i++) {
-                                ops.push({type: 'bezierCurveTo', args: makeAbsoluteMultiple(ch, args[i])});
+                                ops.push({ type: 'bezierCurveTo', args: makeAbsoluteMultiple(ch, args[i]) });
                             }
                         },
                         peg$c23 = function (cp1, cp2, last) {
                             return cp1.concat(cp2, last);
                         },
                         peg$c24 = /^[Ss]/,
-                        peg$c25 = {type: "class", value: "[Ss]", description: "[Ss]"},
+                        peg$c25 = { type: "class", value: "[Ss]", description: "[Ss]" },
                         peg$c26 = function (ch, args) {
                             for (var i = 0; i < args.length; i++) {
                                 ops.push({
@@ -15308,14 +15308,14 @@ Popup.prototype.closeBtnId = function () {
                             return cp1.concat(last);
                         },
                         peg$c28 = /^[Qq]/,
-                        peg$c29 = {type: "class", value: "[Qq]", description: "[Qq]"},
+                        peg$c29 = { type: "class", value: "[Qq]", description: "[Qq]" },
                         peg$c30 = function (ch, args) {
                             for (var i = 0; i < args.length; i++) {
-                                ops.push({type: 'quadraticCurveTo', args: makeAbsoluteMultiple(ch, args[i])});
+                                ops.push({ type: 'quadraticCurveTo', args: makeAbsoluteMultiple(ch, args[i]) });
                             }
                         },
                         peg$c31 = /^[Tt]/,
-                        peg$c32 = {type: "class", value: "[Tt]", description: "[Tt]"},
+                        peg$c32 = { type: "class", value: "[Tt]", description: "[Tt]" },
                         peg$c33 = function (ch, args) {
                             for (var i = 0; i < args.length; i++) {
                                 var reflected = makeReflected();
@@ -15327,7 +15327,7 @@ Popup.prototype.closeBtnId = function () {
                             }
                         },
                         peg$c34 = /^[Aa]/,
-                        peg$c35 = {type: "class", value: "[Aa]", description: "[Aa]"},
+                        peg$c35 = { type: "class", value: "[Aa]", description: "[Aa]" },
                         peg$c36 = function (ch, args) {
                             for (var i = 0; i < args.length; i++) {
                                 var x1 = [lastCoord.slice()];
@@ -15346,31 +15346,31 @@ Popup.prototype.closeBtnId = function () {
                             return parseFloat(flatten(number).join(''))
                         },
                         peg$c40 = "0",
-                        peg$c41 = {type: "literal", value: "0", description: "\"0\""},
+                        peg$c41 = { type: "literal", value: "0", description: "\"0\"" },
                         peg$c42 = "1",
-                        peg$c43 = {type: "literal", value: "1", description: "\"1\""},
+                        peg$c43 = { type: "literal", value: "1", description: "\"1\"" },
                         peg$c44 = ",",
-                        peg$c45 = {type: "literal", value: ",", description: "\",\""},
+                        peg$c45 = { type: "literal", value: ",", description: "\",\"" },
                         peg$c46 = ".",
-                        peg$c47 = {type: "literal", value: ".", description: "\".\""},
+                        peg$c47 = { type: "literal", value: ".", description: "\".\"" },
                         peg$c48 = /^[eE]/,
-                        peg$c49 = {type: "class", value: "[eE]", description: "[eE]"},
+                        peg$c49 = { type: "class", value: "[eE]", description: "[eE]" },
                         peg$c50 = "+",
-                        peg$c51 = {type: "literal", value: "+", description: "\"+\""},
+                        peg$c51 = { type: "literal", value: "+", description: "\"+\"" },
                         peg$c52 = "-",
-                        peg$c53 = {type: "literal", value: "-", description: "\"-\""},
+                        peg$c53 = { type: "literal", value: "-", description: "\"-\"" },
                         peg$c54 = /^[0-9]/,
-                        peg$c55 = {type: "class", value: "[0-9]", description: "[0-9]"},
+                        peg$c55 = { type: "class", value: "[0-9]", description: "[0-9]" },
                         peg$c56 = function (digits) {
                             return digits.join('')
                         },
                         peg$c57 = /^[ \t\n\r]/,
-                        peg$c58 = {type: "class", value: "[ \\t\\n\\r]", description: "[ \\t\\n\\r]"},
+                        peg$c58 = { type: "class", value: "[ \\t\\n\\r]", description: "[ \\t\\n\\r]" },
 
                         peg$currPos = 0,
                         peg$reportedPos = 0,
                         peg$cachedPos = 0,
-                        peg$cachedPosDetails = {line: 1, column: 1, seenCR: false},
+                        peg$cachedPosDetails = { line: 1, column: 1, seenCR: false },
                         peg$maxFailPos = 0,
                         peg$maxFailExpected = [],
                         peg$silentFails = 0,
@@ -15404,7 +15404,7 @@ Popup.prototype.closeBtnId = function () {
                     function expected(description) {
                         throw peg$buildException(
                             null,
-                            [{type: "other", description: description}],
+                            [{ type: "other", description: description }],
                             peg$reportedPos
                         );
                     }
@@ -15439,7 +15439,7 @@ Popup.prototype.closeBtnId = function () {
                         if (peg$cachedPos !== pos) {
                             if (peg$cachedPos > pos) {
                                 peg$cachedPos = 0;
-                                peg$cachedPosDetails = {line: 1, column: 1, seenCR: false};
+                                peg$cachedPosDetails = { line: 1, column: 1, seenCR: false };
                             }
                             advance(peg$cachedPosDetails, peg$cachedPos, pos);
                             peg$cachedPos = pos;
@@ -17301,7 +17301,7 @@ Popup.prototype.closeBtnId = function () {
                         // Convert from endpoint to center parametrization, as detailed in:
                         //   http://www.w3.org/TR/SVG/implnote.html#ArcImplementationNotes
                         if (rx == 0 || ry == 0) {
-                            ops.push({type: 'lineTo', args: x2});
+                            ops.push({ type: 'lineTo', args: x2 });
                             return;
                         }
                         var phi = phi * (Math.PI / 180.0);
@@ -17333,12 +17333,12 @@ Popup.prototype.closeBtnId = function () {
                         var start = theta;
                         var end = theta + deltaTheta;
                         ops.push(
-                            {type: 'save', args: []},
-                            {type: 'translate', args: [c[0], c[1]]},
-                            {type: 'rotate', args: [phi]},
-                            {type: 'scale', args: [rx, ry]},
-                            {type: 'arc', args: [0, 0, 1, start, end, 1 - fS]},
-                            {type: 'restore', args: []}
+                            { type: 'save', args: [] },
+                            { type: 'translate', args: [c[0], c[1]] },
+                            { type: 'rotate', args: [phi] },
+                            { type: 'scale', args: [rx, ry] },
+                            { type: 'arc', args: [0, 0, 1, start, end, 1 - fS] },
+                            { type: 'restore', args: [] }
                         );
                     }
 
@@ -17349,7 +17349,7 @@ Popup.prototype.closeBtnId = function () {
                         return peg$result;
                     } else {
                         if (peg$result !== peg$FAILED && peg$currPos < input.length) {
-                            peg$fail({type: "end", description: "end of input"});
+                            peg$fail({ type: "end", description: "end of input" });
                         }
 
                         throw peg$buildException(null, peg$maxFailExpected, peg$maxFailPos);
@@ -17400,7 +17400,7 @@ Popup.prototype.closeBtnId = function () {
 
             function createFunction(name) {
                 return function () {
-                    this.ops_.push({type: name, args: Array.prototype.slice.call(arguments, 0)});
+                    this.ops_.push({ type: name, args: Array.prototype.slice.call(arguments, 0) });
                 };
             }
 
@@ -17420,12 +17420,12 @@ Popup.prototype.closeBtnId = function () {
                     && tr.e != undefined
                     && tr.f != undefined) {
                     hasTx = true;
-                    this.ops_.push({type: 'save', args: []});
-                    this.ops_.push({type: 'transform', args: [tr.a, tr.b, tr.c, tr.d, tr.e, tr.f]});
+                    this.ops_.push({ type: 'save', args: [] });
+                    this.ops_.push({ type: 'transform', args: [tr.a, tr.b, tr.c, tr.d, tr.e, tr.f] });
                 }
                 this.ops_ = this.ops_.concat(path.ops_);
                 if (hasTx) {
-                    this.ops_.push({type: 'restore', args: []});
+                    this.ops_.push({ type: 'restore', args: [] });
                 }
             }
 
@@ -17532,7 +17532,7 @@ Popup.prototype.closeBtnId = function () {
  */
 
 /* global define, Uint8Array, ArrayBuffer, module */
-;(function (window) {
+; (function (window) {
     'use strict'
 
     var CanvasPrototype =
@@ -18126,7 +18126,7 @@ Quadratic.prototype.solve = function () {
 
         return a1 + " + " + b1 + " i , " + a2 + " - " + b2 + " i";
     }
-//2p^2-3p-4.09=0
+    //2p^2-3p-4.09=0
 };
 
 Quadratic.prototype.solutionArray = function () {
@@ -19003,17 +19003,17 @@ EllipseModel.prototype.intersectsWith = function (ellipse) {
 
     var line = new Line(this.center, ellipse.center);
 
-//The 2 centers coincide
+    //The 2 centers coincide
     if (this.center.equals(ellipse.center)) {
         return true;
     }
 
-//String soln[] = this.lineIntersection(line);
+    //String soln[] = this.lineIntersection(line);
 
     var otherSoln = ellipse.lineIntersection(line);
     try {
-//Point p1 = new Point( Double.valueOf(soln[0]) , Double.valueOf(soln[1]) );
-//Point p2 = new Point( Double.valueOf(soln[2]) , Double.valueOf(soln[3]) );
+        //Point p1 = new Point( Double.valueOf(soln[0]) , Double.valueOf(soln[1]) );
+        //Point p2 = new Point( Double.valueOf(soln[2]) , Double.valueOf(soln[3]) );
 
         var p3 = new FloatPoint(parseFloat(otherSoln[0]), parseFloat(otherSoln[1]));
         var p4 = new FloatPoint(parseFloat(otherSoln[2]), parseFloat(otherSoln[3]));
@@ -19571,10 +19571,13 @@ function Graphics(canvas) {
     this.ctx.fillStyle = "#FFF";
     this.ctx.font = "bold 0.9em Arial";
 
-//canvas = createHiDPICanvas(canvas , canvas.offsetWidth , canvas.offsetHeight, 1 );
+    //canvas = createHiDPICanvas(canvas , canvas.offsetWidth , canvas.offsetHeight, 1 );
 
     this.width = canvas.width;
     this.height = canvas.height;
+
+    // For quick reuse when drawing many pixels
+    this.cache1PixelImage = this.createImageData(1, 1);
 }
 
 
@@ -19956,9 +19959,9 @@ Graphics.prototype.drawRoundRect = function (x, y, width, height, radius) {
             radius = 5;
         }
         if (typeof radius === 'number') {
-            radius = {tl: radius, tr: radius, br: radius, bl: radius};
+            radius = { tl: radius, tr: radius, br: radius, bl: radius };
         } else {
-            var defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0};
+            var defaultRadius = { tl: 0, tr: 0, br: 0, bl: 0 };
             for (var side in defaultRadius) {
                 radius[side] = radius[side] || defaultRadius[side];
             }
@@ -20003,9 +20006,9 @@ Graphics.prototype.fillRoundRect = function (x, y, width, height, radius) {
             radius = 5;
         }
         if (typeof radius === 'number') {
-            radius = {tl: radius, tr: radius, br: radius, bl: radius};
+            radius = { tl: radius, tr: radius, br: radius, bl: radius };
         } else {
-            var defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0};
+            var defaultRadius = { tl: 0, tr: 0, br: 0, bl: 0 };
             for (var side in defaultRadius) {
                 radius[side] = radius[side] || defaultRadius[side];
             }
@@ -20046,9 +20049,9 @@ Graphics.prototype.fillRoundRectLeftSide = function (x, y, width, height, radius
             radius = 5;
         }
         if (typeof radius === 'number') {
-            radius = {tl: radius, tr: 0, br: 0, bl: radius};
+            radius = { tl: radius, tr: 0, br: 0, bl: radius };
         } else {
-            var defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0};
+            var defaultRadius = { tl: 0, tr: 0, br: 0, bl: 0 };
             for (var side in defaultRadius) {
                 radius[side] = radius[side] || defaultRadius[side];
             }
@@ -20087,9 +20090,9 @@ Graphics.prototype.fillRoundRectRightSide = function (x, y, width, height, radiu
             radius = 5;
         }
         if (typeof radius === 'number') {
-            radius = {tl: 0, tr: radius, br: radius, bl: 0};
+            radius = { tl: 0, tr: radius, br: radius, bl: 0 };
         } else {
-            var defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0};
+            var defaultRadius = { tl: 0, tr: 0, br: 0, bl: 0 };
             for (var side in defaultRadius) {
                 radius[side] = radius[side] || defaultRadius[side];
             }
@@ -20128,9 +20131,9 @@ Graphics.prototype.fillRoundRectTopSide = function (x, y, width, height, radius)
             radius = 5;
         }
         if (typeof radius === 'number') {
-            radius = {tl: radius, tr: radius, br: 0, bl: 0};
+            radius = { tl: radius, tr: radius, br: 0, bl: 0 };
         } else {
-            var defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0};
+            var defaultRadius = { tl: 0, tr: 0, br: 0, bl: 0 };
             for (var side in defaultRadius) {
                 radius[side] = radius[side] || defaultRadius[side];
             }
@@ -20169,9 +20172,9 @@ Graphics.prototype.fillRoundRectBottomSide = function (x, y, width, height, radi
             radius = 5;
         }
         if (typeof radius === 'number') {
-            radius = {tl: 0, tr: 0, br: radius, bl: radius};
+            radius = { tl: 0, tr: 0, br: radius, bl: radius };
         } else {
-            var defaultRadius = {tl: 0, tr: 0, br: 0, bl: 0};
+            var defaultRadius = { tl: 0, tr: 0, br: 0, bl: 0 };
             for (var side in defaultRadius) {
                 radius[side] = radius[side] || defaultRadius[side];
             }
@@ -20586,7 +20589,7 @@ Graphics.prototype.getBlobFromCanvas = function (canvas, mimeType, callbackFn) {
  */
 Graphics.prototype.getHorizontalExtent = function () {
 
-    let ret = {left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0};
+    let ret = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
 
     // Get the pixel data from the canvas
     let data = this.getImageData(0, 0, this.width, this.height).data;
@@ -20630,7 +20633,7 @@ Graphics.prototype.getHorizontalExtent = function () {
 
         // If we've got it then return the extent
         if (left) {
-            return {left: ret.left, right: ret.right};
+            return { left: ret.left, right: ret.right };
         }
     }
 
@@ -20651,7 +20654,7 @@ Graphics.prototype.getHorizontalExtent = function () {
  */
 Graphics.prototype.getVerticalExtent = function () {
 
-    let ret = {left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0};
+    let ret = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
 
     // Get the pixel data from the canvas
     let data = this.getImageData(0, 0, this.width, this.height).data;
@@ -20692,7 +20695,7 @@ Graphics.prototype.getVerticalExtent = function () {
 
         // If we've got it then return the height
         if (first) {
-            return {top: ret.top, bottom: ret.bottom};
+            return { top: ret.top, bottom: ret.bottom };
         }
     }
 
@@ -20709,7 +20712,7 @@ Graphics.prototype.getVerticalExtent = function () {
  */
 Graphics.prototype.getBoundingBox = function () {
 
-    let ret = {left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0};
+    let ret = { left: 0, top: 0, right: 0, bottom: 0, width: 0, height: 0 };
 
     // Get the pixel data from the canvas
     let data = this.getImageData(0, 0, this.width, this.height).data;
@@ -20893,6 +20896,26 @@ Graphics.prototype.drawImage = function (image, sx, sy, sWidth, sHeight, dx, dy,
 
 };
 
+
+
+
+/**
+ * 
+ * To increase performance, where possible, createImageData method 
+ * should be executed once e.g. before drawing
+ * @param {number} width The width to give the new ImageData object. A negative value flips the rectangle around the vertical axis.
+ * @param {number} height The height to give the new ImageData object. A negative value flips the rectangle around the horizontal axis.
+ * @returns A new ImageData object with the specified width and height. The new object is filled with transparent black pixels.
+ */
+Graphics.prototype.createImageData = function (width, height) {
+    if (typeof width === "number" && typeof height === "number") {
+        return this.ctx.createImageData(width, height);
+    } else {
+        if (arguments.length === 1) {
+            return this.ctx.createImageData(width);
+        }
+    }
+};
 /**
  *
  * @param {Number} x The x location
@@ -20906,7 +20929,46 @@ Graphics.prototype.getImageData = function (x, y, width, height) {
         return this.ctx.getImageData(x, y, width, height);
     }
 };
+/**
+ * An ImageData object containing the array of pixel values.
+ * 
+ * @param { ImageData } imageData An ImageData object containing the array of pixel values.
+ * @param { number } x Horizontal position (x coordinate) at which to place the image data in the destination canvas.
+ * @param { number } y Vertical position (y coordinate) at which to place the image data in the destination canvas.
+ * @param { number } dirtyX Optional Horizontal position (x coordinate) of the top-left corner from which the image data will be extracted. Defaults to 0.
+ * @param { number } dirtyY Optional Vertical position (y coordinate) of the top-left corner from which the image data will be extracted. Defaults to 0.
+ * @param { number } dirtyWidth Optional Width of the rectangle to be painted. Defaults to the width of the image data.
+ * @param { number } dirtyHeight Optional Height of the rectangle to be painted. Defaults to the height of the image data.
+ * @returns 
+ */
+Graphics.prototype.putImageData = function (imageData, x, y, dirtyX, dirtyY, dirtyWidth, dirtyHeight) {
+    if (typeof x === "number" && typeof y === "number") {
+        return this.ctx.putImageData(imageData, x, y, dirtyX, dirtyY, dirtyWidth, dirtyHeight);
+    }
+};
 
+/**
+ * @param {number} x The horizontal coordinates where are drawing the pixel
+ * @param {number} y The vertical coordinates where we are drawing the pixel
+ * @param {number} r Optional The red component of the color (0-255)
+ * @param {number} g Optional The green component of the color (0-255)
+ * @param {number} b Optional The blue component of the color (0-255)
+ * @param {number} a Optional The alpha component of the color (0-255)
+ */
+Graphics.prototype.drawPixel = function (x, y, r, g, b, a) {
+    if (typeof x === 'number' && typeof y === 'number') {
+        r = r ? r : 0;
+        g = g ? g : 0;
+        b = b ? b : 0;
+        a = a ? a : 0;
+        let data = this.cache1PixelImage.data;
+        data[0] = r;
+        data[1] = g;
+        data[2] = b;
+        data[3] = a;
+        this.ctx.putImageData(this.cache1PixelImage, x, y);
+    }
+};
 
 /**
  *
@@ -21194,18 +21256,20 @@ const MysteryConstants = {
     DRAW_RECT: 2,
     DRAW_CIRCLE: 3,
     DRAW_OVAL: 4,
-    DRAW_LINE: 5,
-    DRAW_STAR: 6,
-    DRAW_LETTER: 7,
-    DRAW_TRIANGLE: 8,
-    DRAW_TEXT: 9,
-    DRAW_ROTATED_SQUARE: 10,
-    DRAW_ROTATED_RECT: 11,
-    DRAW_ROTATED_TRIANGLE: 12,
-    DRAW_ROTATED_STAR: 13,
-    DRAW_ROTATED_OVAL: 14,
-    DRAW_POLYGON: 15,
-    DRAW_ROTATED_TEXT: 16,
+    DRAW_DOT: 5,
+    DRAW_DOT2: 6,
+    DRAW_LINE: 7,
+    DRAW_STAR: 8,
+    DRAW_LETTER: 9,
+    DRAW_TRIANGLE: 10,
+    DRAW_TEXT: 11,
+    DRAW_ROTATED_SQUARE: 12,
+    DRAW_ROTATED_RECT: 13,
+    DRAW_ROTATED_TRIANGLE: 14,
+    DRAW_ROTATED_STAR: 15,
+    DRAW_ROTATED_OVAL: 16,
+    DRAW_POLYGON: 17,
+    DRAW_ROTATED_TEXT: 18,
     DENSITY_SCALE: 0.00001,
     DEF_ALPHA: 1
 };
@@ -21214,6 +21278,8 @@ const MysteryModes = {
     ALL: "all",
     STAR: "star",
     LINE: "line",
+    DOT: "dot",
+    DOT2: "dot2",
     TEXT: "text",
     TRIANGLE: "triangle",
     SQUARE: "square",
@@ -21575,6 +21641,12 @@ MysteryImage.prototype.drawSquare = function (x, y, sz, fill) {
     } else {
         g.drawRect(x, y, sz, sz);
     }
+
+};
+
+MysteryImage.prototype.drawDot = function (x, y, sz) {
+    this.drawCircle(x, y, 2);
+    let g = this.g;
 
 };
 
@@ -21975,7 +22047,7 @@ MysteryImage.prototype.drawText = function (x, y) {
         let w = g.stringWidth(txt);
         let h = g.textHeight(txt);
         g.drawString(txt, x, y + h);
-        return {width: w, height: h};
+        return { width: w, height: h };
     }
 };
 
@@ -22179,6 +22251,13 @@ MysteryImage.prototype.baseDraw = function (w, h) {
                 case MysteryConstants.DRAW_POLYGON:
                     this.drawPolygon(r.left, r.top, r.width, fill);
                     break;
+                case MysteryConstants.DRAW_DOT:
+                    this.drawDot(r.left, r.top, 1);
+                    break;
+                case MysteryConstants.DRAW_DOT2:
+                    this.drawPolygon(r.left, r.top, 2);
+                    break;
+
                 default:
                     break;
             }
@@ -22197,6 +22276,12 @@ MysteryImage.prototype.selectStateFromMode = function (mode) {
     switch (mode.toLowerCase()) {
         case MysteryModes.OVAL:
             this.state = rnd.nextBool() ? MysteryConstants.DRAW_OVAL : MysteryConstants.DRAW_ROTATED_OVAL;
+            break;
+        case MysteryModes.DOT:
+            this.state = MysteryConstants.DRAW_DOT;
+            break;
+        case MysteryModes.DOT2:
+            this.state = MysteryConstants.DRAW_DOT2;
             break;
         case MysteryModes.CIRCLE:
             this.state = MysteryConstants.DRAW_CIRCLE;
@@ -22443,7 +22528,7 @@ BusView.prototype.drawBus = function () {
     bx += this.busArchitecture.busWindowWidth + this.busArchitecture.busWindowGap;
     g.fillRoundRect(bx, by, this.busArchitecture.busWindowWidth, this.busArchitecture.busWindowHeight, r_small);
 
-//drawArc = function (cenX, cenY, radius, startAngle, endAngle, counterclockwise)
+    //drawArc = function (cenX, cenY, radius, startAngle, endAngle, counterclockwise)
     //draw semi circles for tire containers
     let hollowForWheelY = y + this.busArchitecture.busSemiCircularHollowForWheelY;
 
@@ -22451,12 +22536,12 @@ BusView.prototype.drawBus = function () {
     let hollowDispFromSides = ((w - this.busArchitecture.busSemiCircularHollowSpan) * 0.5);
     let hollowForWheelX = x + hollowDispFromSides;
 
-//draw hollows for wheels...left
+    //draw hollows for wheels...left
     g.drawArcFromTopLeft(hollowForWheelX, hollowForWheelY, hollowForWheelX + hollowWidth,
         hollowForWheelY + hollowWidth, -180, 180, true);
 
     hollowForWheelX = x + (w - hollowDispFromSides - hollowWidth);
-//draw hollows for wheels...right
+    //draw hollows for wheels...right
     g.drawArcFromTopLeft(hollowForWheelX, hollowForWheelY, hollowForWheelX + hollowWidth,
         hollowForWheelY + hollowWidth, -180, 180, true);
 
@@ -22996,7 +23081,7 @@ Quadratic.prototype.solve = function () {
 
         return a1 + " + " + b1 + " i , " + a2 + " - " + b2 + " i";
     }
-//2p^2-3p-4.09=0
+    //2p^2-3p-4.09=0
 };
 
 Quadratic.prototype.solutionArray = function () {
@@ -23873,17 +23958,17 @@ EllipseModel.prototype.intersectsWith = function (ellipse) {
 
     var line = new Line(this.center, ellipse.center);
 
-//The 2 centers coincide
+    //The 2 centers coincide
     if (this.center.equals(ellipse.center)) {
         return true;
     }
 
-//String soln[] = this.lineIntersection(line);
+    //String soln[] = this.lineIntersection(line);
 
     var otherSoln = ellipse.lineIntersection(line);
     try {
-//Point p1 = new Point( Double.valueOf(soln[0]) , Double.valueOf(soln[1]) );
-//Point p2 = new Point( Double.valueOf(soln[2]) , Double.valueOf(soln[3]) );
+        //Point p1 = new Point( Double.valueOf(soln[0]) , Double.valueOf(soln[1]) );
+        //Point p2 = new Point( Double.valueOf(soln[2]) , Double.valueOf(soln[3]) );
 
         var p3 = new FloatPoint(parseFloat(otherSoln[0]), parseFloat(otherSoln[1]));
         var p4 = new FloatPoint(parseFloat(otherSoln[2]), parseFloat(otherSoln[3]));
@@ -24102,7 +24187,7 @@ var BuildBridgedWorker = function (workerFunction, workerExportNames, mainExport
     // create the worker
     var blob;
     try {
-        blob = new Blob([fullWorkerStr], {type: 'text/javascript'});
+        blob = new Blob([fullWorkerStr], { type: 'text/javascript' });
     } catch (e) { // Backwards-compatibility
         window.BlobBuilder = window.BlobBuilder || window.WebKitBlobBuilder || window.MozBlobBuilder;
         blob = new BlobBuilder();
@@ -24118,23 +24203,23 @@ var BuildBridgedWorker = function (workerFunction, workerExportNames, mainExport
         if (fooInd !== -1) {
             mainExportHandles[fooInd].apply(null, e.data.args);
         } else {
-            throw(new Error("Worker requested function " + e.data.foo + ". But it is not available."));
+            throw (new Error("Worker requested function " + e.data.foo + ". But it is not available."));
         }
     }
 
     // build an array of functions for the main part of main-thread-calls-function-in-worker operation
-    var ret = {blobURL: url};//this is useful to know for debugging if you have loads of bridged workers in blobs with random names
+    var ret = { blobURL: url };//this is useful to know for debugging if you have loads of bridged workers in blobs with random names
     var makePostMessageForFunction = function (name, hasBuffers) {
         if (hasBuffers)
             return function (/*args...,[ArrayBuffer,..]*/) {
                 var args = Array.prototype.slice.call(arguments);
                 var buffers = args.pop();
-                worker.postMessage({foo: name, args: args}, buffers);
+                worker.postMessage({ foo: name, args: args }, buffers);
             }
         else
             return function (/*args...*/) {
                 var args = Array.prototype.slice.call(arguments);
-                worker.postMessage({foo: name, args: args});
+                worker.postMessage({ foo: name, args: args });
             };
     }
 
