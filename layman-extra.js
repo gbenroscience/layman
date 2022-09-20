@@ -20998,10 +20998,10 @@ Graphics.prototype.putImageData = function (imageData, x, y, dirtyX, dirtyY, dir
  */
 Graphics.prototype.drawPixel = function (x, y, r, g, b, a) {
     if (typeof x === 'number' && typeof y === 'number') {
-        r = r ? r : 0;
-        g = g ? g : 0;
-        b = b ? b : 0;
-        a = a ? a : 0;
+        r = (typeof r === "number" && r >= 0 && r < 256) ? r : 0;
+        g = (typeof g === "number" && g >= 0 && g < 256) ? g : 0;
+        b = (typeof b === "number" && b >= 0 && b < 256) ? b : 0;
+        a = (typeof a === "number" && a >= 0 && a < 256) ? a : 255;
 
         let data = this.imageCacheUnitPx.data;
         data[0] = r;
@@ -21022,11 +21022,11 @@ Graphics.prototype.drawPixel = function (x, y, r, g, b, a) {
  */
 Graphics.prototype.drawDoublePixel = function (x, y, r, g, b, a) {
     if (typeof x === 'number' && typeof y === 'number') {
-        r = r ? r : 0;
-        g = g ? g : 0;
-        b = b ? b : 0;
-        a = a ? a : 0;
 
+        r = (typeof r === "number" && r >= 0 && r < 256) ? r : 0;
+        g = (typeof g === "number" && g >= 0 && g < 256) ? g : 0;
+        b = (typeof b === "number" && b >= 0 && b < 256) ? b : 0;
+        a = (typeof a === "number" && a >= 0 && a < 256) ? a : 255;
 
         let data = this.imageCacheQuadPx.data;
         data[0] = r;
@@ -21734,7 +21734,7 @@ MysteryImage.prototype.drawDot = function (x, y, sz) {
     let r = rgbObject.r;
     let gr = rgbObject.g;
     let b = rgbObject.b;
-    let a = rgbObject.a;
+    let a = rgbObject.a * 255;
 
     g.drawPixel(x + hsz, y + hsz, r, gr, b, a);
 
@@ -21746,7 +21746,7 @@ MysteryImage.prototype.drawDoubleDot = function (x, y, sz) {
     let r = rgbObject.r;
     let gr = rgbObject.g;
     let b = rgbObject.b;
-    let a = rgbObject.a;
+    let a = rgbObject.a * 255;
 
     g.drawDoublePixel(x + hsz, y + hsz, r, gr, b, a);
 
