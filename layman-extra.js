@@ -19617,7 +19617,8 @@ function Graphics(canvas) {
     this.height = canvas.height;
 
     // For quick reuse when drawing many pixels
-    this.cachePixelImage = this.createImageData(1, 1);
+    this.imageCacheUnitPx = this.createImageData(1, 1);
+    this.imageCacheQuadPx = this.createImageData(2, 2);
 }
 
 
@@ -21001,15 +21002,13 @@ Graphics.prototype.drawPixel = function (x, y, r, g, b, a) {
         g = g ? g : 0;
         b = b ? b : 0;
         a = a ? a : 0;
-        if (this.cachePixelImage.width !== 1 || this.cachePixelImage.height !== 1) {
-            this.cachePixelImage = this.createImageData(1, 1);
-        }
-        let data = this.cachePixelImage.data;
+
+        let data = this.imageCacheUnitPx.data;
         data[0] = r;
         data[1] = g;
         data[2] = b;
         data[3] = a;
-        this.ctx.putImageData(this.cachePixelImage, x, y);
+        this.ctx.putImageData(this.imageCacheUnitPx, x, y);
     }
 };
 
@@ -21027,11 +21026,9 @@ Graphics.prototype.drawDoublePixel = function (x, y, r, g, b, a) {
         g = g ? g : 0;
         b = b ? b : 0;
         a = a ? a : 0;
-        if (this.cachePixelImage.width !== 2 || this.cachePixelImage.height !== 2) {
-            this.cachePixelImage = this.createImageData(2, 2);
-        }
 
-        let data = this.cachePixelImage.data;
+
+        let data = this.imageCacheQuadPx.data;
         data[0] = r;
         data[1] = g;
         data[2] = b;
@@ -21052,7 +21049,7 @@ Graphics.prototype.drawDoublePixel = function (x, y, r, g, b, a) {
         data[14] = b;
         data[15] = a;
 
-        this.ctx.putImageData(this.cachePixelImage, x, y);
+        this.ctx.putImageData(this.imageCacheQuadPx, x, y);
     }
 };
 
