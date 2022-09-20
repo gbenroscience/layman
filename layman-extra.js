@@ -19074,7 +19074,8 @@ function getRGB(color) {
         return color.length === 3 ? {
             r: parseInt(color[0]),
             g: parseInt(color[1]),
-            b: parseInt(color[2])
+            b: parseInt(color[2]),
+            a: 1.0
         } : {
             r: parseInt(color[0]),
             g: parseInt(color[1]),
