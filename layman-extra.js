@@ -21729,7 +21729,6 @@ MysteryImage.prototype.drawSquare = function (x, y, sz, fill) {
 };
 
 MysteryImage.prototype.drawDot = function (x, y, sz) {
-    this.drawCircle(x, y, 2);
     let g = this.g;
     let hsz = sz / 2;
     let rgbObject = getRGB(this.fgColor);
