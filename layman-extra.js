@@ -185,12 +185,6 @@ function Page(rootNode) {
             margin: '0'
         });
 
-        let spanStyle = new Style('span', []);
-        spanStyle.addFromOptions({
-            overflow: "hidden",
-            "white-space": "nowrap",
-            "text-overflow": "ellipsis"
-        });
 
         let generalStyle = new Style("*", []);
         generalStyle.addFromOptions({
@@ -207,7 +201,6 @@ function Page(rootNode) {
         styleObj.addStyleElement('margin', '0');
 
         updateOrCreateSelectorInStyleSheet(styleSheet, htmlBodyStyle);
-        updateOrCreateSelectorInStyleSheet(styleSheet, spanStyle);
         updateOrCreateSelectorInStyleSheet(styleSheet, generalStyle);
         updateOrCreateSelectorInStyleSheet(styleSheet, styleObj)
 
