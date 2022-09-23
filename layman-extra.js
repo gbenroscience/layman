@@ -22489,7 +22489,7 @@ function drawStar(width, color, fill) {
     } else {
         g.drawPolygonFromVertices(xPts, yPts, nPts);
     }
-    let img = g.getCanvas(); g.getFittedPNG
+    let img = g.getCanvas();
     g.clear();
     g.getCanvas().remove();
 }
