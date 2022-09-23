@@ -19632,6 +19632,9 @@ function NewGraphics(width, height) {
     var c = document.createElement('canvas');
     c.width = width;
     c.height = height;
+    if (!c.isConnected) {
+        document.body.appendChild(c);
+    }
     return new Graphics(c); //return canvas element
 }
 
@@ -22461,7 +22464,8 @@ function drawBus(width, mainColor, minorColor) {
 
 function drawStar(width, color, fill) {
 
-    let g = new Graphics();
+    let g = NewGraphics(width, width);
+    g.setBackground(color);
 
     let halfThickness = (0.5 * thickness);
     let halfSz = (0.5 * size);
@@ -22485,6 +22489,9 @@ function drawStar(width, color, fill) {
     } else {
         g.drawPolygonFromVertices(xPts, yPts, nPts);
     }
+    let img = g.getCanvas(); g.getFittedPNG
+    g.clear();
+    g.getCanvas().remove();
 }
 
 //BusView
