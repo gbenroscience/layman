@@ -19623,6 +19623,17 @@ function Graphics(canvas) {
     this.imageCacheQuadPx = this.createImageData(2, 2);
 }
 
+/**
+ * @param {number} width The width of the canvas to be created
+ * @param {number} height The height of the canvas to be created
+ * @returns a new Graphics object based on a dynamically created canvas
+ */
+function NewGraphics(width, height) {
+    var c = document.createElement('canvas');
+    c.width = width;
+    c.height = height;
+    return new Graphics(c); //return canvas element
+}
 
 Graphics.prototype.destroy = function () {
     this.ctx.canvas = null;
@@ -21643,7 +21654,7 @@ function MysteryImage(options) {
     }
 
     this.imageCache = null;
-    this.g = new Graphics(canvas);
+    this.g = NewGraphics(this.width, this.height);
     this.font = new Font(this.fontStyle, this.fontSize, this.fontName, this.sizeUnits);
     this.g.setFont(this.font);
 
@@ -22438,6 +22449,43 @@ MysteryImage.prototype.draw = function () {
 };//end draw method
 
 //End MysteryImages
+
+
+function drawBus(width, mainColor, minorColor) {
+    let bus = new BusView(sz, mainColor, minorColor, width);
+    bus.draw();
+    let img = bus.imageCache;
+    bus.cleanup();
+    return img;
+}
+
+function drawStar(width, color, fill) {
+
+    let g = new Graphics();
+
+    let halfThickness = (0.5 * thickness);
+    let halfSz = (0.5 * size);
+
+    let cen = new Point(x + halfSz, y + halfSz);
+
+    // A square of side length equal to the supplied thickness. It lives at the center of the square that contains the star.
+    // The bases of the stars prongs rest on this rectangle
+
+    let lf = cen.x - halfThickness;
+    let tp = cen.y - halfThickness;
+    let rt = lf + thickness;
+    let btm = tp + thickness;
+    let cenBox = new Rectangle(lf, tp, rt, btm);
+
+    let xPts = [x, cenBox.left, x + halfSz, cenBox.right(), x + size, cenBox.right(), x + halfSz, cenBox.left, x],
+        yPts = [y + halfSz, cenBox.top, y, cenBox.top, y + halfSz, cenBox.bottom(), y + size, cenBox.bottom(), y + halfSz],
+        nPts = 9;
+    if (fill) {
+        g.fillPolygonFromVertices(xPts, yPts, nPts);
+    } else {
+        g.drawPolygonFromVertices(xPts, yPts, nPts);
+    }
+}
 
 //BusView
 function BusView(busWidth, mainColor, minorColor, busRadius) {
