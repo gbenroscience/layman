@@ -366,6 +366,9 @@ Page.prototype.layoutFromSheet = function (node) {
                     disPage.includes.set(root.id, popupData);
                 }
             }
+            if (key === attrKeys.customType && root.nodeName.toLowerCase() !== 'canvas') {
+                throw 'Error: the `customType` attribute can only be defined on canvas elements'
+            }
         });
         let view;
 
@@ -475,6 +478,15 @@ Page.prototype.layoutFromTags = function (node) {
                 }
                 if (attr === attrKeys.layout_popup) {
                     isPopup = true;
+                }
+
+                if (attr === attrKeys.customType) {
+                    if(root.nodeName.toLowerCase() !== 'canvas'){
+                        throw 'Error: the `customType` attribute can only be defined on canvas elements';
+                    }
+                }
+                if(attr === attrKeys.mi_text){
+                    throw 'Error: You cannot use `mi_text` with inline tags. Please override `layoutCode` to use `mi_text` or define the text within the canvas tags.'
                 }
             } else {
                 throw 'invalid constraint definition... no colon found in ' + con + " on " + root.id;
@@ -1994,6 +2006,7 @@ function View(page, node, refIds, parentId) {
     }
 
 
+    customRenderer(page, this);
     //this.calculateWrapContentSizes(node);
 
     let rect = node.getBoundingClientRect();
@@ -2005,6 +2018,118 @@ function View(page, node, refIds, parentId) {
     }
 
     page.viewMap.set(this.id, this);
+}
+
+
+
+function customRenderer(page, view) {
+    if (page.constructor.name === 'Page') {
+        if (view.constructor.name === 'View') {
+            if (view.htmlNode.nodeName.toLowerCase() === 'canvas') {
+                let customWidgetType = view.refIds.get(attrKeys.customType);
+                switch (customWidgetType) {
+                    case attrKeys.customTypeLabel:
+                        renderTextBox(page, view);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+    }
+
+}
+
+
+function renderTextBox(page, view) {
+    if (view.htmlNode.nodeName.toLowerCase() === 'canvas') {
+        let customWidgetType = view.refIds.get(attrKeys.customType);
+        if (customWidgetType === attrKeys.customTypeLabel) {
+
+            let w = view.refIds.get(attrKeys.layout_width);
+            let parseWidth = parseNumberAndUnits(w, true);
+
+            let text = view.refIds.get(attrKeys.mi_text);
+            if (!text) {
+                text = view.htmlNode.textContent;
+            }
+            if (!text) {
+                text = "LABEL";
+            }
+            
+            
+            w = parseWidth.number;
+
+            let gravity = view.refIds.get(attrKeys.mi_gravity);
+            if (!gravity) {
+                gravity = Gravity.LEFT;
+            }
+            let fontName = view.refIds.get(attrKeys.mi_fontName);
+            if (!fontName) {
+                fontName = "Arial";
+            }
+            let fontSize = view.refIds.get(attrKeys.mi_fontSize);
+            if (!fontSize) {
+                fontSize = "13px";
+            }
+            let fontStyle = view.refIds.get(attrKeys.mi_fontStyle);
+
+            if (!fontStyle) {
+                fontStyle = FontStyle.REGULAR;
+            }
+            let borderRadius = view.refIds.get(attrKeys.mi_border_radius);
+
+            if (!borderRadius) {
+                borderRadius = "2px";
+            }
+            let parseFontSize = parseNumberAndUnits(fontSize, true);
+            let parseBorderRadius = parseNumberAndUnits(borderRadius, true);
+            let fg = view.refIds.get(attrKeys.mi_fg);
+            if (!fg) {
+                fg = '#000';
+            }
+
+            let bg = view.refIds.get(attrKeys.mi_bg);
+            if (!bg) {
+                bg = 'white';
+            }
+
+            let padding = view.refIds.get(attrKeys.mi_padding);
+            if (!padding) {
+                padding = '4px';
+            }
+            let lineSpacing = view.refIds.get(attrKeys.mi_line_spacing);
+
+            if (!lineSpacing) {
+                lineSpacing = 8;
+            }
+
+            let tbox = new TextBox({
+                width: w,
+                text: view.htmlNode.textContent,
+                gravity: gravity,//pick from options, please
+                fontName: fontName,
+                fontSize: parseFontSize.number,
+                sizeUnits: parseFontSize.units,
+                fontStyle: fontStyle,
+                backgroundColor: bg,
+                textColor: fg,
+                borderRadius: parseBorderRadius.number,
+                padding: padding,
+                lineSpacing: lineSpacing
+            });
+
+
+            view.refIds.set(attrKeys.layout_width, tbox.maxLineWidth + 'px');
+            view.refIds.set(attrKeys.layout_height, tbox.height + 'px');
+            view.width = tbox.maxLineWidth;
+            view.height = tbox.height;
+
+            tbox.transfer(view.htmlNode);
+
+
+        }
+    }
 }
 
 
@@ -2033,6 +2158,7 @@ View.prototype.isPopup = function () {
     let check = this.refIds.get(attrKeys.layout_popup);
     return typeof check !== "undefined" && (check === true || check === 'true');
 };
+
 
 View.prototype.makeBgImage = function () {
     let refIds = this.refIds;
@@ -6617,6 +6743,15 @@ const attrKeys = {
     layout_verticalBias: "ver-bias",// a floating point number between 0 and 1 specifying the priority of the vertical constraint attributes
     dimension_ratio: "dim-ratio",
     orientation: "orient", //
+    customType: "custom-widget",// label, tabview(not yet integrated) etc
+    customTypeLabel: "label",
+    customTypeTabView: "tabview",
+    mi_gravity: "mi-gravity",
+    mi_border_radius: "mi-border-radius",
+    mi_padding: "mi-padding",
+    mi_line_spacing: "mi-line-spacing",
+    mi_text: "mi-text",
+
 
     mi_useAutoBg: "mi-use-bg",//bool.. if true, will enable automatic backgrounds
     mi_mode: "mi-mode", //
@@ -7447,6 +7582,53 @@ function parseNumberAndUnitsNoValidation(val, seeNoUnitsAsPx) {
     return { number: number, units: units };
 }
 
+/**
+ * Parses a number and unit string into the number and the units.
+ * @param val e.g 22px or 22%
+ * @param {Boolean} seeNoUnitsAsPx If true, then if the supplied string is a number without units, the function
+ * will assume that the units is in px. If false, it will assume it is a wrong input.
+ * @return the number and the units
+ */
+function parseNumberAndUnits(val, seeNoUnitsAsPx) {
+    if (typeof val !== "string") {
+        throw new Error('parses only string input');
+    }
+    if (seeNoUnitsAsPx && seeNoUnitsAsPx === true) {
+        if (isNumber(val)) {
+            val += "px";
+        }
+    }
+
+    if (isNumber(val)) {
+        if (seeNoUnitsAsPx && seeNoUnitsAsPx === true) {
+            return { number: val, units: "px" };
+        } else {
+            throw "No units specified for number: " + val;
+        }
+    }
+
+    let number = '';
+    let i = val.length - 1;
+    for (; i >= 0; i--) {
+        let token = val.substring(i, i + 1);
+        if (token !== '0' && token !== '1' && token !== '2' && token !== '3' && token !== '4' && token !== '5' &&
+            token !== '6' && token !== '7' && token !== '8' && token !== '9') {
+            // units = token + units;
+        } else {
+            number = val.substring(0, i + 1);
+            break;
+        }
+    }
+    let units = val.substring(i + 1);
+    if (CssSizeUnitsValues.indexOf(units) === -1) {
+        throw new Error("This unit is not a valid css unit.. Use one of:\n " + CssSizeUnitsValues);
+    }
+    if (!isNumber(number)) {
+        throw new Error("The number is not a valid number!..." + number);
+    }
+
+    return { number: number, units: units };
+}
 
 function getUrls() {
     let scripts = document.getElementsByTagName('script');
@@ -19632,6 +19814,8 @@ function NewGraphics(width, height) {
     var c = document.createElement('canvas');
     c.width = width;
     c.height = height;
+    c.style.visibility = "hidden";
+    c.setAttribute('id', 'canvas-' + ULID.ulid());
     if (!c.isConnected) {
         document.body.appendChild(c);
     }
@@ -22798,6 +22982,241 @@ let getTextSize = function (text, font) {
     return null;
 };
 
+
+/**
+ * 
+ * The text is always positioned relative to the left side of the label.
+ * 
+ * @param {Object} options If supplied, no other args should be passed to this constructor.
+ *
+ * ```
+ {
+ text: 'text to show on label',
+ gravity: Gravity.LEFT, //One of Gravity.LEFT or Gravity.RIGHT or Gravity.CENTER... determines the placement of the icon. The text is always positioned relative to the left side of the label.
+ fontName: 'Arial', //The font name
+ fontSize: 16, //The font size.. no units
+ sizeUnits: CssSizeUnits.PX, //The size units to be used for the font and the border radius; e.g CssSizeUnits.EM or CssSizeUnits.PX or CssSizeUnits.PT
+ fontStyle: FontStyle.REGULAR, //e.g bold or italic or italic bold...
+ backgroundColor: 'transparent', //The label's background color - An hexadecimal value, e.g. #00FF22
+ textColor: 'black', //The label's font color - An hexadecimal value, e.g. #00FF22
+ borderRadius: 4, //... the units are same as the units for the font  e.g CssSizeUnits.EM or CssSizeUnits.PX or CssSizeUnits.PT
+ padding: 4,   // The padding used for the text:
+ lineSpacing: 8, // the distance between lines of text(in pixels)
+ 
+ } 
+```
+ * @returns {TextBox}
+ */
+function TextBox(options) {
+    let canvas = null;
+    if (options && typeof options === 'object') {
+
+        if (typeof options.width === 'number') {
+            this.width = options.width;
+        } else if (typeof options.width === 'string') {
+            this.width = parseInt(options.width);
+        } else {
+            this.width = 100;
+        }
+
+        if (typeof options.text === 'string') {
+            this.text = options.text;
+        } else {
+            this.text = 'LABEL';
+        }
+
+        if (typeof options.gravity === 'string') {
+            this.gravity = options.gravity;
+        } else {
+            this.gravity = Gravity.LEFT;
+        }
+
+        if (typeof options.sizeUnits === 'string') {
+            this.sizeUnits = options.sizeUnits;
+        } else {
+            this.sizeUnits = CssSizeUnits.PX;
+        }
+
+        if (typeof options.lineSpacing === 'number') {
+            this.lineSpacing = options.lineSpacing;
+        } else if (typeof options.lineSpacing === 'string') {
+            this.lineSpacing = parseInt(options.lineSpacing);
+        } else {
+            this.lineSpacing = 8;
+        }
+
+        if (typeof options.fontName === 'string') {
+            this.fontName = options.fontName;
+        } else {
+            this.fontName = "Segoe UI";
+        }
+
+        if (typeof options.fontSize === 'number') {
+            this.fontSize = options.fontSize;
+        } else if (typeof options.fontSize === 'string') {
+            this.fontSize = parseInt(options.fontSize);
+        } else {
+            this.fontSize = 15;//15px
+        }
+
+        if (typeof options.fontStyle === 'string') {
+            this.fontStyle = options.fontStyle;
+        } else {
+            this.fontStyle = FontStyle.REGULAR;//15px
+        }
+
+        if (typeof options.borderRadius === 'number') {
+            this.borderRadius = options.borderRadius;
+        } else if (typeof options.borderRadius === 'string') {
+            this.borderRadius = parseInt(options.borderRadius);
+        } else {
+            this.borderRadius = 2;
+        }
+
+        if (typeof options.backgroundColor === 'string') {
+            this.backgroundColor = options.backgroundColor;
+        } else {
+            this.backgroundColor = "#DDDDDD";
+        }
+
+        if (typeof options.textColor === 'string') {
+            this.textColor = options.textColor;
+        } else {
+            this.textColor = "#000000";
+        }
+
+        if (typeof options.padding === 'number') {
+            this.padding = options.padding;
+        } else {
+            this.padding = 4;
+        }
+
+        this.height = 0;
+        this.maxLineWidth = 0;
+        this.g = NewGraphics(this.width, this.width);
+
+        this.font = new Font(this.fontStyle, this.fontSize, this.fontName, this.sizeUnits);
+        this.g.setFont(this.font);
+
+        this.render();
+    } else {
+        throw new Error('Invalid parameters for ' + this.constructor.name);
+    }
+}
+
+TextBox.prototype.render = function () {
+
+    let g = this.g;
+    let w = g.width;
+    let h = g.height;
+    let backgroundColor = this.backgroundColor;
+    let textColor = this.textColor;
+    let borderRadius = this.borderRadius;
+    let font = this.font;
+    let gravity = this.gravity;
+    let txt = this.text;
+    let padding = this.padding;
+    let lineSpacing = this.lineSpacing;
+
+    //PAINT THE BG OVER:
+
+    g.setBackground(backgroundColor);
+    g.fillRoundRect(0, 0, w, h, borderRadius);
+
+    g.setFont(font);
+    g.setBackground(textColor);
+
+
+    let availableWidth = w - 2 * padding;
+
+    let lines = g.getLinesByMaxWidthAlgorithm(txt, availableWidth);
+
+    let lineCount = lines.length;
+    if (lineCount > 0) {
+        let textHeight = g.textHeight(txt);
+        let y = textHeight + padding;
+
+        for (let i = 0; i < lineCount; i++) {
+            let l = lines[i];
+            if (l.width > this.maxLineWidth) {
+                this.maxLineWidth = l.width;
+            }
+            switch (gravity) {
+                case Gravity.LEFT:
+                    g.drawString(l.text, padding, y);
+                    break;
+                case Gravity.RIGHT:
+                    g.drawString(l.text, w - padding - l.width, y);
+                    break;
+                case Gravity.CENTER:
+                    g.drawString(l.text, (w - padding - l.width) / 2, y);
+                    break;
+                default:
+                    //default is left..
+                    g.drawString(l.text, padding, y);
+                    break;
+            }
+            y += (textHeight + lineSpacing);
+            if (y > h - padding) {
+                //expand the canvas vertically
+                let linesProcessed = i + 1;
+                //...(linesProcessed/totalLines) = ((h-padding)/H)...H = total height that fits all lines
+                let totalHeightOfTextLines = ((h - padding) * (lines.length) / linesProcessed);
+                this.remove();
+                this.g = NewGraphics(this.width, totalHeightOfTextLines);
+                this.render();
+                break;
+            }
+        }
+        this.height = (2 * padding) + (textHeight * lineCount) + (lineSpacing * lineCount);
+        this.maxLineWidth += 2 * padding
+    }
+};
+
+TextBox.prototype.transfer = function (destCanvas) {
+    let img = this.getImage();
+
+    let c = this.g.getCanvas();
+    destCanvas.width = c.width;
+    destCanvas.height = c.height;
+    destCanvas.style.width = this.maxLineWidth + 'px';
+    destCanvas.style.height = this.height + 'px';
+    //destCanvas.getContext('2d').drawImage(c, 0, 0, this.maxLineWidth, this.height, 0, 0, this.maxLineWidth, this.height);
+    c.remove();
+
+
+
+
+
+    let stl = new Style('#' + destCanvas.id, []);
+    stl.addFromOptions({
+        "background-image": "url('" + img + "')",
+        "background-position": "0% 0%",
+        "background-repeat": "no-repeat"
+    });
+    updateOrCreateSelectorInStyleSheet(styleSheet, stl);
+
+};
+/**
+ * 
+ * @param {Function} callback A callback that takes one argument which is the blob representing the TextBox
+ * @returns void
+ */
+TextBox.prototype.getImage = function () {
+    return this.g.getCanvas().toDataURL();
+};
+
+TextBox.prototype.getSize = function () {
+    return {
+        width: this.g.width,
+        height: this.g.height
+    }
+};
+TextBox.prototype.remove = function () {
+    this.g.clear();
+    this.g.getCanvas().remove();
+    this.g.destroy();
+};
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bridged Worker... https://github.com/blittle/bridged-worker, originally authored at https://gist.github.com/d1manson/6714892
