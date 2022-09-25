@@ -2114,7 +2114,7 @@ function renderTextBox(page, view) {
 
             let tbox = new TextBox({
                 width: w,
-                text: view.htmlNode.textContent,
+                text: text,
                 gravity: gravity,//pick from options, please
                 fontName: fontName,
                 fontSize: parseFontSize.number,
@@ -21684,8 +21684,6 @@ function MysteryImage(options) {
         }
     }
 
-
-    let canvas = makeCanvas(this.id, this.width, this.height);
     this.numShapes = 20;
     if (options.numShapes) {
         if (typeof options.numShapes === "number") {
