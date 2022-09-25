@@ -481,11 +481,11 @@ Page.prototype.layoutFromTags = function (node) {
                 }
 
                 if (attr === attrKeys.customType) {
-                    if(root.nodeName.toLowerCase() !== 'canvas'){
+                    if (root.nodeName.toLowerCase() !== 'canvas') {
                         throw 'Error: the `customType` attribute can only be defined on canvas elements';
                     }
                 }
-                if(attr === attrKeys.mi_text){
+                if (attr === attrKeys.mi_text) {
                     throw 'Error: You cannot use `mi_text` with inline tags. Please override `layoutCode` to use `mi_text` or define the text within the canvas tags.'
                 }
             } else {
@@ -2056,8 +2056,8 @@ function renderTextBox(page, view) {
             if (!text) {
                 text = "LABEL";
             }
-            
-            
+
+
             w = parseWidth.number;
 
             let gravity = view.refIds.get(attrKeys.mi_gravity);
@@ -2077,6 +2077,14 @@ function renderTextBox(page, view) {
             if (!fontStyle) {
                 fontStyle = FontStyle.REGULAR;
             }
+            let fontWeight = view.refIds.get(attrKeys.mi_fontWeight);
+
+            if (!fontWeight) {
+                fontWeight = FontStyle.REGULAR;
+            }
+
+            fontStyle = fontWeight + ' ' + fontStyle;
+
             let borderRadius = view.refIds.get(attrKeys.mi_border_radius);
 
             if (!borderRadius) {
