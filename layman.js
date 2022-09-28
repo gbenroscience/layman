@@ -7430,14 +7430,17 @@ function getUrls() {
         if (src.lastIndexOf(ender) === fullLen - endLen) {
             scriptURL = src.substring(0, fullLen - endLen);
 
-            //let projectURL = scriptsURL.substring(0, scriptsURL.length - "layit/".length);
-            projectURL = scriptURL.substring(0, scriptURL.lastIndexOf("/", scriptURL.length - 2) + 1);
+           projectURL = window.location.href;
+            let i=0;        
+            while(projectURL.charAt(i) === scriptURL.charAt(i)){
+                i+=1;
+            }
+            projectURL = projectURL.substring(0, i);
             return [projectURL, scriptURL];
         }
     }
     return null;
 }
-
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
