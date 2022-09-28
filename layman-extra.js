@@ -6679,17 +6679,15 @@ function isOneDimArray(array) {
 
 
 function addClass(element, className) {
-    if (element.className.length === 0) {
-        element.className = className;
-    } else {
-        if (element.className.indexOf(className) === -1) {
-            element.className += " " + className;
-        }
+    if(element && className){
+        element.classList.add(className);
     }
 }
 
 function removeClass(element, className) {
-    element.classList.remove(className);
+    if(element && className){
+       element.classList.remove(className);
+    }
 }
 
 function isDomEntity(entity) {
