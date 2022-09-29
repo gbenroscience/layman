@@ -163,6 +163,22 @@ function Page(rootNode) {
      * @type {Map<String, RemoteLayoutData>}
      */
     this.popups = new Map();
+    /**
+     * Store all side menu ids against their layout paths here.
+     * The key is the id of the sidemenu definition
+     * The value is the src(filepath) to the html markup of the menu's content.
+     * The library reads out the sidemenus, stores them here and removes every trace of the sidemenus from the original page code.
+     */
+    this.sidemenus = new Map();
+    /**
+     * Store all sidemenu ids that open from the left here
+     */
+     this.leftMenus = [];
+    /**
+     * Store all sidemenu ids that open from the right here
+     */
+     this.rightMenus = [];
+    
 
 
     /**
@@ -176,7 +192,6 @@ function Page(rootNode) {
     this.includes = new Map();
 
     if (!rootNode) {
-
         let htmlBodyStyle = new Style('html,body', []);
         htmlBodyStyle.addFromOptions({
             width: '100%',
@@ -184,7 +199,6 @@ function Page(rootNode) {
             padding: '0',
             margin: '0'
         });
-
 
         let generalStyle = new Style("*", []);
         generalStyle.addFromOptions({
@@ -356,11 +370,25 @@ Page.prototype.layoutFromSheet = function (node) {
             let val = constraints[key];
             refIds.set(key, val);
             if (key === attrKeys.layout_src) {
-                let isPopup = constraints[attrKeys.layout_popup]
                 disPage.srcPaths.push(val);
                 disPage.sourcesLoaded = false;
                 let popupData = new RemoteLayoutData(val);
-                if (isPopup === true) {
+                
+                let isPopup = constraints[attrKeys.layout_popup];
+                let isMenuLeft = constraints[attrKeys.layout_menuLeft];
+                let isMenuRight = constraints[attrKeys.layout_menuRight];
+                if(isMenuLeft === true && isMenuRight === true){
+                    throw `Each html element can only take one of ${attrKeys.layout_menuLeft} or ${attrKeys.layout_menuRight} at once...`;
+                }
+                if(isMenuLeft === true || isMenuLeft === 'true'){
+                    disPage.leftMenus.push(root.id);
+                    disPage.sidemenus.set(root.id, popupData);
+                }
+                else if(isMenuRight === true || isMenuRight === 'true'){
+                    disPage.rightMenus.push(root.id);
+                    disPage.sidemenus.set(root.id, popupData);
+                }
+                else if (isPopup === true || isPopup === 'true') {
                     disPage.popups.set(root.id, popupData);
                 } else {
                     disPage.includes.set(root.id, popupData);
@@ -462,7 +490,10 @@ Page.prototype.layoutFromTags = function (node) {
         constraints = constraints.split(";");
 
         let refIds = new Map();
-        let isPopup;
+        let isPopup = false;
+        let isMenuLeft = false; 
+        let isMenuRight = false;
+
         let src = null;
         for (let i = 0; i < constraints.length; i++) {
             let con = constraints[i];
@@ -476,9 +507,25 @@ Page.prototype.layoutFromTags = function (node) {
                     disPage.sourcesLoaded = false;
                     src = val;
                 }
-                if (attr === attrKeys.layout_popup) {
-                    isPopup = true;
+
+                switch(attr){
+                    case attrKeys.layout_popup:
+                        isPopup = val === true || val === 'true';
+                    break;
+                    case attrKeys.layout_menuLeft:
+                        isMenuLeft = val === true || val === 'true';
+                    break;
+                    case attrKeys.layout_menuRight:
+                        isMenuRight = val === true || val === 'true';
+                    break;
+
+                    default:
+                        break;
                 }
+                if(isMenuLeft && isMenuRight){
+                    throw `Each html element can only take one of ${attrKeys.layout_menuLeft} or ${attrKeys.layout_menuRight} at once...`;
+                }
+
 
                 if (attr === attrKeys.customType) {
                     if (root.nodeName.toLowerCase() !== 'canvas') {
@@ -496,7 +543,16 @@ Page.prototype.layoutFromTags = function (node) {
             let popupData = new RemoteLayoutData(src);
             if (isPopup === true) {
                 disPage.popups.set(root.id, popupData);
-            } else {
+            }
+            else if(isMenuLeft === true){
+                disPage.leftMenus.push(root.id);
+                disPage.sidemenus.set(root.id, popupData);
+            }
+            else if(isMenuRight === true){
+                disPage.rightMenus.push(root.id);
+                disPage.sidemenus.set(root.id, popupData);
+            }
+             else {
                 disPage.includes.set(root.id, popupData);
             }
         }
@@ -556,6 +612,7 @@ Page.prototype.layoutFromTags = function (node) {
 Page.prototype.buildUI = function (rootView) {
     let bgEnabledViews = [];
     let pops = [];
+    let menus = [];
     let layAll = function (v, page) {
         if (v.childrenIds.length > 0) {
             autoLayout(v.htmlNode === document.body ? undefined : v.htmlNode, v.layoutChildren(page));
@@ -563,6 +620,9 @@ Page.prototype.buildUI = function (rootView) {
                 let cv = page.viewMap.get(id);
                 if (cv.isPopup()) {
                     pops.push(cv);
+                }
+                if(cv.isSideMenu()){
+                    menus.push(cv);
                 }
                 if (cv.hasBgImage) {
                     bgEnabledViews.push(cv);
@@ -585,6 +645,15 @@ Page.prototype.buildUI = function (rootView) {
         currentPage.popups.set(popup.id, ppData);
         popup.htmlNode.remove();
     });
+    
+    menus.forEach(function (menu) {
+        let menuData = currentPage.sidemenus.get(menu.id);
+        menuData.rect = menu.htmlNode.getBoundingClientRect();
+        console.log('menuData: ', menuData);
+        currentPage.sidemenus.set(menu.id, menuData);
+        menu.htmlNode.remove();
+    });
+    
 };
 
 Page.prototype.showRoot = function () {
@@ -600,6 +669,36 @@ Page.prototype.hideRoot = function () {
     } else {
         this.rootElement.style.visibility = 'hidden';
     }
+};
+
+Page.prototype.openSideMenu = function(menuId, closeOnClickOutSide){
+    let pg = this;
+    let menuData = this.sidemenus.get(menuId);
+
+    let isLeftMenu = this.leftMenus.indexOf(menuId) !== -1;
+    let isRightMenu = this.rightMenus.indexOf(menuId) !== -1;
+    let menuType = isLeftMenu ? SideMenuTypes.LEFT : (isRightMenu ? SideMenuTypes.RIGHT : null);
+    if(!menuType){
+        throw 'Invalid menutype found';
+    }
+    
+
+    let html = this.sources.get(menuData.path);
+    let r = menuData.rect;
+    if (!r || !r.width || !r.height) {
+        throw 'specify width or height on popup: ' + popupId;
+    }
+  
+    let menu = new SideMenuX({
+        id: menuId,
+        layout: html,
+        width: r.width,
+        height: r.height,
+        menuType: menuType,
+        closeOnClickOutside: typeof closeOnClickOutSide === "boolean" ? closeOnClickOutSide : false,
+        bg: "#fff"
+    });
+    return menu.open();
 };
 
 /**
@@ -2166,6 +2265,22 @@ View.prototype.isPopup = function () {
     let check = this.refIds.get(attrKeys.layout_popup);
     return typeof check !== "undefined" && (check === true || check === 'true');
 };
+
+View.prototype.isLeftSideMenu = function () {
+    let check = this.refIds.get(attrKeys.layout_menuLeft);
+    return typeof check !== "undefined" && (check === true || check === 'true');
+};
+
+
+View.prototype.isRightSideMenu = function () {
+    let check = this.refIds.get(attrKeys.layout_menuRight);
+    return typeof check !== "undefined" && (check === true || check === 'true');
+};
+
+View.prototype.isSideMenu = function () {
+    return this.isLeftSideMenu() || this.isRightSideMenu();
+};
+
 
 
 View.prototype.makeBgImage = function () {
@@ -6741,6 +6856,8 @@ const attrKeys = {
     layout_constraintGuide: "data-guide",
     layout_constraintGuideColor: "data-guide-color",
     layout_popup: "popup",//true or false..default on any element is false
+    layout_menuLeft: "menu-left",//true or false..default on any element is false
+    layout_menuRight: "menu-right",//true or false..default on any element is false
     layout_src: "src",// fetch the sub-layout to include in a popup or an include from the path specified here.
     layout_constraintGuide_percent: "guide-pct",
     layout_constraintGuide_begin: "guide-begin",
@@ -7659,6 +7776,398 @@ function getUrls() {
     }
     return null;
 }
+
+//////////////////////////////////////////////////////////////////////
+// SideMenu Code
+const SideMenuTypes = {
+    LEFT: 'left',
+    RIGHT: 'right'
+};
+
+
+/* global SideMenuTypes */
+
+/**
+ * 
+ * @param {Object} options
+ * 
+ ```
+ {
+   id: 'menu-id',
+   layout: 'layout-html-file-name'
+   width: '30%',//or other css value
+   background: 'pink',
+   menuType: 'left|right',//e.g. one of SideMenuTypes.LEFT or SideMenuTypes.RIGHT
+   onOpen : function(){},
+   onClose : function(){}  
+ }
+ ```
+ * @returns {SideMenuX}
+ */
+ function SideMenuX(options) {
+    if (!options) {
+        throw new Error('Please supply the options for creating the menu.');
+    }
+
+    this.id = '';
+
+    if (typeof options.id === 'string') {
+        this.id = options.id;
+    } else {
+        throw new Error('Please supply the id of the menu');
+    }
+
+    this.width = -1;
+    this.parsedWidth = -1;
+    if(typeof options.width === 'number'){
+        this.width = options.width+'px';
+    }
+    else if (typeof options.width === 'string') {
+        if(isNumber(parseInt(options.width))){
+            this.width = options.width;
+        }else{
+            throw 'invalid value specified for width!';
+        }
+    } else {
+        throw new Error('Please supply the width of the menu.. e.g. `width:"300px"` or `width:"30%"`');
+    }
+
+    this.menuType = SideMenuTypes.LEFT;
+    if (options.menuType) {
+        if (options.menuType === SideMenuTypes.LEFT || options.menuType === SideMenuTypes.RIGHT) {
+            this.menuType = options.menuType;
+        } else {
+            throw new Error('Invalid menu type specified! Use either of `' + SideMenuTypes.PUSH + '` or `' + SideMenuTypes.OVERLAY + '`');
+        }
+    }
+
+    this.layout = '';
+
+    if (typeof options.layout === 'string') {
+        this.layout = options.layout;
+    } else {
+        throw new Error('Please supply the name of the xml layout');
+    }
+
+    this.background = '#fff';
+    if (options.background) {
+        this.background = options.background;
+    }
+
+
+    this.registry = {};//register css classes and map them to their styles.
+
+    var body = document.body,
+            html = document.documentElement;
+
+    let bgWidth = Math.max(body.scrollWidth, body.offsetWidth,
+            html.clientWidth, html.scrollWidth, html.offsetWidth);
+    let bgHeight = Math.max(body.scrollHeight, body.offsetHeight,
+            html.clientHeight, html.scrollHeight, html.offsetHeight);
+
+
+    this.overlayStyle = new Style('.' + this.overlayClass(), []);
+    this.frameStyle = new Style('.' + this.containerClass(), []);
+    this.closeBtnStyle = new Style("." + this.closeBtnClass(), []);
+    this.noScrollStyle = new Style(".noscroll", []);
+    let popupZIndex = 2000;
+
+    this.overlayStyle.addFromOptions({
+        display: 'block',
+        visibility: 'visible',
+        opacity: '0.8',
+        position: 'fixed',
+        'background-color': "black",
+        top: '0',
+        left: '0',
+        bottom: '0',
+        right: '0',
+        'z-index': popupZIndex + ''
+    });
+
+    this.noScrollStyle.addFromOptions({
+        overflow: 'hidden'
+    });
+
+
+    initFrameCss:{
+        popupZIndex += 10;
+        let optns = {
+            width: this.width,
+            height: bgHeight + 'px',
+            position: 'fixed',
+            top: '0',
+            'z-index': popupZIndex + '',
+            'background-color': this.background,
+            'overflow-x': 'hidden',
+            'overflow-y': 'auto',
+            transition: '0.05s',
+            'padding': '0'
+        };
+        optns[this.menuType] = '0';//left: 0 or right: 0
+        this.frameStyle.addFromOptions(optns);
+    }
+
+    initCloseBtnStyle:{
+        let optns = {
+            "top": "12px",
+            "position": "fixed",
+            "font-size": "8em",
+            "font-weight": "bold",
+            "font-family": "monospace",
+            "cursor": "pointer",
+            "color": "white",
+            "background-color": "transparent",
+            "border": "none",
+            "padding": "none"
+        };
+        if(this.menuType === SideMenuTypes.LEFT){
+            optns[SideMenuTypes.RIGHT] = '18px';
+        }else{
+            optns[SideMenuTypes.LEFT] = '18px';
+        }
+        this.closeBtnStyle.addFromOptions(optns);
+    }
+
+    this.onOpen = function () {};
+    if (options.onOpen && {}.toString.call(options.onOpen) === '[object Function]') {
+        this.onOpen = options.onOpen;
+    } else {
+        this.onOpen = function () {};
+    }
+
+    this.onClose = function () {};
+    if (options.onClose && {}.toString.call(options.onClose) === '[object Function]') {
+        this.onClose = options.onClose;
+    } else {
+        this.onClose = function () {};
+    }
+
+    this.registerStyle(this.overlayStyle);
+    this.registerStyle(this.noScrollStyle);
+    this.registerStyle(this.frameStyle);
+    this.registerStyle(this.closeBtnStyle);
+    /**
+     * The root view of the loaded layout
+     */
+    this.rootView = null;
+
+
+}
+
+
+SideMenuX.prototype.registerStyle = function (style) {
+    this.registry[style.name] = style;
+};
+
+SideMenuX.prototype.hide = function () {
+    var overlay = document.getElementById(this.overlayId());
+    var frame = document.getElementById(this.containerId());
+
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    if (frame) {
+        this.closeMenu();
+    }
+        removeClass(document.body , this.noScrollStyle.name.substring(1));
+    this.onClose();
+
+};
+
+SideMenuX.prototype.open = function () {
+    this.build();
+};
+
+SideMenuX.prototype.build = function () {
+
+    var popup = this;
+
+
+    let freshCall = false;
+
+    var overlay = document.getElementById(this.overlayId());
+    var frame = document.getElementById(this.containerId());
+
+    if (!overlay) {
+        freshCall = true;
+        overlay = document.createElement('div');
+        overlay.setAttribute("id", this.overlayId());
+        addClass(overlay, this.overlayClass());
+        document.body.appendChild(overlay);
+    }
+
+    overlay.style.display = 'block';
+    overlay.onclick = function () {
+        popup.hide();
+    };
+
+    if (!frame) {
+        frame = document.createElement('div');
+        frame.setAttribute("id", this.containerId());
+        addClass(frame, this.containerClass());
+        document.body.appendChild(frame);
+    }
+
+    let closeBtn = document.getElementById(this.closeBtnId());
+
+    if (!closeBtn) {
+        closeBtn = document.createElement("input");
+        closeBtn.setAttribute("id", this.closeBtnId());
+        addClass(closeBtn, this.closeBtnClass());
+        closeBtn.setAttribute('type' , 'button');
+        closeBtn.value = "\u02DF";
+        overlay.appendChild(closeBtn);
+    }
+
+
+    closeBtn.onclick = function () {
+        popup.hide();
+    };
+
+
+    if (freshCall) {
+        let style = document.createElement('style');
+        style.setAttribute('type', 'text/css');
+        let css = new StringBuffer();
+
+        for (var key in this.registry) {
+            css.append(this.registry[key].styleSheetEntry(key));
+        }
+        style.innerHTML = css.toString();
+        document.getElementsByTagName('head')[0].appendChild(style);
+
+            let p = new Page(frame);
+            p.layout();
+            page.subPages.set(frame.id, p);
+
+            popup.openMenu();
+            popup.rootView = frame;
+            popup.parsedWidth = parseInt(window.getComputedStyle(frame).width);
+            
+    }
+
+    this.addDragEvents(overlay, frame);
+    this.openMenu();
+
+
+};
+
+SideMenuX.prototype.addDragEvents = function (overlay, frame) {
+
+    let self = this;
+    let pressed = true;
+
+    frame.onmousemove = function (e) {};
+    frame.onmousedown = function (e) {
+        e = window.event || e;
+        if (e.target !== this && e.target !== self.rootView) {
+            return;
+        }
+        pressed = true;
+
+        frame.onmousemove = function (ev) {
+            ev = window.event || ev;
+            if (ev.target !== this && ev.target !== self.rootView) {
+                return;
+            }
+            if (pressed === true) {
+                if (ev.pageX < self.parsedWidth) {
+                    frame.style.width = (ev.pageX + 2) + 'px';
+                    frame.style.transition = '0.05s';
+                } else {
+
+                }
+            }
+
+
+        };
+        frame.onmouseup = function (ev) {
+            ev = window.event || ev;
+            if (ev.target !== this && ev.target !== self.rootView) {
+                return;
+            }
+            pressed = false;
+            frame.style.transition = '0.5s';
+            frame.onmousemove = function (e) {};
+            if (ev.pageX < self.parsedWidth / 3) {
+                self.hide();
+            } else {
+                self.openMenu();
+            }
+        };
+
+
+    };
+
+    overlay.onmouseup = function (e) {
+        e.preventDefault();
+        pressed = false;
+    };
+
+
+    overlay.onmousemove = function (e) {
+          ev = window.event || ev;
+            if (ev.target !== this && ev.target !== self.rootView) {
+                return;
+            }
+            if (pressed === true) {
+                if (ev.pageX < self.parsedWidth) {
+                    frame.style.width = (ev.pageX + 2) + 'px';
+                    frame.style.transition = '0.05s';
+                } else  if(ev.pageX >= self.parsedWidth + 80){
+                    frame.style.width = self.parsedWidth + 'px';
+                }else {
+                   
+                }
+            }
+
+    };
+
+
+
+};
+
+SideMenuX.prototype.containerClass = function () {
+    return this.id + "_side_menux_frame_class";
+};
+
+
+SideMenuX.prototype.overlayClass = function () {
+    return this.id + "_side_menux_overlay_class";
+};
+
+
+SideMenuX.prototype.overlayId = function () {
+    return this.id + "_side_menux_overlay_id";
+};
+
+SideMenuX.prototype.closeBtnClass = function () {
+    return this.id + "_side_menux_close_btn_class";
+};
+
+SideMenuX.prototype.closeBtnId = function () {
+    return this.id + "_side_menux_close_btn_class";
+};
+
+
+
+SideMenuX.prototype.containerId = function () {
+    return this.id;
+};
+
+
+SideMenuX.prototype.openMenu = function () {
+    document.getElementById(this.containerId()).style.width = this.width;
+    addClass(document.body , this.noScrollStyle.name.substring(1));
+    this.onOpen();
+};
+
+SideMenuX.prototype.closeMenu = function () {
+    document.getElementById(this.containerId()).style.width = "0";
+};
+
+
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
