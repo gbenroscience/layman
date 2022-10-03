@@ -673,10 +673,26 @@ Page.prototype.hideRoot = function () {
 };
 
 
-Page.prototype.openSideMenu = function(menuId, closeOnClickOutSide,onOpen, onClose){
+
+/**
+ * 
+ * @param {string} menuId 
+ * @param {boolean} closeOnClickOutSide 
+ * @param {function} onOpen 
+ * @param {function} onClose 
+ * @returns 
+ */
+ Page.prototype.openSideMenu = function(menuId, closeOnClickOutSide,onOpen, onClose){
     if(arguments.length !== 4){
         throw '`Page.openSideMenu` function requires 4 arguments';
     }
+    if(typeof menuId !== 'string'){
+        throw '`menuId` must be a string';
+    }
+    if(typeof closeOnClickOutSide !== 'boolean'){
+        throw '`closeOnClickOutSide` must be  a boolean';
+    }
+    
     if(typeof onOpen !== 'function'){
         throw 'onOpen must be a function';
     }    
@@ -7839,10 +7855,12 @@ SideMenuX.prototype.hide = function () {
         removeClass(document.body , this.noScrollStyle.name.substring(1));
     this.onClose();
 
+    return this;
 };
 
 SideMenuX.prototype.open = function () {
-    this.build();
+ this.build();
+ return this;
 };
 
 SideMenuX.prototype.build = function () {
@@ -7915,7 +7933,7 @@ SideMenuX.prototype.build = function () {
     this.addDragEvents(overlay, frame);
     this.openMenu();
 
-
+return this;
 };
 
 SideMenuX.prototype.addDragEvents = function (overlay, frame) {
