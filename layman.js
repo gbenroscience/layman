@@ -649,7 +649,6 @@ Page.prototype.buildUI = function (rootView) {
     menus.forEach(function (menu) {
         let menuData = currentPage.sidemenus.get(menu.id);
         menuData.rect = menu.htmlNode.getBoundingClientRect();
-        console.log('menuData: ', menuData);
         currentPage.sidemenus.set(menu.id, menuData);
         menu.htmlNode.remove();
     });
@@ -7857,6 +7856,7 @@ SideMenuX.prototype.build = function () {
         frame = document.createElement('div');
         frame.setAttribute("id", this.containerId());
         addClass(frame, this.containerClass());
+        frame.innerHTML = this.layout;
         document.body.appendChild(frame);
     }
 

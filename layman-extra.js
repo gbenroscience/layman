@@ -295,12 +295,15 @@ function shouldIgnoreSpecialChildElement(node) {
  * So we auto-assign ids to the child elements if there are no ids on them
  */
 function enforceIdOnChildElements(node) {
+    let id = null;
     if (shouldIgnoreSpecialChildElement(node)) {
-        let id = node.getAttribute(attrKeys.id);
+         id = node.getAttribute(attrKeys.id);
         if (!id) {
-            node.setAttribute(attrKeys.id, ULID.ulid());
+            id = ULID.ulid();
+            node.setAttribute(attrKeys.id, id);
         }
     }
+    return id;
 }
 
 Page.prototype.layout = function () {
@@ -401,7 +404,7 @@ Page.prototype.layoutFromSheet = function (node) {
         let view;
 
         let attr = constraints[attrKeys.layout_constraintGuide];
-        if (!attr) {
+        if (!attr) {//not a Guideline
             enforceIdOnChildElements(root);
             if (root === document.body) {
                 view = new View(this, root, refIds, undefined);
@@ -417,7 +420,6 @@ Page.prototype.layoutFromSheet = function (node) {
             } else {
                 throw 'Invalid value for guide';
             }
-
         }
 
         if (root.hasChildNodes()) {
@@ -649,7 +651,6 @@ Page.prototype.buildUI = function (rootView) {
     menus.forEach(function (menu) {
         let menuData = currentPage.sidemenus.get(menu.id);
         menuData.rect = menu.htmlNode.getBoundingClientRect();
-        console.log('menuData: ', menuData);
         currentPage.sidemenus.set(menu.id, menuData);
         menu.htmlNode.remove();
     });
@@ -2151,6 +2152,7 @@ function renderTextBox(page, view) {
             let text = view.refIds.get(attrKeys.mi_text);
             if (!text) {
                 text = view.htmlNode.textContent;
+                text = text.trim();
             }
             if (!text) {
                 text = "LABEL";
@@ -6038,7 +6040,6 @@ View.prototype.calculateWrapContentSizes = function (node) {
         let rect = node.getBoundingClientRect();
         this.wrapWidth = (0.813 * rect.width) + 'px';
         this.wrapHeight = (0.825 * rect.height) + 'px';
-        alert(this.wrapWidth + " , " + this.wrapHeight);
     } else if (w !== sizes.WRAP_CONTENT && h === sizes.WRAP_CONTENT) {
         node.style.width = w;
         let rect = node.getBoundingClientRect();
