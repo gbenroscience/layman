@@ -672,7 +672,17 @@ Page.prototype.hideRoot = function () {
     }
 };
 
-Page.prototype.openSideMenu = function(menuId, closeOnClickOutSide){
+
+Page.prototype.openSideMenu = function(menuId, closeOnClickOutSide,onOpen, onClose){
+    if(arguments.length !== 4){
+        throw '`Page.openSideMenu` function requires 4 arguments';
+    }
+    if(typeof onOpen !== 'function'){
+        throw 'onOpen must be a function';
+    }    
+    if(typeof onClose !== 'function'){
+        throw 'onClose must be a function';
+    }
     let pg = this;
     let menuData = this.sidemenus.get(menuId);
 
@@ -689,13 +699,14 @@ Page.prototype.openSideMenu = function(menuId, closeOnClickOutSide){
     if (!r || !r.width || !r.height) {
         throw 'specify width or height on popup: ' + popupId;
     }
-  
+
 
     let menu = new SideMenuX({
         id: menuId,
         layout: html,
         width: r.width,
-        height: r.height,
+        onOpen: onOpen,
+        onClose: onClose,
         menuType: menuType,
         closeOnClickOutside: typeof closeOnClickOutSide === "boolean" ? closeOnClickOutSide : false,
         bg: "#fff"
