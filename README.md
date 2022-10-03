@@ -4,6 +4,8 @@
 
 **_layman_** is a constraint layout library for html pages.
 
+Client side includes, popups, side menus and more design goodies(lol)
+
 Here are some example pages designed using `layman`:
 
 1. [A simple login page](https://gbenroscience.github.io/layman/easylogin.html) and
@@ -20,7 +22,20 @@ What problem does **_layman_** solve?
 content without having to create additional xml files, or having to learn the syntax of android xml.
 In **_layman_**, no new xml files are created.
 
+**_layman_** has 2 files that you may choose from, as they do basically the same thing.
+1. layman.js
+2. layman-extra.js
+   
+   Both files have the functionality of constraint layouts, but layman-extra.js adds some capability of generating backgrounds for divs and other html elements, provides custom elements(TextBox) that work better with the wrap_content specification than
+   the native spans and paragraph tags of html among others.
+
+
+This extra functionality means that layman-extra.js is larger than layman.js.
+
+Henceforth, where we refer to `layman.js`, we are referring to either file, except where otherwise specified.
+
 Modular design has also been added, with the addition of client-side includes for `tags > 0.1.1`.
+
 
 #### NOTE:
 
@@ -469,6 +484,38 @@ Or:
 ```Javascript
 popup.hide();
 ```
+
+
+### Side Menus
+Side Menus have been introduced.
+They may open from the left or from the right depending on your definition.
+To use a side menu:
+Define an html div with an id in your html.
+For example:
+```HTML
+<div id="feeds_menu"></div>
+```
+In your project, define a file to include as the layout for the side menu, e.g. call it `feeds.html` and put the html code
+for the side menu in it.
+
+In your layman layout code, for instance, do:
+```Javascript
+ feeds_menu:{
+                w: "300px", h: "90%", "menu-left": true, src: "menus/feeds.html"
+            },
+```
+
+Then simply call:
+```Javascript
+let sideMenuBtn = document.getElementById('open_feeds_icon');// a button on your page
+
+            sideMenuBtn.onclick = function (e) {
+                page.openSideMenu('feeds_menu', true);
+            }; 
+```
+The second argument siginifies whether the sidemenu is closable by clicking on the translucent overlay or not.
+
+
 
 ## Nested Includes Disallowed
 When using included files, do not define additional includes in included files. We do not support

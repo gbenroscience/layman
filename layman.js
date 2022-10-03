@@ -295,12 +295,15 @@ function shouldIgnoreSpecialChildElement(node) {
  * So we auto-assign ids to the child elements if there are no ids on them
  */
 function enforceIdOnChildElements(node) {
+    let id = null;
     if (shouldIgnoreSpecialChildElement(node)) {
-        let id = node.getAttribute(attrKeys.id);
+         id = node.getAttribute(attrKeys.id);
         if (!id) {
-            node.setAttribute(attrKeys.id, ULID.ulid());
+            id = ULID.ulid();
+            node.setAttribute(attrKeys.id, id);
         }
     }
+    return id;
 }
 
 Page.prototype.layout = function () {
@@ -401,7 +404,7 @@ Page.prototype.layoutFromSheet = function (node) {
         let view;
 
         let attr = constraints[attrKeys.layout_constraintGuide];
-        if (!attr) {
+        if (!attr) {//not a Guideline
             enforceIdOnChildElements(root);
             if (root === document.body) {
                 view = new View(this, root, refIds, undefined);
@@ -417,7 +420,6 @@ Page.prototype.layoutFromSheet = function (node) {
             } else {
                 throw 'Invalid value for guide';
             }
-
         }
 
         if (root.hasChildNodes()) {
@@ -688,6 +690,7 @@ Page.prototype.openSideMenu = function(menuId, closeOnClickOutSide){
         throw 'specify width or height on popup: ' + popupId;
     }
   
+
     let menu = new SideMenuX({
         id: menuId,
         layout: html,
@@ -7747,13 +7750,15 @@ const SideMenuTypes = {
             height: bgHeight + 'px',
             position: 'fixed',
             top: '0',
+            left: '0',
+            padding: '0',
             'z-index': popupZIndex + '',
             'background-color': this.background,
             'overflow-x': 'hidden',
             'overflow-y': 'auto',
-            transition: '0.05s',
-            'padding': '0'
+            transition: '0.5s',
         };
+       
         optns[this.menuType] = '0';//left: 0 or right: 0
         this.frameStyle.addFromOptions(optns);
     }
@@ -7833,7 +7838,6 @@ SideMenuX.prototype.build = function () {
 
     var popup = this;
 
-
     let freshCall = false;
 
     var overlay = document.getElementById(this.overlayId());
@@ -7856,7 +7860,7 @@ SideMenuX.prototype.build = function () {
         frame = document.createElement('div');
         frame.setAttribute("id", this.containerId());
         addClass(frame, this.containerClass());
-        frame.innerHTML = this.layout;
+        frame.innerHTML = this.layout.trim();
         document.body.appendChild(frame);
     }
 
@@ -7895,7 +7899,6 @@ SideMenuX.prototype.build = function () {
             popup.openMenu();
             popup.rootView = frame;
             popup.parsedWidth = parseInt(window.getComputedStyle(frame).width);
-            
     }
 
     this.addDragEvents(overlay, frame);
@@ -7925,7 +7928,7 @@ SideMenuX.prototype.addDragEvents = function (overlay, frame) {
             if (pressed === true) {
                 if (ev.pageX < self.parsedWidth) {
                     frame.style.width = (ev.pageX + 2) + 'px';
-                    frame.style.transition = '0.05s';
+                    frame.style.transition = '0.5s';
                 } else {
 
                 }
@@ -7965,7 +7968,7 @@ SideMenuX.prototype.addDragEvents = function (overlay, frame) {
             if (pressed === true) {
                 if (ev.pageX < self.parsedWidth) {
                     frame.style.width = (ev.pageX + 2) + 'px';
-                    frame.style.transition = '0.05s';
+                    frame.style.transition = '0.5s';
                 } else  if(ev.pageX >= self.parsedWidth + 80){
                     frame.style.width = self.parsedWidth + 'px';
                 }else {
