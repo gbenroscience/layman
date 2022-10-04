@@ -730,13 +730,32 @@ Page.prototype.hideRoot = function () {
     return menu.open();
 };
 
+
 /**
  *
  * @param popupId The id of the popup.
  * @param closeOnClickOutSide If true, will close the popup if the user clicks outside its layout(on the overlay).
+ * @param {function} onOpen 
+ * @param {function} onClose 
  * @return {Popup}
  */
-Page.prototype.openPopup = function (popupId, closeOnClickOutSide) {
+ Page.prototype.openPopup = function (popupId, closeOnClickOutSide,onOpen, onClose) {
+    if(arguments.length !== 4){
+        throw '`Page.openPopup` function requires 4 arguments';
+    }
+    if(typeof popupId !== 'string'){
+        throw '`popupId` must be a string';
+    }
+    if(typeof closeOnClickOutSide !== 'boolean'){
+        throw '`closeOnClickOutSide` must be  a boolean';
+    }
+    
+    if(typeof onOpen !== 'function'){
+        throw 'onOpen must be a function';
+    }    
+    if(typeof onClose !== 'function'){
+        throw 'onClose must be a function';
+    }
     let pg = this;
     let ppData = this.popups.get(popupId);
 
@@ -751,7 +770,9 @@ Page.prototype.openPopup = function (popupId, closeOnClickOutSide) {
         width: r.width,
         height: r.height,
         closeOnClickOutside: typeof closeOnClickOutSide === "boolean" ? closeOnClickOutSide : false,
-        bg: "#fff"
+        bg: "#fff",
+        onOpen: onOpen,
+        onClose: onClose
     });
     return popup.open();
 };
