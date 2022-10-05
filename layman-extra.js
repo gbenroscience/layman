@@ -2237,7 +2237,7 @@ function renderTextBox(page, view) {
             if (!borderRadius) {
                 borderRadius = "2px";
             }
-            let parseFontSize = parseNumberAndUnits(fontSize, true);
+            let parseFontSize = parseNumberAndUnits(fontSize, true); console.log(parseFontSize);
             let parseBorderRadius = parseNumberAndUnits(borderRadius, true);
             let fg = view.refIds.get(attrKeys.mi_fg);
             if (!fg) {
@@ -6560,7 +6560,6 @@ Scanner.prototype.scan = function () {
         return b.length - a.length; //ASC, For Descending order use: b - a
     });
     for (let i = 0; i < inp.length; i++) {
-
         for (let j = 0; j < this.tokens.length; j++) {
             let token = this.tokens[j];
             let len = token.length;
@@ -6610,6 +6609,11 @@ StringBuffer.prototype.toString = function () {
 StringBuffer.prototype.length = function () {
     return this.dataArray.length;
 };
+StringBuffer.prototype.reset = function () {
+    this.dataArray.length = 0;
+    return this;
+};
+
 
 
 let cloneText = function (originalText) {
@@ -22084,10 +22088,10 @@ Graphics.prototype.getLinesByMaxWidthAlgorithm = function (text, lineWidth) {
         } else if (wid === lineWidth || entry === "\r\n" || entry === "\r" || entry === "\n") {
             line.append(entry);
             lines.push(new LineAndWidth(line.toString(), wid));
-            line = new StringBuffer();
+            line.reset();
         } else if (wid > lineWidth) {
             lines.push(new LineAndWidth(line.toString(), oldWidth));
-            line = new StringBuffer();
+            line.reset();
             line.append(entry);
         }
         oldWidth = wid;
@@ -23636,7 +23640,7 @@ function TextBox(options) {
         if (typeof options.borderRadius === 'number') {
             this.borderRadius = options.borderRadius;
         } else if (typeof options.borderRadius === 'string') {
-            this.borderRadius = parseFloat(options.borderRadius);
+            this.borderRadius = parseInt(options.borderRadius);
         } else {
             this.borderRadius = 2;
         }
@@ -23709,7 +23713,6 @@ TextBox.prototype.render = function () {
             if (l.width > this.maxLineWidth) {
                 this.maxLineWidth = l.width;
             }
-            console.log("line: ", JSON.stringify(l), ", w: ", w, ", padding: ", padding, ", x: ", (w - padding - l.width) / 2)
             switch (gravity) {
                 case Gravity.LEFT:
                     g.drawString(l.text, padding, y);
