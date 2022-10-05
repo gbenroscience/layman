@@ -173,12 +173,12 @@ function Page(rootNode) {
     /**
      * Store all sidemenu ids that open from the left here
      */
-     this.leftMenus = [];
+    this.leftMenus = [];
     /**
      * Store all sidemenu ids that open from the right here
      */
-     this.rightMenus = [];
-    
+    this.rightMenus = [];
+
 
 
     /**
@@ -297,7 +297,7 @@ function shouldIgnoreSpecialChildElement(node) {
 function enforceIdOnChildElements(node) {
     let id = null;
     if (shouldIgnoreSpecialChildElement(node)) {
-         id = node.getAttribute(attrKeys.id);
+        id = node.getAttribute(attrKeys.id);
         if (!id) {
             id = ULID.ulid();
             node.setAttribute(attrKeys.id, id);
@@ -376,18 +376,18 @@ Page.prototype.layoutFromSheet = function (node) {
                 disPage.srcPaths.push(val);
                 disPage.sourcesLoaded = false;
                 let popupData = new RemoteLayoutData(val);
-                
+
                 let isPopup = constraints[attrKeys.layout_popup];
                 let isMenuLeft = constraints[attrKeys.layout_menuLeft];
                 let isMenuRight = constraints[attrKeys.layout_menuRight];
-                if(isMenuLeft === true && isMenuRight === true){
+                if (isMenuLeft === true && isMenuRight === true) {
                     throw `Each html element can only take one of ${attrKeys.layout_menuLeft} or ${attrKeys.layout_menuRight} at once...`;
                 }
-                if(isMenuLeft === true || isMenuLeft === 'true'){
+                if (isMenuLeft === true || isMenuLeft === 'true') {
                     disPage.leftMenus.push(root.id);
                     disPage.sidemenus.set(root.id, popupData);
                 }
-                else if(isMenuRight === true || isMenuRight === 'true'){
+                else if (isMenuRight === true || isMenuRight === 'true') {
                     disPage.rightMenus.push(root.id);
                     disPage.sidemenus.set(root.id, popupData);
                 }
@@ -493,7 +493,7 @@ Page.prototype.layoutFromTags = function (node) {
 
         let refIds = new Map();
         let isPopup = false;
-        let isMenuLeft = false; 
+        let isMenuLeft = false;
         let isMenuRight = false;
 
         let src = null;
@@ -510,21 +510,21 @@ Page.prototype.layoutFromTags = function (node) {
                     src = val;
                 }
 
-                switch(attr){
+                switch (attr) {
                     case attrKeys.layout_popup:
                         isPopup = val === true || val === 'true';
-                    break;
+                        break;
                     case attrKeys.layout_menuLeft:
                         isMenuLeft = val === true || val === 'true';
-                    break;
+                        break;
                     case attrKeys.layout_menuRight:
                         isMenuRight = val === true || val === 'true';
-                    break;
+                        break;
 
                     default:
                         break;
                 }
-                if(isMenuLeft && isMenuRight){
+                if (isMenuLeft && isMenuRight) {
                     throw `Each html element can only take one of ${attrKeys.layout_menuLeft} or ${attrKeys.layout_menuRight} at once...`;
                 }
 
@@ -546,15 +546,15 @@ Page.prototype.layoutFromTags = function (node) {
             if (isPopup === true) {
                 disPage.popups.set(root.id, popupData);
             }
-            else if(isMenuLeft === true){
+            else if (isMenuLeft === true) {
                 disPage.leftMenus.push(root.id);
                 disPage.sidemenus.set(root.id, popupData);
             }
-            else if(isMenuRight === true){
+            else if (isMenuRight === true) {
                 disPage.rightMenus.push(root.id);
                 disPage.sidemenus.set(root.id, popupData);
             }
-             else {
+            else {
                 disPage.includes.set(root.id, popupData);
             }
         }
@@ -623,7 +623,7 @@ Page.prototype.buildUI = function (rootView) {
                 if (cv.isPopup()) {
                     pops.push(cv);
                 }
-                if(cv.isSideMenu()){
+                if (cv.isSideMenu()) {
                     menus.push(cv);
                 }
                 if (cv.hasBgImage) {
@@ -647,14 +647,14 @@ Page.prototype.buildUI = function (rootView) {
         currentPage.popups.set(popup.id, ppData);
         popup.htmlNode.remove();
     });
-    
+
     menus.forEach(function (menu) {
         let menuData = currentPage.sidemenus.get(menu.id);
         menuData.rect = menu.htmlNode.getBoundingClientRect();
         currentPage.sidemenus.set(menu.id, menuData);
         menu.htmlNode.remove();
     });
-    
+
 };
 
 Page.prototype.showRoot = function () {
@@ -680,21 +680,21 @@ Page.prototype.hideRoot = function () {
  * @param {function} onClose 
  * @returns 
  */
-Page.prototype.openSideMenu = function(menuId, closeOnClickOutSide,onOpen, onClose){
-    if(arguments.length !== 4){
+Page.prototype.openSideMenu = function (menuId, closeOnClickOutSide, onOpen, onClose) {
+    if (arguments.length !== 4) {
         throw '`Page.openSideMenu` function requires 4 arguments';
     }
-    if(typeof menuId !== 'string'){
+    if (typeof menuId !== 'string') {
         throw '`menuId` must be a string';
     }
-    if(typeof closeOnClickOutSide !== 'boolean'){
+    if (typeof closeOnClickOutSide !== 'boolean') {
         throw '`closeOnClickOutSide` must be  a boolean';
     }
-    
-    if(typeof onOpen !== 'function'){
+
+    if (typeof onOpen !== 'function') {
         throw 'onOpen must be a function';
-    }    
-    if(typeof onClose !== 'function'){
+    }
+    if (typeof onClose !== 'function') {
         throw 'onClose must be a function';
     }
     let pg = this;
@@ -703,10 +703,10 @@ Page.prototype.openSideMenu = function(menuId, closeOnClickOutSide,onOpen, onClo
     let isLeftMenu = this.leftMenus.indexOf(menuId) !== -1;
     let isRightMenu = this.rightMenus.indexOf(menuId) !== -1;
     let menuType = isLeftMenu ? SideMenuTypes.LEFT : (isRightMenu ? SideMenuTypes.RIGHT : null);
-    if(!menuType){
+    if (!menuType) {
         throw 'Invalid menutype found';
     }
-    
+
 
     let html = this.sources.get(menuData.path);
     let r = menuData.rect;
@@ -736,21 +736,21 @@ Page.prototype.openSideMenu = function(menuId, closeOnClickOutSide,onOpen, onClo
  * @param {function} onClose 
  * @return {Popup}
  */
-Page.prototype.openPopup = function (popupId, closeOnClickOutSide,onOpen, onClose) {
-    if(arguments.length !== 4){
+Page.prototype.openPopup = function (popupId, closeOnClickOutSide, onOpen, onClose) {
+    if (arguments.length !== 4) {
         throw '`Page.openPopup` function requires 4 arguments';
     }
-    if(typeof popupId !== 'string'){
+    if (typeof popupId !== 'string') {
         throw '`popupId` must be a string';
     }
-    if(typeof closeOnClickOutSide !== 'boolean'){
+    if (typeof closeOnClickOutSide !== 'boolean') {
         throw '`closeOnClickOutSide` must be  a boolean';
     }
-    
-    if(typeof onOpen !== 'function'){
+
+    if (typeof onOpen !== 'function') {
         throw 'onOpen must be a function';
-    }    
-    if(typeof onClose !== 'function'){
+    }
+    if (typeof onClose !== 'function') {
         throw 'onClose must be a function';
     }
     let pg = this;
@@ -6841,14 +6841,14 @@ function isOneDimArray(array) {
 
 
 function addClass(element, className) {
-    if(element && className){
+    if (element && className) {
         element.classList.add(className);
     }
 }
 
 function removeClass(element, className) {
-    if(element && className){
-       element.classList.remove(className);
+    if (element && className) {
+        element.classList.remove(className);
     }
 }
 
@@ -7813,9 +7813,9 @@ function getUrls() {
             scriptURL = src.substring(0, fullLen - endLen);
 
             projectURL = window.location.href;
-            let i=0;        
-            while(projectURL.charAt(i) === scriptURL.charAt(i)){
-                i+=1;
+            let i = 0;
+            while (projectURL.charAt(i) === scriptURL.charAt(i)) {
+                i += 1;
             }
             projectURL = projectURL.substring(0, i);
             return [projectURL, scriptURL];
@@ -7851,7 +7851,7 @@ const SideMenuTypes = {
  ```
  * @returns {SideMenuX}
  */
- function SideMenuX(options) {
+function SideMenuX(options) {
     if (!options) {
         throw new Error('Please supply the options for creating the menu.');
     }
@@ -7866,13 +7866,13 @@ const SideMenuTypes = {
 
     this.width = -1;
     this.parsedWidth = -1;
-    if(typeof options.width === 'number'){
-        this.width = options.width+'px';
+    if (typeof options.width === 'number') {
+        this.width = options.width + 'px';
     }
     else if (typeof options.width === 'string') {
-        if(isNumber(parseInt(options.width))){
+        if (isNumber(parseInt(options.width))) {
             this.width = options.width;
-        }else{
+        } else {
             throw 'invalid value specified for width!';
         }
     } else {
@@ -7905,12 +7905,12 @@ const SideMenuTypes = {
     this.registry = {};//register css classes and map them to their styles.
 
     var body = document.body,
-            html = document.documentElement;
+        html = document.documentElement;
 
     let bgWidth = Math.max(body.scrollWidth, body.offsetWidth,
-            html.clientWidth, html.scrollWidth, html.offsetWidth);
+        html.clientWidth, html.scrollWidth, html.offsetWidth);
     let bgHeight = Math.max(body.scrollHeight, body.offsetHeight,
-            html.clientHeight, html.scrollHeight, html.offsetHeight);
+        html.clientHeight, html.scrollHeight, html.offsetHeight);
 
 
     this.overlayStyle = new Style('.' + this.overlayClass(), []);
@@ -7937,7 +7937,7 @@ const SideMenuTypes = {
     });
 
 
-    initFrameCss:{
+    initFrameCss: {
         popupZIndex += 10;
         let optns = {
             width: this.width,
@@ -7952,12 +7952,12 @@ const SideMenuTypes = {
             'overflow-y': 'auto',
             transition: '0.5s',
         };
-       
+
         optns[this.menuType] = '0';//left: 0 or right: 0
         this.frameStyle.addFromOptions(optns);
     }
 
-    initCloseBtnStyle:{
+    initCloseBtnStyle: {
         let optns = {
             "top": "12px",
             "position": "fixed",
@@ -7970,26 +7970,26 @@ const SideMenuTypes = {
             "border": "none",
             "padding": "none"
         };
-        if(this.menuType === SideMenuTypes.LEFT){
+        if (this.menuType === SideMenuTypes.LEFT) {
             optns[SideMenuTypes.RIGHT] = '18px';
-        }else{
+        } else {
             optns[SideMenuTypes.LEFT] = '18px';
         }
         this.closeBtnStyle.addFromOptions(optns);
     }
 
-    this.onOpen = function () {};
+    this.onOpen = function () { };
     if (options.onOpen && {}.toString.call(options.onOpen) === '[object Function]') {
         this.onOpen = options.onOpen;
     } else {
-        this.onOpen = function () {};
+        this.onOpen = function () { };
     }
 
-    this.onClose = function () {};
+    this.onClose = function () { };
     if (options.onClose && {}.toString.call(options.onClose) === '[object Function]') {
         this.onClose = options.onClose;
     } else {
-        this.onClose = function () {};
+        this.onClose = function () { };
     }
 
     this.registerStyle(this.overlayStyle);
@@ -8019,7 +8019,7 @@ SideMenuX.prototype.hide = function () {
     if (frame) {
         this.closeMenu();
     }
-        removeClass(document.body , this.noScrollStyle.name.substring(1));
+    removeClass(document.body, this.noScrollStyle.name.substring(1));
     this.onClose();
     return this;
 };
@@ -8065,7 +8065,7 @@ SideMenuX.prototype.build = function () {
         closeBtn = document.createElement("input");
         closeBtn.setAttribute("id", this.closeBtnId());
         addClass(closeBtn, this.closeBtnClass());
-        closeBtn.setAttribute('type' , 'button');
+        closeBtn.setAttribute('type', 'button');
         closeBtn.value = "\u02DF";
         overlay.appendChild(closeBtn);
     }
@@ -8087,19 +8087,19 @@ SideMenuX.prototype.build = function () {
         style.innerHTML = css.toString();
         document.getElementsByTagName('head')[0].appendChild(style);
 
-            let p = new Page(frame);
-            p.layout();
-            page.subPages.set(frame.id, p);
+        let p = new Page(frame);
+        p.layout();
+        page.subPages.set(frame.id, p);
 
-            popup.openMenu();
-            popup.rootView = frame;
-            popup.parsedWidth = parseInt(window.getComputedStyle(frame).width);
+        popup.openMenu();
+        popup.rootView = frame;
+        popup.parsedWidth = parseInt(window.getComputedStyle(frame).width);
     }
 
     this.addDragEvents(overlay, frame);
     this.openMenu();
 
-return this;
+    return this;
 };
 
 SideMenuX.prototype.addDragEvents = function (overlay, frame) {
@@ -8107,7 +8107,7 @@ SideMenuX.prototype.addDragEvents = function (overlay, frame) {
     let self = this;
     let pressed = true;
 
-    frame.onmousemove = function (e) {};
+    frame.onmousemove = function (e) { };
     frame.onmousedown = function (e) {
         e = window.event || e;
         if (e.target !== this && e.target !== self.rootView) {
@@ -8138,7 +8138,7 @@ SideMenuX.prototype.addDragEvents = function (overlay, frame) {
             }
             pressed = false;
             frame.style.transition = '0.5s';
-            frame.onmousemove = function (e) {};
+            frame.onmousemove = function (e) { };
             if (ev.pageX < self.parsedWidth / 3) {
                 self.hide();
             } else {
@@ -8156,20 +8156,20 @@ SideMenuX.prototype.addDragEvents = function (overlay, frame) {
 
 
     overlay.onmousemove = function (e) {
-          ev = window.event || ev;
-            if (ev.target !== this && ev.target !== self.rootView) {
-                return;
+        ev = window.event || ev;
+        if (ev.target !== this && ev.target !== self.rootView) {
+            return;
+        }
+        if (pressed === true) {
+            if (ev.pageX < self.parsedWidth) {
+                frame.style.width = (ev.pageX + 2) + 'px';
+                frame.style.transition = '0.5s';
+            } else if (ev.pageX >= self.parsedWidth + 80) {
+                frame.style.width = self.parsedWidth + 'px';
+            } else {
+
             }
-            if (pressed === true) {
-                if (ev.pageX < self.parsedWidth) {
-                    frame.style.width = (ev.pageX + 2) + 'px';
-                    frame.style.transition = '0.5s';
-                } else  if(ev.pageX >= self.parsedWidth + 80){
-                    frame.style.width = self.parsedWidth + 'px';
-                }else {
-                   
-                }
-            }
+        }
 
     };
 
@@ -8208,7 +8208,7 @@ SideMenuX.prototype.containerId = function () {
 
 SideMenuX.prototype.openMenu = function () {
     document.getElementById(this.containerId()).style.width = this.width;
-    addClass(document.body , this.noScrollStyle.name.substring(1));
+    addClass(document.body, this.noScrollStyle.name.substring(1));
     this.onOpen();
 };
 
@@ -22094,7 +22094,7 @@ Graphics.prototype.getLinesByMaxWidthAlgorithm = function (text, lineWidth) {
     }//end for loop
     let ln = line.toString();
     if (ln.length > 0) {
-        lines.push(new LineAndWidth(ln, oldWidth));
+        lines.push(new LineAndWidth(ln, ctx.measureText(ln).width));
     }
 
 
@@ -22145,6 +22145,8 @@ const MysteryModes = {
  * @param options The options used to create this MysteryImage
  *
  *
+ * 
+ ```
  let options = {
  width: 200px,
  height:450px,
@@ -22163,7 +22165,7 @@ const MysteryModes = {
  textOnly: false,//Forces the view to render only text from the textArray attribute
  cacheAfterDraw: true, //Renders the image once for a view and uses it subsequently.If false, this view will always have a new set of patterns whenever it is refreshed.
  }
-
+```
  Remember to call the cleanup instance method to dispose f the resources used after getting your image.
  This is important if you wish to get just one image from this class.
  * @constructor
@@ -23707,6 +23709,7 @@ TextBox.prototype.render = function () {
             if (l.width > this.maxLineWidth) {
                 this.maxLineWidth = l.width;
             }
+            console.log("line: ", JSON.stringify(l), ", w: ", w, ", padding: ", padding, ", x: ", (w - padding - l.width) / 2)
             switch (gravity) {
                 case Gravity.LEFT:
                     g.drawString(l.text, padding, y);
