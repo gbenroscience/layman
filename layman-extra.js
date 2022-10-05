@@ -2237,7 +2237,7 @@ function renderTextBox(page, view) {
             if (!borderRadius) {
                 borderRadius = "2px";
             }
-            let parseFontSize = parseNumberAndUnits(fontSize, true); console.log(parseFontSize);
+            let parseFontSize = parseNumberAndUnits(fontSize, true);
             let parseBorderRadius = parseNumberAndUnits(borderRadius, true);
             let fg = view.refIds.get(attrKeys.mi_fg);
             if (!fg) {
