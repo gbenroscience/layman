@@ -23622,7 +23622,7 @@ function TextBox(options) {
         if (typeof options.fontSize === 'number') {
             this.fontSize = options.fontSize;
         } else if (typeof options.fontSize === 'string') {
-            this.fontSize = parseInt(options.fontSize);
+            this.fontSize = parseFloat(options.fontSize);
         } else {
             this.fontSize = 15;//15px
         }
@@ -23636,7 +23636,7 @@ function TextBox(options) {
         if (typeof options.borderRadius === 'number') {
             this.borderRadius = options.borderRadius;
         } else if (typeof options.borderRadius === 'string') {
-            this.borderRadius = parseInt(options.borderRadius);
+            this.borderRadius = parseFloat(options.borderRadius);
         } else {
             this.borderRadius = 2;
         }
