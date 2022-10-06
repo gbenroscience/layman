@@ -97,7 +97,7 @@ hidden, just in case... lol.
 
 ```html
 
-<div id="some-div" data-const="w:100px, h:150px, ss:parent, tt: parent"></div>
+<div id="some-div" data-const="w:100px; h:150px; ss:parent; tt: parent;"></div>
 ```
 
 ### Layout Construction & Syntax in more detail
@@ -297,8 +297,8 @@ So when designing some layouts, you may specify the priority of the constraints,
 ```html
 
 <div>
-    <input id="phone_input" data-const="w:wrap_content, h: 42px, ss: parent, tt: parent, ms: 10, mt: 10">
-    <input id="password_input" data-const="w: phone_input, h: wrap_content, ss: phone_input@750, tb: phone_input">
+    <input id="phone_input" data-const="w:wrap_content; h: 42px; ss:parent; tt:parent; ms: 10; mt: 10;">
+    <input id="password_input" data-const="w: phone_input; h: wrap_content;ss:phone_input@750; tb:phone_input;">
 </div>
 ```
 
@@ -370,20 +370,20 @@ Below is the source code of a simple example login interface which you can
 </head>
 <body data-guide-color="#fff">
 
-<div id="div1" data-const="w: 30%, h:width, ms:0px, mt:0px, cx: parent, cy: parent">
+<div id="div1" data-const="w: 30%; h:width; ms:0px; mt:0px; cx: parent; cy: parent">
     <span id="p1"
-          data-const="w: wrap_content, h:wrap_content, cx: parent, tt: parent, mt: 24px">
+          data-const="w: wrap_content; h:wrap_content; cx: parent; tt: parent; mt: 24px">
         LOGIN
     </span>
-    <img id="login-icon" src="img.png" data-const="w:96px, h:width, tb:p1, bt: fullname, cx: parent">
+    <img id="login-icon" src="img.png" data-const="w:96px; h:width; tb:p1; bt: fullname; cx: parent">
     <input id="fullname" type="email" placeholder="Enter your email address..."
-           data-const="w:76%, h: wrap_content, cx: parent, cy: parent">
+           data-const="w:76%; h: wrap_content; cx: parent; cy: parent">
     <input id="pwd" type="password" placeholder="Please input password..."
-           data-const="w:fullname, h: fullname, cx: parent, tb: fullname, mt: 12px">
+           data-const="w:fullname; h: fullname; cx: parent; tb: fullname; mt: 12px;">
     <input id="btn" type="button" tabindex="1" value="PROCEED"
-           data-const="w:0.75*fullname, h: fullname, cx: parent, tb: pwd, mt: 18px">
+           data-const="w:0.75*fullname; h: fullname; cx: parent; tb: pwd; mt: 18px;">
     <a href="https://www.linkedin.com" id="link"
-       data-const="w: wrap_content, h:wrap_content, cx: parent, tb: btn, mt: 12px">
+       data-const="w: wrap_content; h:wrap_content; cx: parent; tb: btn; mt: 12px;">
         Forgot password?
     </a>
 </div>
