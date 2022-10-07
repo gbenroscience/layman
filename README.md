@@ -208,7 +208,7 @@ All these apply to `height` also.<br>
 #### maxW, maxH, minW, minH
 
 These refer to the maximum width and maximum height, minimum width and minimum height
-These are all supported.
+The implementation of these is not yet complete.
 
 #### m
 
