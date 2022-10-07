@@ -194,8 +194,8 @@ OR
 All these relationships help to define aspect ratios and more complicated relationships that give developers flexibility
 in building UI.
 
-`w:match_parent` and `h:'match_parent` are supported.
-`w:wrap_content` and `h:'wrap_content` are only partially supported.
+`w:match_parent` and `h:match_parent` are supported.
+`w:wrap_content` and `h:wrap_content` are only partially supported.
 The implementation is not yet complete as regards these, for various reasons.
 
 The underlying `autolayout.js` library does not seem to support `wrap_content`,so we are trying to provide some
@@ -463,15 +463,14 @@ Notice the `popup:true;` that needs to be added in addition to the `src` attribu
 This is the only difference between showing popups and rendering included files within the page.
 To show your popup, use the global `page` object and call `openPopup` like so:
 
+
 ```Javascript
- var popup = page.openPopup('success-popup');
+ var popup = page.openPopup('success-popup', true, function(){},function(){});
 ```
-OR
-```Javascript
- var popup = page.openPopup('success-popup', true);
-```
-The second argument tells the library if you want the popup to be dismissed when the user clicks
-outside its layout.
+1. The first argument is the id of the popup.
+2. The second argument tells the library if you want the popup to be dismissed when the user clicks outside its layout.
+3. The third argument is a function to run when the popup opens.
+4. The fourth argument is a function to run when the popup closes.
 
 Store the reference to the popup, so you can use it when you want to close it.
 
@@ -480,7 +479,8 @@ To close the popup, do:
  page.closePopup(popup);
 ```
 
-Or:
+OR:
+
 ```Javascript
 popup.hide();
 ```
@@ -510,10 +510,15 @@ Then simply call:
 let sideMenuBtn = document.getElementById('open_feeds_icon');// a button on your page
 
             sideMenuBtn.onclick = function (e) {
-                page.openSideMenu('feeds_menu', true);
+                page.openSideMenu('feeds_menu', true, function(){}, function(){});
             }; 
 ```
-The second argument siginifies whether the sidemenu is closable by clicking on the translucent overlay or not.
+
+
+1. The first argument is the id of the sidemenu.
+2. The second argument tells the library if you want the sidemenu to be dismissed when the user clicks outside its layout.
+3. The third argument is a function to run when the sidemenu opens.
+4. The fourth argument is a function to run when the sidemenu closes.
 
 
 
