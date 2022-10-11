@@ -20412,34 +20412,50 @@ Graphics.prototype.clear = function () {
 Graphics.prototype.getCanvas = function () {
     return this.ctx.canvas;
 };
+
 /**
  * Changes may occur to the canvas, such as stretching due to changing the css width or height(e.g when the screen is resized or rotated)
  * Call this method to force the Graphics object to scale with the dimensions of the canvas accordingly
+ * @param {number} cssWidth The css pixel width of the canvas
+ * @param {number} cssHeight The css pixel height of the canvas
  */
-Graphics.prototype.reloadCanvas = function () {
+Graphics.prototype.reloadCanvas = function (cssWidth, cssHeight) {
+
+    this.ctx.scale(1 / PIXEL_RATIO, 1 / PIXEL_RATIO);
     let canvas = this.getCanvas();
-    const dpr = PIXEL_RATIO;
-    {
+
+    if (cssWidth) {
+        if (typeof cssWidth !== "number") {
+            throw 'The width must be a number in pixels'
+        }
+        canvas.style.width = cssWidth + 'px';
+    } else {//fetch the width from the existing canvas if not supplied
         // Get the size of the canvas in CSS pixels.
         let canvasRect = canvas.getBoundingClientRect();
-
-        // Give the canvas pixel dimensions of their CSS
-        // size * the device pixel ratio.
-        canvas.width = canvasRect.width * dpr;
-        canvas.height = canvasRect.height * dpr;
-
-
-        // Scale all drawing operations by the dpr, so you
-        // don't have to worry about the difference. Nah!!!
-        this.ctx.scale(dpr, dpr);
-
-        canvas.style.width = canvasRect.width + 'px';
-        canvas.style.height = canvasRect.height + 'px';
-
+        cssWidth = canvasRect.width;
     }
+
+    if (cssHeight) {
+        if (typeof cssHeight !== "number") {
+            throw 'The height must be a number in pixels'
+        }
+        canvas.style.height = cssHeight + 'px';
+    } else {//fetch the height from the existing canvas if not supplied
+        // Get the size of the canvas in CSS pixels.
+        let canvasRect = canvas.getBoundingClientRect();
+        cssHeight = canvasRect.height;
+    }
+
+    // Give the canvas pixel dimensions of their CSS
+    // size * the device pixel ratio.
+    canvas.width = cssWidth * PIXEL_RATIO;
+    canvas.height = cssHeight * PIXEL_RATIO;
 
     this.width = canvas.width;
     this.height = canvas.height;
+
+    this.ctx.scale(PIXEL_RATIO, PIXEL_RATIO);
+
 };
 
 
@@ -23716,18 +23732,18 @@ TextBox.prototype.doMetrics = function () {
     this.lines = g.getLinesByMaxWidthAlgorithm(txt, availableWidth);
     let lineCount = this.lines.length;
 
-    this.height = ((lineCount * textHeight) + ((lineCount - 1) * lineSpacing) + (2 * padding) + 2) / PIXEL_RATIO;
+    let scaledHeight = ((lineCount * textHeight) + ((lineCount - 1) * lineSpacing) + (2 * padding) + 2);
+    this.height = scaledHeight / PIXEL_RATIO;
     this.remove();
-    this.g = new Graphics(this.width * PIXEL_RATIO, this.height * PIXEL_RATIO);
+    this.g = new Graphics(this.width * PIXEL_RATIO, scaledHeight);
     this.g.setFont(this.font);
-
 };
 
 TextBox.prototype.render = function () {
 
     let g = this.g;
-    let w = g.width;
-    let h = g.height;
+    let w = this.width * PIXEL_RATIO;
+    let h = this.height * PIXEL_RATIO;
     let backgroundColor = this.backgroundColor;
     let textColor = this.textColor;
     let borderRadius = this.borderRadius;
@@ -23735,16 +23751,28 @@ TextBox.prototype.render = function () {
     let padding = this.padding * PIXEL_RATIO;
     let lineSpacing = this.lineSpacing * PIXEL_RATIO;
 
-    //PAINT THE BG OVER:
-
-    g.setBackground(backgroundColor);
-    g.fillRoundRect(0, 0, w, h, borderRadius);
-    g.setBackground(textColor);
 
     let textHeight = this.textHeight;
 
     let lines = this.lines;
     lineCount = lines.length;
+
+    let maxLineWidth = 0;
+    lines.forEach(function (line, idx) {
+        if (line.width > maxLineWidth) {
+            maxLineWidth = line.width;
+        }
+    });
+
+    console.log('maxLineWidth: ', maxLineWidth, 'canvas-width: ', g.width, ', box-width: ', this.width);
+    //PAINT THE BG OVER:
+
+    g.setColor('#fff');
+    g.drawRoundRect(1, 1, w - 2, h - 2, borderRadius);
+    g.setBackground(backgroundColor);
+    g.fillRoundRect(0, 0, w, h, borderRadius);
+    g.setBackground(textColor);
+
 
 
     if (lineCount > 0) {
@@ -23761,7 +23789,7 @@ TextBox.prototype.render = function () {
                     g.drawString(l.text, w - padding - l.width, y);
                     break;
                 case Gravity.CENTER:
-                    g.drawString(l.text, (w - padding - l.width) / 2, y);
+                    g.drawString(l.text, (w - l.width) / 2, y);
                     break;
                 default:
                     //default is left..
