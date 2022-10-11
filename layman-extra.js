@@ -318,6 +318,8 @@ Page.prototype.layout = function () {
         this.layoutFromTags(this.rootElement);
     }
 };
+
+
 /**
  *
  * @param {HTMLElement} node
@@ -488,7 +490,10 @@ Page.prototype.layoutFromTags = function (node) {
         if (endsWith(constraints, ";")) {
             constraints = constraints.substring(0, constraints.length - 1);
         }
-        constraints = constraints.replace(/\s/g, "");
+
+        constraints = constraints.replace(/\s*?(;)\s*/g, ";");
+        constraints = constraints.replace(/\s*?(:)\s*/g, ":");
+
         constraints = constraints.split(";");
 
         let refIds = new Map();
@@ -534,9 +539,9 @@ Page.prototype.layoutFromTags = function (node) {
                         throw 'Error: the `customType` attribute can only be defined on canvas elements';
                     }
                 }
-                if (attr === attrKeys.mi_text) {
-                    throw 'Error: You cannot use `mi_text` with inline tags. Please override `layoutCode` to use `mi_text` or define the text within the canvas tags.'
-                }
+                // if (attr === attrKeys.mi_text) {
+                //     //  throw 'Error: You cannot use `mi_text` with inline tags. Please override `layoutCode` to use `mi_text` or define the text within the canvas tags.'
+                // }
             } else {
                 throw 'invalid constraint definition... no colon found in ' + con + " on " + root.id;
             }
@@ -2272,17 +2277,13 @@ function renderTextBox(page, view) {
                 borderRadius: parseBorderRadius.number,
                 padding: padding,
                 lineSpacing: lineSpacing
-            });
+            }, view.htmlNode);
 
 
-            view.refIds.set(attrKeys.layout_width, tbox.maxLineWidth + 'px');
+            view.refIds.set(attrKeys.layout_width, tbox.width + 'px');
             view.refIds.set(attrKeys.layout_height, tbox.height + 'px');
-            view.width = tbox.maxLineWidth;
+            view.width = tbox.width;
             view.height = tbox.height;
-
-            tbox.transfer(view.htmlNode);
-
-
         }
     }
 }
@@ -20334,32 +20335,51 @@ createHiDPICanvas = function (canvas, w, h, ratio) {
  *
  * // draw something
  * ctx.strokeRect(min.x, min.y, max.x - min.x, max.y - min.y);
- * @param canvas
+ * @param a The width in css pixels...e.g "100px" or just 100. In the single argument variant, this parameter is an HTMLCanvasElement instead
+ * @param b The height in css pixels...e.g "100px" or just 100. This is undefined in the single argument variant of this function.
  * @constructor
  */
-function Graphics(canvas) {
+function Graphics(a, b) {
+    let canvas;
     let dpr = PIXEL_RATIO;
-    //canvas = createHiDPICanvas(canvas , canvas.offsetWidth , canvas.offsetHeight, scaleFactor );
-    this.ctx = canvas.getContext('2d');
+    if (arguments.length === 2) {
+        if ((typeof a === 'number' && typeof b === "number") ||
+            (typeof a === 'string' && typeof b === "string" && !isNaN(a = parseInt(a)) && !isNaN(a = parseInt(b)))
+        ) {
+            canvas = document.createElement('canvas');
+            canvas.style.width = a + 'px';
+            canvas.style.height = b + 'px';
 
-    {
-        // Get the size of the canvas in CSS pixels.
+
+            canvas.width = a * dpr;
+            canvas.height = b * dpr;
+
+            canvas.style.visibility = "hidden";
+            canvas.setAttribute('id', 'canvas-' + ULID.ulid());
+            document.body.appendChild(canvas);
+        } else {
+            throw 'Supply the width and height in css pixels!';
+        }
+    }
+    else if (a.nodeName.toLowerCase() === 'canvas') {
+        canvas = a;
+
         let canvasRect = canvas.getBoundingClientRect();
 
-        // Give the canvas pixel dimensions of their CSS
-        // size * the device pixel ratio.
         canvas.width = Math.round(canvasRect.right * dpr) - Math.round(canvasRect.left * dpr);
         canvas.height = Math.round(canvasRect.bottom * dpr) - Math.round(canvasRect.top * dpr);
 
         canvas.style.width = canvasRect.width + 'px';
         canvas.style.height = canvasRect.height + 'px';
 
-        // Scale all drawing operations by the dpr, so you
-        // don't have to worry about the difference.
-        // this.ctx.scale(dpr, dpr);
-        this.ctx.scale(1, 1);
+        //cool!
+    } else {
+        throw 'Supply either the width and height(in css pixels), or supply a canvas element to build the graphics on!'
     }
 
+    this.ctx = canvas.getContext('2d');
+
+    this.ctx.scale(dpr, dpr);
 
     this.ctx.strokeStyle = "#000";
     this.ctx.lineWidth = 1;
@@ -20367,31 +20387,12 @@ function Graphics(canvas) {
     this.ctx.fillStyle = "#FFF";
     this.ctx.font = "bold 0.9em Arial";
 
-    //canvas = createHiDPICanvas(canvas , canvas.offsetWidth , canvas.offsetHeight, 1 );
-
     this.width = canvas.width;
     this.height = canvas.height;
 
     // For quick reuse when drawing many pixels
     this.imageCacheUnitPx = this.createImageData(1, 1);
     this.imageCacheQuadPx = this.createImageData(2, 2);
-}
-
-/**
- * @param {number} width The width of the canvas to be created
- * @param {number} height The height of the canvas to be created
- * @returns a new Graphics object based on a dynamically created canvas
- */
-function NewGraphics(width, height) {
-    var c = document.createElement('canvas');
-    c.width = width;
-    c.height = height;
-    c.style.visibility = "hidden";
-    c.setAttribute('id', 'canvas-' + ULID.ulid());
-    if (!c.isConnected) {
-        document.body.appendChild(c);
-    }
-    return new Graphics(c); //return canvas element
 }
 
 Graphics.prototype.destroy = function () {
@@ -20418,8 +20419,6 @@ Graphics.prototype.getCanvas = function () {
 Graphics.prototype.reloadCanvas = function () {
     let canvas = this.getCanvas();
     const dpr = PIXEL_RATIO;
-
-
     {
         // Get the size of the canvas in CSS pixels.
         let canvasRect = canvas.getBoundingClientRect();
@@ -20432,7 +20431,7 @@ Graphics.prototype.reloadCanvas = function () {
 
         // Scale all drawing operations by the dpr, so you
         // don't have to worry about the difference. Nah!!!
-        this.ctx.scale(1, 1);
+        this.ctx.scale(dpr, dpr);
 
         canvas.style.width = canvasRect.width + 'px';
         canvas.style.height = canvasRect.height + 'px';
@@ -20466,6 +20465,24 @@ Graphics.prototype.setFont = function (font) {
  */
 Graphics.prototype.getFont = function () {
     return this.ctx.font;
+};
+
+Graphics.prototype.scaleFontUpByDPR = function () {
+    this.ctx.font = this.ctx.font.replace(
+        /(\d+)(px|em|rem|pt)/g,
+        function (w, m, u) {
+            return (m * PIXEL_RATIO) + u;
+        }
+    );
+};
+
+Graphics.prototype.scaleFontDownByDPR = function () {
+    this.ctx.font = this.ctx.font.replace(
+        /(\d+)(px|em|rem|pt)/g,
+        function (w, m, u) {
+            return (m / PIXEL_RATIO) + u;
+        }
+    );
 };
 
 
@@ -20718,6 +20735,7 @@ Graphics.prototype.drawPoint = function (x, y) {
 Graphics.prototype.beginPath = function () {
     this.ctx.beginPath();
 };
+
 /**
  *
  * @param x
@@ -22413,7 +22431,7 @@ function MysteryImage(options) {
     }
 
     this.imageCache = null;
-    this.g = NewGraphics(this.width, this.height);
+    this.g = new Graphics(this.width, this.height);
     this.font = new Font(this.fontStyle, this.fontSize, this.fontName, this.sizeUnits);
     this.g.setFont(this.font);
 
@@ -23220,7 +23238,7 @@ function drawBus(width, mainColor, minorColor) {
 
 function drawStar(width, color, fill) {
 
-    let g = NewGraphics(width, width);
+    let g = new Graphics(width, width);
     g.setBackground(color);
 
     let halfThickness = (0.5 * thickness);
@@ -23577,10 +23595,11 @@ let getTextSize = function (text, font) {
  
  } 
 ```
+ * @param destCanvas The canvas to render the text on.
  * @returns {TextBox}
  */
-function TextBox(options) {
-    let canvas = null;
+function TextBox(options, destCanvas) {
+
     if (options && typeof options === 'object') {
 
         if (typeof options.width === 'number') {
@@ -23659,22 +23678,50 @@ function TextBox(options) {
 
         if (typeof options.padding === 'number') {
             this.padding = options.padding;
+        } else if (typeof options.padding === 'string') {
+            if (isNaN((this.padding = parseFloat(options.padding)))) {
+                this.padding = 0
+            }
         } else {
-            this.padding = 4;
+            this.padding = 0;
         }
+        this.height = 12;
 
-        this.height = 0;
-        this.maxLineWidth = 0;
-        this.g = NewGraphics(this.width, this.width);
+        this.g = new Graphics(this.width, this.height);
 
         this.font = new Font(this.fontStyle, this.fontSize, this.fontName, this.sizeUnits);
         this.g.setFont(this.font);
 
+        this.lines = [];
+        this.textHeight = this.g.textHeight("xxxx");
+
+        this.doMetrics();
         this.render();
+        this.transfer(destCanvas);
     } else {
         throw new Error('Invalid parameters for ' + this.constructor.name);
     }
 }
+
+TextBox.prototype.doMetrics = function () {
+    let g = this.g;
+    let w = g.width;
+    let h = g.height;
+    let txt = this.text;
+    let padding = this.padding * PIXEL_RATIO;
+    let lineSpacing = this.lineSpacing * PIXEL_RATIO;
+
+    let textHeight = this.textHeight;
+    let availableWidth = w - 2 * padding;
+    this.lines = g.getLinesByMaxWidthAlgorithm(txt, availableWidth);
+    let lineCount = this.lines.length;
+
+    this.height = ((lineCount * textHeight) + ((lineCount - 1) * lineSpacing) + (2 * padding) + 2) / PIXEL_RATIO;
+    this.remove();
+    this.g = new Graphics(this.width * PIXEL_RATIO, this.height * PIXEL_RATIO);
+    this.g.setFont(this.font);
+
+};
 
 TextBox.prototype.render = function () {
 
@@ -23684,35 +23731,28 @@ TextBox.prototype.render = function () {
     let backgroundColor = this.backgroundColor;
     let textColor = this.textColor;
     let borderRadius = this.borderRadius;
-    let font = this.font;
     let gravity = this.gravity;
-    let txt = this.text;
-    let padding = this.padding;
-    let lineSpacing = this.lineSpacing;
+    let padding = this.padding * PIXEL_RATIO;
+    let lineSpacing = this.lineSpacing * PIXEL_RATIO;
 
     //PAINT THE BG OVER:
 
     g.setBackground(backgroundColor);
     g.fillRoundRect(0, 0, w, h, borderRadius);
-
-    g.setFont(font);
     g.setBackground(textColor);
 
+    let textHeight = this.textHeight;
 
-    let availableWidth = w - 2 * padding;
+    let lines = this.lines;
+    lineCount = lines.length;
 
-    let lines = g.getLinesByMaxWidthAlgorithm(txt, availableWidth);
 
-    let lineCount = lines.length;
     if (lineCount > 0) {
-        let textHeight = g.textHeight(txt);
         let y = textHeight + padding;
 
         for (let i = 0; i < lineCount; i++) {
             let l = lines[i];
-            if (l.width > this.maxLineWidth) {
-                this.maxLineWidth = l.width;
-            }
+
             switch (gravity) {
                 case Gravity.LEFT:
                     g.drawString(l.text, padding, y);
@@ -23729,45 +23769,19 @@ TextBox.prototype.render = function () {
                     break;
             }
             y += (textHeight + lineSpacing);
-            if (y > h - padding) {
-                //expand the canvas vertically
-                let linesProcessed = i + 1;
-                //...(linesProcessed/totalLines) = ((h-padding)/H)...H = total height that fits all lines
-                let totalHeightOfTextLines = ((h - padding) * (lines.length) / linesProcessed);
-                this.remove();
-                this.g = NewGraphics(this.width, totalHeightOfTextLines);
-                this.render();
-                break;
-            }
         }
-        this.height = (2 * padding) + (textHeight * lineCount) + (lineSpacing * lineCount);
-        this.maxLineWidth += 2 * padding
     }
 };
 
 TextBox.prototype.transfer = function (destCanvas) {
-    let img = this.getImage();
-
     let c = this.g.getCanvas();
+
     destCanvas.width = c.width;
     destCanvas.height = c.height;
-    destCanvas.style.width = this.maxLineWidth + 'px';
-    destCanvas.style.height = this.height + 'px';
-    //destCanvas.getContext('2d').drawImage(c, 0, 0, this.maxLineWidth, this.height, 0, 0, this.maxLineWidth, this.height);
+
+    let ctx = destCanvas.getContext('2d');
+    ctx.drawImage(c, 0, 0, c.width, c.height);
     c.remove();
-
-
-
-
-
-    let stl = new Style('#' + destCanvas.id, []);
-    stl.addFromOptions({
-        "background-image": "url('" + img + "')",
-        "background-position": "0% 0%",
-        "background-repeat": "no-repeat"
-    });
-    updateOrCreateSelectorInStyleSheet(styleSheet, stl);
-
 };
 /**
  * 
@@ -23775,7 +23789,7 @@ TextBox.prototype.transfer = function (destCanvas) {
  * @returns void
  */
 TextBox.prototype.getImage = function () {
-    return this.g.getCanvas().toDataURL();
+    return this.g.getCanvas().toDataURL('image/png');
 };
 
 TextBox.prototype.getSize = function () {
