@@ -23757,18 +23757,8 @@ TextBox.prototype.render = function () {
     let lines = this.lines;
     lineCount = lines.length;
 
-    let maxLineWidth = 0;
-    lines.forEach(function (line, idx) {
-        if (line.width > maxLineWidth) {
-            maxLineWidth = line.width;
-        }
-    });
-
-    console.log('maxLineWidth: ', maxLineWidth, 'canvas-width: ', g.width, ', box-width: ', this.width);
     //PAINT THE BG OVER:
 
-    g.setColor('#fff');
-    g.drawRoundRect(1, 1, w - 2, h - 2, borderRadius);
     g.setBackground(backgroundColor);
     g.fillRoundRect(0, 0, w, h, borderRadius);
     g.setBackground(textColor);
