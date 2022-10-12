@@ -22112,6 +22112,10 @@ Graphics.prototype.getLinesByMaxWidthAlgorithm = function (text, lineWidth) {
     let list = cs.scan();
     let sz = list.length;
 
+    // if (list.length === 1) {
+    //     return this.scanLines(text, lineWidth);
+    // }
+
     let line = new StringBuffer();
     let oldWidth = 0;
     for (let i = 0; i < sz; i++) {
@@ -22124,7 +22128,9 @@ Graphics.prototype.getLinesByMaxWidthAlgorithm = function (text, lineWidth) {
             lines.push(new LineAndWidth(line.toString(), wid));
             line.reset();
         } else if (wid > lineWidth) {
-            lines.push(new LineAndWidth(line.toString(), oldWidth));
+            if (line.toString() !== '') {
+                lines.push(new LineAndWidth(line.toString(), oldWidth));
+            }
             line.reset();
             line.append(entry);
         }
@@ -22134,7 +22140,6 @@ Graphics.prototype.getLinesByMaxWidthAlgorithm = function (text, lineWidth) {
     if (ln.length > 0) {
         lines.push(new LineAndWidth(ln, ctx.measureText(ln).width));
     }
-
 
     return lines;
 };//end method
@@ -23591,7 +23596,15 @@ let getTextSize = function (text, font) {
 
 /**
  * 
- * The text is always positioned relative to the left side of the label.
+ * A TextBox is a backend for a label. It allows text to be aligned to the left, the right or the center.
+ * It accepts the css width in pixels, and it does not require the user to set the height. The height is dynamically computed
+ * by generating lines of text from the supplied text, based on new line characters, the supplied width of the widget, space between words etc.
+ * A special case arises where the text supplied is a continuous text (e.g. a long name that has no whitespace).
+ * 
+ * Since TextBox first splits the supplied text into tokens, it is going to have an array of only one word, the same long word.
+ * The word will be longer than thesupplied width if it is a really long word. So what TxtBox does is that it calculates the wdth of the long word,
+ * applies the specified padding and sets it to be the width of the widget. So beware! if your TextBox has a single word that is longer than its width,
+ * it is going to expand the width of the TextBox to accomodate the long word.
  * 
  * @param {Object} options If supplied, no other args should be passed to this constructor.
  *
@@ -23723,7 +23736,7 @@ TextBox.prototype.doMetrics = function () {
     let g = this.g;
     let w = g.width;
     let h = g.height;
-    let txt = this.text;
+    let txt = this.text.trim();
     let padding = this.padding * PIXEL_RATIO;
     let lineSpacing = this.lineSpacing * PIXEL_RATIO;
 
@@ -23731,6 +23744,22 @@ TextBox.prototype.doMetrics = function () {
     let availableWidth = w - 2 * padding;
     this.lines = g.getLinesByMaxWidthAlgorithm(txt, availableWidth);
     let lineCount = this.lines.length;
+
+    let maxLineWidth = 0;
+    this.lines.forEach(function (line, idx, arr) {
+        if (maxLineWidth < line.width) {
+            maxLineWidth = line.width;
+        }
+    });
+
+    if (maxLineWidth >= w) {
+        this.width = (2 * padding + maxLineWidth) / PIXEL_RATIO;
+        if (lineCount > 1) {//widget width changed, recompute lines
+            let availableWidth = this.width * PIXEL_RATIO - 2 * padding;
+            this.lines = g.getLinesByMaxWidthAlgorithm(txt, availableWidth);
+            lineCount = this.lines.length;
+        }
+    }
 
     let scaledHeight = ((lineCount * textHeight) + ((lineCount - 1) * lineSpacing) + (2 * padding) + 2);
     this.height = scaledHeight / PIXEL_RATIO;
@@ -23821,6 +23850,7 @@ TextBox.prototype.remove = function () {
     this.g.getCanvas().remove();
     this.g.destroy();
 };
+///////////////////////////TextBox ends////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 // Bridged Worker... https://github.com/blittle/bridged-worker, originally authored at https://gist.github.com/d1manson/6714892
