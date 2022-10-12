@@ -2209,6 +2209,17 @@ function renderTextBox(page, view) {
                 text = "LABEL";
             }
 
+            let singleLine = view.refIds.get(attrKeys.mi_singleLine);
+            if (typeof singleLine === "undefined" || singleLine === null) {
+                singleLine = false;
+            } else if (singleLine === "true" || singleLine === "false") {
+                singleLine = (singleLine === "true");
+            } else if (singleLine === true || singleLine === false) {
+                //cool as-is
+            } else {
+                throw 'Invalid type specified for singleLine on view: ' + view.id;
+            }
+
 
             w = parseWidth.number;
 
@@ -2269,6 +2280,7 @@ function renderTextBox(page, view) {
                 text: text,
                 gravity: gravity,//pick from options, please
                 fontName: fontName,
+                singleLine: singleLine,
                 fontSize: parseFontSize.number,
                 sizeUnits: parseFontSize.units,
                 fontStyle: fontStyle,
@@ -6935,6 +6947,7 @@ const attrKeys = {
     mi_fontWeight: "mi-font-wt",
     mi_fontSize: "mi-font-sz",
     mi_shapesDensity: "mi-shapes-density",
+    mi_singleLine: "mi-single-line",//true|false .... if set tot true, disrespecgts the set dimensions and forces all the content to fit on a single line
 
     mi_opacity: "mi-opacity",
     mi_fg: "mi-fg",
@@ -23620,7 +23633,8 @@ let getTextSize = function (text, font) {
  textColor: 'black', //The label's font color - An hexadecimal value, e.g. #00FF22
  borderRadius: 4, //... the units are same as the units for the font  e.g CssSizeUnits.EM or CssSizeUnits.PX or CssSizeUnits.PT
  padding: 4,   // The padding used for the text:
- lineSpacing: 8, // the distance between lines of text(in pixels)
+ lineSpacing: 8, // the distance between lines of text(in pixels),
+ singleLine: true,// If true, will disrespect the size dimensions and fit the text to a single line.
  
  } 
 ```
@@ -23630,6 +23644,13 @@ let getTextSize = function (text, font) {
 function TextBox(options, destCanvas) {
 
     if (options && typeof options === 'object') {
+        if (typeof options.singleLine === "undefined") {
+            this.singleLine = false;
+        } else if (typeof options.singleLine === "boolean") {
+            this.singleLine = options.singleLine;
+        } else {
+            throw 'invalid type for options.singleLine... should be `boolean`';
+        }
 
         if (typeof options.width === 'number') {
             this.width = options.width;
@@ -23724,6 +23745,8 @@ function TextBox(options, destCanvas) {
         this.lines = [];
         this.textHeight = this.g.textHeight("xxxx");
 
+        console.log("singleLine", this.singleLine);
+
         this.doMetrics();
         this.render();
         this.transfer(destCanvas);
@@ -23739,25 +23762,36 @@ TextBox.prototype.doMetrics = function () {
     let txt = this.text.trim();
     let padding = this.padding * PIXEL_RATIO;
     let lineSpacing = this.lineSpacing * PIXEL_RATIO;
+    let singleLine = this.singleLine;
 
     let textHeight = this.textHeight;
-    let availableWidth = w - 2 * padding;
-    this.lines = g.getLinesByMaxWidthAlgorithm(txt, availableWidth);
-    let lineCount = this.lines.length;
+    let lineCount;
 
-    let maxLineWidth = 0;
-    this.lines.forEach(function (line, idx, arr) {
-        if (maxLineWidth < line.width) {
-            maxLineWidth = line.width;
-        }
-    });
+    if (singleLine) {
+        let txtWid = (this.g.ctx.measureText(txt).width + 2 * padding);
+        this.width = txtWid / PIXEL_RATIO;
+        this.lines = [];
+        this.lines.push(new LineAndWidth(txt, txtWid));
+        lineCount = 1;
+    } else {
 
-    if (maxLineWidth >= w) {
-        this.width = (2 * padding + maxLineWidth) / PIXEL_RATIO;
-        if (lineCount > 1) {//widget width changed, recompute lines
-            let availableWidth = this.width * PIXEL_RATIO - 2 * padding;
-            this.lines = g.getLinesByMaxWidthAlgorithm(txt, availableWidth);
-            lineCount = this.lines.length;
+        let availableWidth = w - 2 * padding;
+        this.lines = g.getLinesByMaxWidthAlgorithm(txt, availableWidth);
+        lineCount = this.lines.length;
+        let maxLineWidth = 0;
+        this.lines.forEach(function (line, idx, arr) {
+            if (maxLineWidth < line.width) {
+                maxLineWidth = line.width;
+            }
+        });
+
+        if (maxLineWidth >= w) {
+            this.width = (2 * padding + maxLineWidth) / PIXEL_RATIO;
+            if (lineCount > 1) {//widget width changed, recompute lines
+                let availableWidth = this.width * PIXEL_RATIO - 2 * padding;
+                this.lines = g.getLinesByMaxWidthAlgorithm(txt, availableWidth);
+                lineCount = this.lines.length;
+            }
         }
     }
 
