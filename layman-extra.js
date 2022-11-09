@@ -5,7 +5,9 @@ let MIN_BIAS = 0.0000000001;
 const styleSheet = document.createElement('style');
 styleSheet.setAttribute('type', 'text/css');
 
-
+/**
+ * @type Page
+ */
 let page;
 
 let projectURL, scriptURL;
@@ -80,8 +82,22 @@ function docReady(fn) {
     }
 }
 
-
+/**
+ * This is fired when the top level layout has been loaded.
+ * If you have included files in your layout, their layouts wont yet be complete,
+ * so you can wait for them in the onSourcesLoaded function
+ * @type Function
+ */
 let onLayoutComplete = function () {
+
+};
+
+/**
+ * By the time this function is fired all included layouts, popup layouts and menu layouts have been loaded.
+ * @type Function
+ */
+let onSourcesLoaded = function(){
+
 
 };
 
@@ -107,6 +123,7 @@ docReady(function () {
  */
 function RemoteLayoutData(path) {
     /**
+     * @type String
      * The path to the file that describes the sublayout of the include or popup
      */
     this.path = path;
@@ -145,7 +162,7 @@ function Page(rootNode) {
     /**
      * A map of filepaths against the file contents.
      * The keys are the paths, the values are the file contents which define valid html sub-layouts
-     * @type {Map<any, any>}
+     * @type {Map<String, String>}
      */
     this.sources = new Map();
     /**
@@ -158,7 +175,7 @@ function Page(rootNode) {
      *
      * Stores all popup ids against their layout paths here.
      * The key is the id of the popup definition,
-     * The value is the src(filepath) to the html markup of the popup's  content.
+     * The value is the RemoteLayoutData
      * The library reads out the popups, stores them here and removes every trace of the popups from the original page code.
      * @type {Map<String, RemoteLayoutData>}
      */
@@ -166,8 +183,9 @@ function Page(rootNode) {
     /**
      * Store all side menu ids against their layout paths here.
      * The key is the id of the sidemenu definition
-     * The value is the src(filepath) to the html markup of the menu's content.
+     * The value is the RemoteLayoutData
      * The library reads out the sidemenus, stores them here and removes every trace of the sidemenus from the original page code.
+     * @type {Map<String, RemoteLayoutData>}
      */
     this.sidemenus = new Map();
     /**
@@ -185,7 +203,7 @@ function Page(rootNode) {
      *
      * Stores all included element ids against their layout path metadata here.
      * The key is the id of the included div definition,
-     * The value is the src(filepath) to the html markup of the include's  content.
+     * The value is the RemoteLayoutData
      * The library lays out the includes with the main page and renders their content in their blank area as the layouts arrive via fetch
      * @type {Map<String, RemoteLayoutData>}
      */
@@ -678,7 +696,7 @@ Page.prototype.hideRoot = function () {
 };
 
 /**
- * 
+ * Build and open the sidemenu
  * @param {string} menuId 
  * @param {boolean} closeOnClickOutSide 
  * @param {function} onOpen 
@@ -732,6 +750,64 @@ Page.prototype.openSideMenu = function (menuId, closeOnClickOutSide, onOpen, onC
     });
     return menu.open();
 };
+
+/**
+ * Build and setup the side menu without physically opening it.
+ * @param {string} menuId 
+ * @param {boolean} closeOnClickOutSide 
+ * @param {function} onOpen 
+ * @param {function} onClose 
+ * @returns 
+ */
+ Page.prototype.initSideMenu = function (menuId, closeOnClickOutSide, onOpen, onClose) {
+    if (arguments.length !== 4) {
+        throw '`Page.openSideMenu` function requires 4 arguments';
+    }
+    if (typeof menuId !== 'string') {
+        throw '`menuId` must be a string';
+    }
+    if (typeof closeOnClickOutSide !== 'boolean') {
+        throw '`closeOnClickOutSide` must be  a boolean';
+    }
+
+    if (typeof onOpen !== 'function') {
+        throw 'onOpen must be a function';
+    }
+    if (typeof onClose !== 'function') {
+        throw 'onClose must be a function';
+    }
+    let pg = this;
+    let menuData = this.sidemenus.get(menuId);
+
+    let isLeftMenu = this.leftMenus.indexOf(menuId) !== -1;
+    let isRightMenu = this.rightMenus.indexOf(menuId) !== -1;
+    let menuType = isLeftMenu ? SideMenuTypes.LEFT : (isRightMenu ? SideMenuTypes.RIGHT : null);
+    if (!menuType) {
+        throw 'Invalid menutype found';
+    }
+
+    let html = this.sources.get(menuData.path);
+    let r = menuData.rect;
+    if (!r || !r.width || !r.height) {
+        throw 'specify width or height on popup: ' + popupId;
+    }
+
+
+
+
+    let menu = new SideMenuX({
+        id: menuId,
+        layout: html,
+        width: r.width,
+        onOpen: onOpen,
+        onClose: onClose,
+        menuType: menuType,
+        closeOnClickOutside: typeof closeOnClickOutSide === "boolean" ? closeOnClickOutSide : false,
+        bg: "#fff"
+    });
+    return menu.build();
+};
+
 
 /**
  *
@@ -1646,6 +1722,9 @@ var layoutLoaded = function (filePath, htmlContent, allLoaded) {
         }
     });
     page.sourcesLoaded = allLoaded;
+    if(allLoaded){
+        onSourcesLoaded();
+    }
 };
 
 var layoutError = function (error) {
@@ -8019,6 +8098,7 @@ function SideMenuX(options) {
      */
     this.rootView = null;
 
+    this.shouldOpen = false;
 
 }
 
@@ -8042,8 +8122,11 @@ SideMenuX.prototype.hide = function () {
     return this;
 };
 
+
 SideMenuX.prototype.open = function () {
+    this.shouldOpen = true;
     this.build();
+    this.openMenu();
     return this;
 };
 
@@ -8112,10 +8195,18 @@ SideMenuX.prototype.build = function () {
         popup.openMenu();
         popup.rootView = frame;
         popup.parsedWidth = parseInt(window.getComputedStyle(frame).width);
+        if(!this.shouldOpen){
+            frame.style.visibility = 'hidden';
+            overlay.style.visibility = 'hidden';
+            this.hide();
+            setTimeout(function(){
+                frame.style.visibility = 'visible';
+                overlay.style.visibility = 'visible';
+            }, 200);
+        }
     }
 
     this.addDragEvents(overlay, frame);
-    this.openMenu();
 
     return this;
 };
