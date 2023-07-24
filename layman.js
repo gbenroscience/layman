@@ -5,7 +5,9 @@ let MIN_BIAS = 0.0000000001;
 const styleSheet = document.createElement('style');
 styleSheet.setAttribute('type', 'text/css');
 
-
+/**
+ * @type Page
+ */
 let page;
 
 let projectURL, scriptURL;
@@ -86,6 +88,15 @@ let onLayoutComplete = function () {
 };
 
 /**
+ * By the time this function is fired all included layouts, popup layouts and menu layouts have been loaded.
+ * @type Function
+ */
+let onSourcesLoaded = function(){
+
+
+};
+
+/**
  *
  * @return {{}}
  */
@@ -107,6 +118,7 @@ docReady(function () {
  */
 function RemoteLayoutData(path) {
     /**
+     * @type String
      * The path to the file that describes the sublayout of the include or popup
      */
     this.path = path;
@@ -145,7 +157,7 @@ function Page(rootNode) {
     /**
      * A map of filepaths against the file contents.
      * The keys are the paths, the values are the file contents which define valid html sub-layouts
-     * @type {Map<any, any>}
+     * @type {Map<String, String>}
      */
     this.sources = new Map();
     /**
@@ -158,7 +170,7 @@ function Page(rootNode) {
      *
      * Stores all popup ids against their layout paths here.
      * The key is the id of the popup definition,
-     * The value is the src(filepath) to the html markup of the popup's  content.
+     * The value is the RemoteLayoutData
      * The library reads out the popups, stores them here and removes every trace of the popups from the original page code.
      * @type {Map<String, RemoteLayoutData>}
      */
@@ -166,26 +178,27 @@ function Page(rootNode) {
     /**
      * Store all side menu ids against their layout paths here.
      * The key is the id of the sidemenu definition
-     * The value is the src(filepath) to the html markup of the menu's content.
+     * The value is the RemoteLayoutData
      * The library reads out the sidemenus, stores them here and removes every trace of the sidemenus from the original page code.
+     * @type {Map<String, RemoteLayoutData>}
      */
     this.sidemenus = new Map();
     /**
      * Store all sidemenu ids that open from the left here
      */
-     this.leftMenus = [];
+    this.leftMenus = [];
     /**
      * Store all sidemenu ids that open from the right here
      */
-     this.rightMenus = [];
-    
+    this.rightMenus = [];
+
 
 
     /**
      *
      * Stores all included element ids against their layout path metadata here.
      * The key is the id of the included div definition,
-     * The value is the src(filepath) to the html markup of the include's  content.
+     * The value is the RemoteLayoutData
      * The library lays out the includes with the main page and renders their content in their blank area as the layouts arrive via fetch
      * @type {Map<String, RemoteLayoutData>}
      */
@@ -297,7 +310,7 @@ function shouldIgnoreSpecialChildElement(node) {
 function enforceIdOnChildElements(node) {
     let id = null;
     if (shouldIgnoreSpecialChildElement(node)) {
-         id = node.getAttribute(attrKeys.id);
+        id = node.getAttribute(attrKeys.id);
         if (!id) {
             id = ULID.ulid();
             node.setAttribute(attrKeys.id, id);
@@ -318,6 +331,8 @@ Page.prototype.layout = function () {
         this.layoutFromTags(this.rootElement);
     }
 };
+
+
 /**
  *
  * @param {HTMLElement} node
@@ -376,18 +391,18 @@ Page.prototype.layoutFromSheet = function (node) {
                 disPage.srcPaths.push(val);
                 disPage.sourcesLoaded = false;
                 let popupData = new RemoteLayoutData(val);
-                
+
                 let isPopup = constraints[attrKeys.layout_popup];
                 let isMenuLeft = constraints[attrKeys.layout_menuLeft];
                 let isMenuRight = constraints[attrKeys.layout_menuRight];
-                if(isMenuLeft === true && isMenuRight === true){
+                if (isMenuLeft === true && isMenuRight === true) {
                     throw `Each html element can only take one of ${attrKeys.layout_menuLeft} or ${attrKeys.layout_menuRight} at once...`;
                 }
-                if(isMenuLeft === true || isMenuLeft === 'true'){
+                if (isMenuLeft === true || isMenuLeft === 'true') {
                     disPage.leftMenus.push(root.id);
                     disPage.sidemenus.set(root.id, popupData);
                 }
-                else if(isMenuRight === true || isMenuRight === 'true'){
+                else if (isMenuRight === true || isMenuRight === 'true') {
                     disPage.rightMenus.push(root.id);
                     disPage.sidemenus.set(root.id, popupData);
                 }
@@ -488,12 +503,15 @@ Page.prototype.layoutFromTags = function (node) {
         if (endsWith(constraints, ";")) {
             constraints = constraints.substring(0, constraints.length - 1);
         }
-        constraints = constraints.replace(/\s/g, "");
+
+        constraints = constraints.replace(/\s*?(;)\s*/g, ";");
+        constraints = constraints.replace(/\s*?(:)\s*/g, ":");
+
         constraints = constraints.split(";");
 
         let refIds = new Map();
         let isPopup = false;
-        let isMenuLeft = false; 
+        let isMenuLeft = false;
         let isMenuRight = false;
 
         let src = null;
@@ -510,21 +528,21 @@ Page.prototype.layoutFromTags = function (node) {
                     src = val;
                 }
 
-                switch(attr){
+                switch (attr) {
                     case attrKeys.layout_popup:
                         isPopup = val === true || val === 'true';
-                    break;
+                        break;
                     case attrKeys.layout_menuLeft:
                         isMenuLeft = val === true || val === 'true';
-                    break;
+                        break;
                     case attrKeys.layout_menuRight:
                         isMenuRight = val === true || val === 'true';
-                    break;
+                        break;
 
                     default:
                         break;
                 }
-                if(isMenuLeft && isMenuRight){
+                if (isMenuLeft && isMenuRight) {
                     throw `Each html element can only take one of ${attrKeys.layout_menuLeft} or ${attrKeys.layout_menuRight} at once...`;
                 }
 
@@ -534,9 +552,9 @@ Page.prototype.layoutFromTags = function (node) {
                         throw 'Error: the `customType` attribute can only be defined on canvas elements';
                     }
                 }
-                if (attr === attrKeys.mi_text) {
-                    throw 'Error: You cannot use `mi_text` with inline tags. Please override `layoutCode` to use `mi_text` or define the text within the canvas tags.'
-                }
+                // if (attr === attrKeys.mi_text) {
+                //     //  throw 'Error: You cannot use `mi_text` with inline tags. Please override `layoutCode` to use `mi_text` or define the text within the canvas tags.'
+                // }
             } else {
                 throw 'invalid constraint definition... no colon found in ' + con + " on " + root.id;
             }
@@ -546,15 +564,15 @@ Page.prototype.layoutFromTags = function (node) {
             if (isPopup === true) {
                 disPage.popups.set(root.id, popupData);
             }
-            else if(isMenuLeft === true){
+            else if (isMenuLeft === true) {
                 disPage.leftMenus.push(root.id);
                 disPage.sidemenus.set(root.id, popupData);
             }
-            else if(isMenuRight === true){
+            else if (isMenuRight === true) {
                 disPage.rightMenus.push(root.id);
                 disPage.sidemenus.set(root.id, popupData);
             }
-             else {
+            else {
                 disPage.includes.set(root.id, popupData);
             }
         }
@@ -623,7 +641,7 @@ Page.prototype.buildUI = function (rootView) {
                 if (cv.isPopup()) {
                     pops.push(cv);
                 }
-                if(cv.isSideMenu()){
+                if (cv.isSideMenu()) {
                     menus.push(cv);
                 }
                 if (cv.hasBgImage) {
@@ -647,14 +665,14 @@ Page.prototype.buildUI = function (rootView) {
         currentPage.popups.set(popup.id, ppData);
         popup.htmlNode.remove();
     });
-    
+
     menus.forEach(function (menu) {
         let menuData = currentPage.sidemenus.get(menu.id);
         menuData.rect = menu.htmlNode.getBoundingClientRect();
         currentPage.sidemenus.set(menu.id, menuData);
         menu.htmlNode.remove();
     });
-    
+
 };
 
 Page.prototype.showRoot = function () {
@@ -675,28 +693,28 @@ Page.prototype.hideRoot = function () {
 
 
 /**
- * 
+ * Build and open the sidemenu
  * @param {string} menuId 
  * @param {boolean} closeOnClickOutSide 
  * @param {function} onOpen 
  * @param {function} onClose 
  * @returns 
  */
- Page.prototype.openSideMenu = function(menuId, closeOnClickOutSide,onOpen, onClose){
-    if(arguments.length !== 4){
+Page.prototype.openSideMenu = function (menuId, closeOnClickOutSide, onOpen, onClose) {
+    if (arguments.length !== 4) {
         throw '`Page.openSideMenu` function requires 4 arguments';
     }
-    if(typeof menuId !== 'string'){
+    if (typeof menuId !== 'string') {
         throw '`menuId` must be a string';
     }
-    if(typeof closeOnClickOutSide !== 'boolean'){
+    if (typeof closeOnClickOutSide !== 'boolean') {
         throw '`closeOnClickOutSide` must be  a boolean';
     }
-    
-    if(typeof onOpen !== 'function'){
+
+    if (typeof onOpen !== 'function') {
         throw 'onOpen must be a function';
-    }    
-    if(typeof onClose !== 'function'){
+    }
+    if (typeof onClose !== 'function') {
         throw 'onClose must be a function';
     }
     let pg = this;
@@ -705,10 +723,10 @@ Page.prototype.hideRoot = function () {
     let isLeftMenu = this.leftMenus.indexOf(menuId) !== -1;
     let isRightMenu = this.rightMenus.indexOf(menuId) !== -1;
     let menuType = isLeftMenu ? SideMenuTypes.LEFT : (isRightMenu ? SideMenuTypes.RIGHT : null);
-    if(!menuType){
+    if (!menuType) {
         throw 'Invalid menutype found';
     }
-    
+
 
     let html = this.sources.get(menuData.path);
     let r = menuData.rect;
@@ -730,6 +748,63 @@ Page.prototype.hideRoot = function () {
     return menu.open();
 };
 
+/**
+ * Build and setup the side menu without physically opening it.
+ * @param {string} menuId 
+ * @param {boolean} closeOnClickOutSide 
+ * @param {function} onOpen 
+ * @param {function} onClose 
+ * @returns 
+ */
+ Page.prototype.initSideMenu = function (menuId, closeOnClickOutSide, onOpen, onClose) {
+    if (arguments.length !== 4) {
+        throw '`Page.openSideMenu` function requires 4 arguments';
+    }
+    if (typeof menuId !== 'string') {
+        throw '`menuId` must be a string';
+    }
+    if (typeof closeOnClickOutSide !== 'boolean') {
+        throw '`closeOnClickOutSide` must be  a boolean';
+    }
+
+    if (typeof onOpen !== 'function') {
+        throw 'onOpen must be a function';
+    }
+    if (typeof onClose !== 'function') {
+        throw 'onClose must be a function';
+    }
+    let pg = this;
+    let menuData = this.sidemenus.get(menuId);
+
+    let isLeftMenu = this.leftMenus.indexOf(menuId) !== -1;
+    let isRightMenu = this.rightMenus.indexOf(menuId) !== -1;
+    let menuType = isLeftMenu ? SideMenuTypes.LEFT : (isRightMenu ? SideMenuTypes.RIGHT : null);
+    if (!menuType) {
+        throw 'Invalid menutype found';
+    }
+
+    let html = this.sources.get(menuData.path);
+    let r = menuData.rect;
+    if (!r || !r.width || !r.height) {
+        throw 'specify width or height on popup: ' + popupId;
+    }
+
+
+
+
+    let menu = new SideMenuX({
+        id: menuId,
+        layout: html,
+        width: r.width,
+        onOpen: onOpen,
+        onClose: onClose,
+        menuType: menuType,
+        closeOnClickOutside: typeof closeOnClickOutSide === "boolean" ? closeOnClickOutSide : false,
+        bg: "#fff"
+    });
+    return menu.build();
+};
+
 
 /**
  *
@@ -739,21 +814,21 @@ Page.prototype.hideRoot = function () {
  * @param {function} onClose 
  * @return {Popup}
  */
- Page.prototype.openPopup = function (popupId, closeOnClickOutSide,onOpen, onClose) {
-    if(arguments.length !== 4){
+Page.prototype.openPopup = function (popupId, closeOnClickOutSide, onOpen, onClose) {
+    if (arguments.length !== 4) {
         throw '`Page.openPopup` function requires 4 arguments';
     }
-    if(typeof popupId !== 'string'){
+    if (typeof popupId !== 'string') {
         throw '`popupId` must be a string';
     }
-    if(typeof closeOnClickOutSide !== 'boolean'){
+    if (typeof closeOnClickOutSide !== 'boolean') {
         throw '`closeOnClickOutSide` must be  a boolean';
     }
-    
-    if(typeof onOpen !== 'function'){
+
+    if (typeof onOpen !== 'function') {
         throw 'onOpen must be a function';
-    }    
-    if(typeof onClose !== 'function'){
+    }
+    if (typeof onClose !== 'function') {
         throw 'onClose must be a function';
     }
     let pg = this;
@@ -1644,6 +1719,9 @@ var layoutLoaded = function (filePath, htmlContent, allLoaded) {
         }
     });
     page.sourcesLoaded = allLoaded;
+    if(allLoaded){
+        onSourcesLoaded();
+    }
 };
 
 var layoutError = function (error) {
@@ -6493,6 +6571,11 @@ StringBuffer.prototype.toString = function () {
 StringBuffer.prototype.length = function () {
     return this.dataArray.length;
 };
+StringBuffer.prototype.reset = function () {
+    this.dataArray.length = 0;
+    return this;
+};
+
 
 
 let cloneText = function (originalText) {
