@@ -13,8 +13,7 @@ Here are some example pages designed using `layman`:
 3. [An example showing how to trigger the onLayoutComplete function](https://gbenroscience.github.io/layman/onlayout.html)
 4. [And finally, a simple calculator](https://gbenroscience.github.io/layman/calc.html)
 
-**_layman_** is an offshoot of **_layit_** (by the same author) and uses basically the same layout engine as **_layit_**
-.
+**_layman_** is an offshoot of **_layit_** (by the same author) and uses basically the same layout engine as **_layit_**. NOTE: layit has been discontinued and is now offline.
 
 What problem does **_layman_** solve?
 
@@ -442,7 +441,7 @@ For `tags > v0.1.1`, you can now use client-side includes in your design.
 Page sections can be defined in other files and referenced via the `src` attribute...e.g.
 
 ```HTML
-<div id="profile-section" data-const="w: 30%;h:300px;src="/path/to/profile.html"></div>
+<div id="profile-section" data-const="w: 30%;h:300px;src: /path/to/profile.html"></div>
 ```
 Define the path relative to the current html document.
 
@@ -457,7 +456,7 @@ layoutCode = function () {}
 Using client-side includes, you can define sub-layouts that will be used to create modular popups also.
 For instance:
 ```HTML
-<div id="success-popup" data-const="w: 30%;h:300px;src="/path/to/popup.html;popup:true"></div>
+<div id="success-popup" data-const="w: 30%;h:300px;src: /path/to/popup.html;popup:true"></div>
 ```
 Notice the `popup:true;` that needs to be added in addition to the `src` attribute for popups.
 This is the only difference between showing popups and rendering included files within the page.

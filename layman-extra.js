@@ -23745,8 +23745,6 @@ function TextBox(options, destCanvas) {
         this.lines = [];
         this.textHeight = this.g.textHeight("xxxx");
 
-        console.log("singleLine", this.singleLine);
-
         this.doMetrics();
         this.render();
         this.transfer(destCanvas);
