@@ -96,7 +96,7 @@ let onLayoutComplete = function () {
  * By the time this function is fired all included layouts, popup layouts and menu layouts have been loaded.
  * @type Function
  */
-let onSourcesLoaded = function(){
+let onSourcesLoaded = function () {
 
 
 };
@@ -759,7 +759,7 @@ Page.prototype.openSideMenu = function (menuId, closeOnClickOutSide, onOpen, onC
  * @param {function} onClose 
  * @returns 
  */
- Page.prototype.initSideMenu = function (menuId, closeOnClickOutSide, onOpen, onClose) {
+Page.prototype.initSideMenu = function (menuId, closeOnClickOutSide, onOpen, onClose) {
     if (arguments.length !== 4) {
         throw '`Page.openSideMenu` function requires 4 arguments';
     }
@@ -874,7 +874,7 @@ Page.prototype.renderInclude = function (includeID, htmlContent) {
     let path = layoutData.path;
     let html = !htmlContent ? this.sources.get(path) : htmlContent;
     let elem = document.getElementById(includeID);
-    elem.innerHTML = htmlContent;
+    elem.innerHTML = html;
     let pg = new Page(elem);
     pg.layout();
     this.subPages.set(includeID, pg);
@@ -1722,7 +1722,7 @@ var layoutLoaded = function (filePath, htmlContent, allLoaded) {
         }
     });
     page.sourcesLoaded = allLoaded;
-    if(allLoaded){
+    if (allLoaded) {
         onSourcesLoaded();
     }
 };
@@ -8195,11 +8195,11 @@ SideMenuX.prototype.build = function () {
         popup.openMenu();
         popup.rootView = frame;
         popup.parsedWidth = parseInt(window.getComputedStyle(frame).width);
-        if(!this.shouldOpen){
+        if (!this.shouldOpen) {
             frame.style.visibility = 'hidden';
             overlay.style.visibility = 'hidden';
             this.hide();
-            setTimeout(function(){
+            setTimeout(function () {
                 frame.style.visibility = 'visible';
                 overlay.style.visibility = 'visible';
             }, 200);

@@ -91,7 +91,7 @@ let onLayoutComplete = function () {
  * By the time this function is fired all included layouts, popup layouts and menu layouts have been loaded.
  * @type Function
  */
-let onSourcesLoaded = function(){
+let onSourcesLoaded = function () {
 
 
 };
@@ -756,7 +756,7 @@ Page.prototype.openSideMenu = function (menuId, closeOnClickOutSide, onOpen, onC
  * @param {function} onClose 
  * @returns 
  */
- Page.prototype.initSideMenu = function (menuId, closeOnClickOutSide, onOpen, onClose) {
+Page.prototype.initSideMenu = function (menuId, closeOnClickOutSide, onOpen, onClose) {
     if (arguments.length !== 4) {
         throw '`Page.openSideMenu` function requires 4 arguments';
     }
@@ -871,7 +871,7 @@ Page.prototype.renderInclude = function (includeID, htmlContent) {
     let path = layoutData.path;
     let html = !htmlContent ? this.sources.get(path) : htmlContent;
     let elem = document.getElementById(includeID);
-    elem.innerHTML = htmlContent;
+    elem.innerHTML = html;
     let pg = new Page(elem);
     pg.layout();
     this.subPages.set(includeID, pg);
@@ -1719,7 +1719,7 @@ var layoutLoaded = function (filePath, htmlContent, allLoaded) {
         }
     });
     page.sourcesLoaded = allLoaded;
-    if(allLoaded){
+    if (allLoaded) {
         onSourcesLoaded();
     }
 };
@@ -6807,15 +6807,15 @@ function isOneDimArray(array) {
 
 
 function addClass(element, className) {
-    if(element && className){
+    if (element && className) {
         element.classList.add(className);
     }
 }
 
 function removeClass(element, className) {
-    if(element && className){
-    element.classList.remove(className);
-}
+    if (element && className) {
+        element.classList.remove(className);
+    }
 }
 
 function isDomEntity(entity) {
@@ -7749,10 +7749,10 @@ function getUrls() {
         if (src.lastIndexOf(ender) === fullLen - endLen) {
             scriptURL = src.substring(0, fullLen - endLen);
 
-           projectURL = window.location.href;
-            let i=0;        
-            while(projectURL.charAt(i) === scriptURL.charAt(i)){
-                i+=1;
+            projectURL = window.location.href;
+            let i = 0;
+            while (projectURL.charAt(i) === scriptURL.charAt(i)) {
+                i += 1;
             }
             projectURL = projectURL.substring(0, i);
             return [projectURL, scriptURL];
@@ -7788,7 +7788,7 @@ const SideMenuTypes = {
  ```
  * @returns {SideMenuX}
  */
- function SideMenuX(options) {
+function SideMenuX(options) {
     if (!options) {
         throw new Error('Please supply the options for creating the menu.');
     }
@@ -7803,13 +7803,13 @@ const SideMenuTypes = {
 
     this.width = -1;
     this.parsedWidth = -1;
-    if(typeof options.width === 'number'){
-        this.width = options.width+'px';
+    if (typeof options.width === 'number') {
+        this.width = options.width + 'px';
     }
     else if (typeof options.width === 'string') {
-        if(isNumber(parseInt(options.width))){
+        if (isNumber(parseInt(options.width))) {
             this.width = options.width;
-        }else{
+        } else {
             throw 'invalid value specified for width!';
         }
     } else {
@@ -7842,12 +7842,12 @@ const SideMenuTypes = {
     this.registry = {};//register css classes and map them to their styles.
 
     var body = document.body,
-            html = document.documentElement;
+        html = document.documentElement;
 
     let bgWidth = Math.max(body.scrollWidth, body.offsetWidth,
-            html.clientWidth, html.scrollWidth, html.offsetWidth);
+        html.clientWidth, html.scrollWidth, html.offsetWidth);
     let bgHeight = Math.max(body.scrollHeight, body.offsetHeight,
-            html.clientHeight, html.scrollHeight, html.offsetHeight);
+        html.clientHeight, html.scrollHeight, html.offsetHeight);
 
 
     this.overlayStyle = new Style('.' + this.overlayClass(), []);
@@ -7874,7 +7874,7 @@ const SideMenuTypes = {
     });
 
 
-    initFrameCss:{
+    initFrameCss: {
         popupZIndex += 10;
         let optns = {
             width: this.width,
@@ -7889,12 +7889,12 @@ const SideMenuTypes = {
             'overflow-y': 'auto',
             transition: '0.5s',
         };
-       
+
         optns[this.menuType] = '0';//left: 0 or right: 0
         this.frameStyle.addFromOptions(optns);
     }
 
-    initCloseBtnStyle:{
+    initCloseBtnStyle: {
         let optns = {
             "top": "12px",
             "position": "fixed",
@@ -7907,26 +7907,26 @@ const SideMenuTypes = {
             "border": "none",
             "padding": "none"
         };
-        if(this.menuType === SideMenuTypes.LEFT){
+        if (this.menuType === SideMenuTypes.LEFT) {
             optns[SideMenuTypes.RIGHT] = '18px';
-        }else{
+        } else {
             optns[SideMenuTypes.LEFT] = '18px';
         }
         this.closeBtnStyle.addFromOptions(optns);
     }
 
-    this.onOpen = function () {};
+    this.onOpen = function () { };
     if (options.onOpen && {}.toString.call(options.onOpen) === '[object Function]') {
         this.onOpen = options.onOpen;
     } else {
-        this.onOpen = function () {};
+        this.onOpen = function () { };
     }
 
-    this.onClose = function () {};
+    this.onClose = function () { };
     if (options.onClose && {}.toString.call(options.onClose) === '[object Function]') {
         this.onClose = options.onClose;
     } else {
-        this.onClose = function () {};
+        this.onClose = function () { };
     }
 
     this.registerStyle(this.overlayStyle);
@@ -7956,15 +7956,15 @@ SideMenuX.prototype.hide = function () {
     if (frame) {
         this.closeMenu();
     }
-        removeClass(document.body , this.noScrollStyle.name.substring(1));
+    removeClass(document.body, this.noScrollStyle.name.substring(1));
     this.onClose();
 
     return this;
 };
 
 SideMenuX.prototype.open = function () {
- this.build();
- return this;
+    this.build();
+    return this;
 };
 
 SideMenuX.prototype.build = function () {
@@ -8003,7 +8003,7 @@ SideMenuX.prototype.build = function () {
         closeBtn = document.createElement("input");
         closeBtn.setAttribute("id", this.closeBtnId());
         addClass(closeBtn, this.closeBtnClass());
-        closeBtn.setAttribute('type' , 'button');
+        closeBtn.setAttribute('type', 'button');
         closeBtn.value = "\u02DF";
         overlay.appendChild(closeBtn);
     }
@@ -8025,19 +8025,19 @@ SideMenuX.prototype.build = function () {
         style.innerHTML = css.toString();
         document.getElementsByTagName('head')[0].appendChild(style);
 
-            let p = new Page(frame);
-            p.layout();
-            page.subPages.set(frame.id, p);
+        let p = new Page(frame);
+        p.layout();
+        page.subPages.set(frame.id, p);
 
-            popup.openMenu();
-            popup.rootView = frame;
-            popup.parsedWidth = parseInt(window.getComputedStyle(frame).width);
+        popup.openMenu();
+        popup.rootView = frame;
+        popup.parsedWidth = parseInt(window.getComputedStyle(frame).width);
     }
 
     this.addDragEvents(overlay, frame);
     this.openMenu();
 
-return this;
+    return this;
 };
 
 SideMenuX.prototype.addDragEvents = function (overlay, frame) {
@@ -8045,7 +8045,7 @@ SideMenuX.prototype.addDragEvents = function (overlay, frame) {
     let self = this;
     let pressed = true;
 
-    frame.onmousemove = function (e) {};
+    frame.onmousemove = function (e) { };
     frame.onmousedown = function (e) {
         e = window.event || e;
         if (e.target !== this && e.target !== self.rootView) {
@@ -8076,7 +8076,7 @@ SideMenuX.prototype.addDragEvents = function (overlay, frame) {
             }
             pressed = false;
             frame.style.transition = '0.5s';
-            frame.onmousemove = function (e) {};
+            frame.onmousemove = function (e) { };
             if (ev.pageX < self.parsedWidth / 3) {
                 self.hide();
             } else {
@@ -8094,20 +8094,20 @@ SideMenuX.prototype.addDragEvents = function (overlay, frame) {
 
 
     overlay.onmousemove = function (e) {
-          ev = window.event || ev;
-            if (ev.target !== this && ev.target !== self.rootView) {
-                return;
+        ev = window.event || ev;
+        if (ev.target !== this && ev.target !== self.rootView) {
+            return;
+        }
+        if (pressed === true) {
+            if (ev.pageX < self.parsedWidth) {
+                frame.style.width = (ev.pageX + 2) + 'px';
+                frame.style.transition = '0.5s';
+            } else if (ev.pageX >= self.parsedWidth + 80) {
+                frame.style.width = self.parsedWidth + 'px';
+            } else {
+
             }
-            if (pressed === true) {
-                if (ev.pageX < self.parsedWidth) {
-                    frame.style.width = (ev.pageX + 2) + 'px';
-                    frame.style.transition = '0.5s';
-                } else  if(ev.pageX >= self.parsedWidth + 80){
-                    frame.style.width = self.parsedWidth + 'px';
-                }else {
-                   
-                }
-            }
+        }
 
     };
 
@@ -8146,7 +8146,7 @@ SideMenuX.prototype.containerId = function () {
 
 SideMenuX.prototype.openMenu = function () {
     document.getElementById(this.containerId()).style.width = this.width;
-    addClass(document.body , this.noScrollStyle.name.substring(1));
+    addClass(document.body, this.noScrollStyle.name.substring(1));
     this.onOpen();
 };
 
