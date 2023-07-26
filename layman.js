@@ -2232,8 +2232,6 @@ function View(page, node, refIds, parentId) {
         throw 'The view id cannot be an empty string!';
     }
 
-
-    customRenderer(page, this);
     //this.calculateWrapContentSizes(node);
 
     let rect = node.getBoundingClientRect();
