@@ -264,13 +264,9 @@ Page.prototype.findViewById = function (viewId) {
  * @param node
  * @return {boolean}
  */
-function shouldIgnoreNode(node) {
+function shouldIgnoreNonLayoutNode(node) {
     let name = node.nodeName.toLowerCase();
-    return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
-        || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === '#text' || name === '#comment'
-        || name === 'script' || name === 'option' || name === 'optgroup'
-        || name === 'b' || name === 'i' || name === 'strong' || name === 'u'
-    );
+    return (name === 'meta' || name === 'title' || name == 'head' || name == 'script' || name == 'link' || name == 'style');
 }
 
 /**
