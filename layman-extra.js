@@ -299,7 +299,7 @@ function shouldIgnoreSpecialChildElement(node) {
     let name = node.nodeName.toLowerCase();
     return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
         || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === 'option' || name === 'optgroup'
-        || name === 'b' || name === 'i' || name === 'strong' || name === 'u');
+        || name === 'b' || name === 'i' || name === 'strong' || name === 'u' || name === 'caption');
 }
 
 /**
