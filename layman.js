@@ -82,7 +82,12 @@ function docReady(fn) {
     }
 }
 
-
+/**
+ * This is fired when the top level layout has been loaded.
+ * If you have included files in your layout, their layouts wont yet be complete,
+ * so you can wait for them in the onSourcesLoaded function
+ * @type Function
+ */
 let onLayoutComplete = function () {
 
 };
@@ -108,7 +113,6 @@ let layoutCode = function () {
 docReady(function () {
     page = new Page(null);
     page.layout();
-    onLayoutComplete();
 });
 
 /**
@@ -259,13 +263,9 @@ Page.prototype.findViewById = function (viewId) {
  * @param node
  * @return {boolean}
  */
-function shouldIgnoreNode(node) {
+function shouldIgnoreNonLayoutNode(node) {
     let name = node.nodeName.toLowerCase();
-    return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
-        || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === '#text' || name === '#comment'
-        || name === 'script' || name === 'option' || name === 'optgroup'
-        || name === 'b' || name === 'i' || name === 'strong' || name === 'u'
-    );
+    return (name === 'meta' || name === 'title' || name == 'head' || name == 'script' || name == 'link' || name == 'style');
 }
 
 /**
@@ -298,7 +298,7 @@ function shouldIgnoreSpecialChildElement(node) {
     let name = node.nodeName.toLowerCase();
     return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
         || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === 'option' || name === 'optgroup'
-        || name === 'b' || name === 'i' || name === 'strong' || name === 'u');
+        || name === 'b' || name === 'i' || name === 'strong' || name === 'u' || name === 'caption');
 }
 
 /**
@@ -459,6 +459,7 @@ Page.prototype.layoutFromSheet = function (node) {
                     worker.loadAll(projectURL, disPage.srcPaths);
                 } else {
                     disPage.sourcesLoaded = true;
+                    onLayoutComplete();
                 }
 
             }
@@ -621,6 +622,7 @@ Page.prototype.layoutFromTags = function (node) {
                     worker.loadAll(projectURL, disPage.srcPaths);
                 } else {
                     disPage.sourcesLoaded = true;
+                    onLayoutComplete();
                 }
             }
         }
@@ -1710,6 +1712,11 @@ var workerCode = function () {
 var layoutLoaded = function (filePath, htmlContent, allLoaded) {
     //  console.log('layoutLoaded:--> ', 'filepath: ', filePath, ", layout: ", htmlContent, ", allLoaded: ", allLoaded);
     page.sources.set(filePath, htmlContent);
+
+    if (allLoaded) {
+        page.sourcesLoaded = allLoaded;
+        onSourcesLoaded();
+    }
     page.includes.forEach(function (layoutData, id) {
         if (layoutData.consumed === false) {
             if (layoutData.path === filePath) {
@@ -1718,9 +1725,9 @@ var layoutLoaded = function (filePath, htmlContent, allLoaded) {
             }
         }
     });
-    page.sourcesLoaded = allLoaded;
+
     if (allLoaded) {
-        onSourcesLoaded();
+        onLayoutComplete();
     }
 };
 

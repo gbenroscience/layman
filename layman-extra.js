@@ -96,7 +96,7 @@ let onLayoutComplete = function () {
  * By the time this function is fired all included layouts, popup layouts and menu layouts have been loaded.
  * @type Function
  */
-let onSourcesLoaded = function(){
+let onSourcesLoaded = function () {
 
 
 };
@@ -113,7 +113,6 @@ let layoutCode = function () {
 docReady(function () {
     page = new Page(null);
     page.layout();
-    onLayoutComplete();
 });
 
 /**
@@ -264,13 +263,9 @@ Page.prototype.findViewById = function (viewId) {
  * @param node
  * @return {boolean}
  */
-function shouldIgnoreNode(node) {
+function shouldIgnoreNonLayoutNode(node) {
     let name = node.nodeName.toLowerCase();
-    return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
-        || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === '#text' || name === '#comment'
-        || name === 'script' || name === 'option' || name === 'optgroup'
-        || name === 'b' || name === 'i' || name === 'strong' || name === 'u'
-    );
+    return (name === 'meta' || name === 'title' || name == 'head' || name == 'script' || name == 'link' || name == 'style');
 }
 
 /**
@@ -303,7 +298,7 @@ function shouldIgnoreSpecialChildElement(node) {
     let name = node.nodeName.toLowerCase();
     return (name === 'li' || name === 'tr' || name === 'td' || name === 'th' || name === 'tbody' || name === 'thead'
         || name === 'tfoot' || name === 'col' || name === 'colgroup' || name === 'option' || name === 'optgroup'
-        || name === 'b' || name === 'i' || name === 'strong' || name === 'u');
+        || name === 'b' || name === 'i' || name === 'strong' || name === 'u' || name === 'caption');
 }
 
 /**
@@ -464,6 +459,7 @@ Page.prototype.layoutFromSheet = function (node) {
                     worker.loadAll(projectURL, disPage.srcPaths);
                 } else {
                     disPage.sourcesLoaded = true;
+                    onLayoutComplete();
                 }
 
             }
@@ -626,6 +622,7 @@ Page.prototype.layoutFromTags = function (node) {
                     worker.loadAll(projectURL, disPage.srcPaths);
                 } else {
                     disPage.sourcesLoaded = true;
+                    onLayoutComplete();
                 }
             }
         }
@@ -759,7 +756,7 @@ Page.prototype.openSideMenu = function (menuId, closeOnClickOutSide, onOpen, onC
  * @param {function} onClose 
  * @returns 
  */
- Page.prototype.initSideMenu = function (menuId, closeOnClickOutSide, onOpen, onClose) {
+Page.prototype.initSideMenu = function (menuId, closeOnClickOutSide, onOpen, onClose) {
     if (arguments.length !== 4) {
         throw '`Page.openSideMenu` function requires 4 arguments';
     }
@@ -1713,6 +1710,11 @@ var workerCode = function () {
 var layoutLoaded = function (filePath, htmlContent, allLoaded) {
     //  console.log('layoutLoaded:--> ', 'filepath: ', filePath, ", layout: ", htmlContent, ", allLoaded: ", allLoaded);
     page.sources.set(filePath, htmlContent);
+
+    if (allLoaded) {
+        page.sourcesLoaded = allLoaded;
+        onSourcesLoaded();
+    }
     page.includes.forEach(function (layoutData, id) {
         if (layoutData.consumed === false) {
             if (layoutData.path === filePath) {
@@ -1721,9 +1723,9 @@ var layoutLoaded = function (filePath, htmlContent, allLoaded) {
             }
         }
     });
-    page.sourcesLoaded = allLoaded;
-    if(allLoaded){
-        onSourcesLoaded();
+
+    if (allLoaded) {
+        onLayoutComplete();
     }
 };
 
@@ -2267,7 +2269,6 @@ function customRenderer(page, view) {
             }
         }
     }
-
 }
 
 
@@ -2298,10 +2299,7 @@ function renderTextBox(page, view) {
             } else {
                 throw 'Invalid type specified for singleLine on view: ' + view.id;
             }
-
-
             w = parseWidth.number;
-
             let gravity = view.refIds.get(attrKeys.mi_gravity);
             if (!gravity) {
                 gravity = Gravity.LEFT;
@@ -2774,7 +2772,7 @@ View.prototype.layoutChildren = function (page) {
 
 
         /**
-         * horizontal bias and centering. In the underlying autolayout.js library, I fund out the hard way
+         * horizontal bias and centering. In the underlying autolayout.js library, I found out the hard way
          * that when using centerX and centerY(?), one can shift the default behaviour using the multiplier, but
          * instead of the shift applying for 0 to 1 from the left to the right, it applies for 0 to 2.
          * Expected behaviour, assuming their own scale is different, then one would expect that:
@@ -8195,11 +8193,11 @@ SideMenuX.prototype.build = function () {
         popup.openMenu();
         popup.rootView = frame;
         popup.parsedWidth = parseInt(window.getComputedStyle(frame).width);
-        if(!this.shouldOpen){
+        if (!this.shouldOpen) {
             frame.style.visibility = 'hidden';
             overlay.style.visibility = 'hidden';
             this.hide();
-            setTimeout(function(){
+            setTimeout(function () {
                 frame.style.visibility = 'visible';
                 overlay.style.visibility = 'visible';
             }, 200);
