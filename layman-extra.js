@@ -22201,6 +22201,112 @@ Graphics.prototype.scanLines = function (txt, availableWidth) {
 };
 
 /**
+ * 
+ * Draws a rectangular shape's outline
+ * @param {number} x The left coordinates of the rectangle
+ * @param {number} y The right top coordinates of the rectangle
+ * @param {number} width The width of the rectangle
+ * @param {number} height The height of the rectangle
+ * @param {*} shadowColor The color of the shadow e.g. 'black'
+ * @param {*} shadowBlur An integer signifying the blur radius e.g. 5
+ * @param {*} shadowOffsetX An integer signifying the shadow offset extent along x
+ * @param {*} shadowOffsetY An integer signifying the shadow offset extent along x 
+ */
+Graphics.prototype.draw3DRect = function (x, y, width, height, shadowColor, shadowBlur, shadowOffsetX, shadowOffsetY) {
+    let ctx = this.ctx;
+
+
+    if (typeof shadowColor !== "string") {
+        throw 'The shadow color must be a string and a valid color';
+    }
+
+    if (typeof shadowBlur !== "number") {
+        throw 'The shadow blur must be a number, say 5';
+    }
+
+    if (typeof shadowOffsetX !== "number") {
+        throw 'The shadow offset along x must be a number, say 2';
+    }
+    if (typeof shadowOffsetY !== "number") {
+        throw 'The shadow offset along y must be a number, say 2';
+    }
+
+
+    //ctx.save();
+    //ctx.beginPath();
+
+    // Set shadow properties
+
+    ctx.shadowColor = shadowColor; // Shadow color
+
+    ctx.shadowBlur = shadowBlur; // Blur radius
+
+    ctx.shadowOffsetX = shadowOffsetX; // Horizontal offset
+
+    ctx.shadowOffsetY = shadowOffsetY; // Vertical offset
+
+
+
+    // Draw a rectangle with a shadow
+
+    this.drawRect(x, y, width, height);
+
+
+    //ctx.stroke();
+    //ctx.restore();
+};
+
+
+/**
+ * 
+ * Draws a rectangular shape's outline
+ * @param {number} x The left coordinates of the rectangle
+ * @param {number} y The right top coordinates of the rectangle
+ * @param {number} width The width of the rectangle
+ * @param {number} height The height of the rectangle
+ * @param {*} shadowColor The color of the shadow e.g. 'black'
+ * @param {*} shadowBlur An integer signifying the blur radius e.g. 5
+ * @param {*} shadowOffsetX An integer signifying the shadow offset extent along x
+ * @param {*} shadowOffsetY An integer signifying the shadow offset extent along x 
+ */
+Graphics.prototype.fill3DRect = function (x, y, width, height, shadowColor, shadowBlur, shadowOffsetX, shadowOffsetY) {
+    let ctx = this.ctx;
+    if (typeof shadowColor !== "string") {
+        throw 'The shadow color must be a string and a valid color';
+    }
+
+    if (typeof shadowBlur !== "number") {
+        throw 'The shadow blur must be a number, say 5';
+    }
+
+    if (typeof shadowOffsetX !== "number") {
+        throw 'The shadow offset along x must be a number, say 2';
+    }
+    if (typeof shadowOffsetY !== "number") {
+        throw 'The shadow offset along y must be a number, say 2';
+    }
+
+
+
+    //ctx.save();
+    //ctx.beginPath();
+
+    // Set shadow properties
+    ctx.shadowColor = shadowColor; // Shadow color
+    ctx.shadowBlur = shadowBlur; // Blur radius
+    ctx.shadowOffsetX = shadowOffsetX; // Horizontal offset
+    ctx.shadowOffsetY = shadowOffsetY; // Vertical offset
+
+    // Draw a rectangle with a shadow
+    this.fillRect(x, y, width, height);
+
+    //ctx.stroke();
+    //ctx.restore();
+};
+
+
+
+/**
  * @param {string} text The text to split into lines of text.
  * @param {Number} lineWidth The maximum width of the line.
  * The splitting algorithm ensures that no line of text is ever longer pixel-wise than the specified line-width
