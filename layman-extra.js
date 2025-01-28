@@ -23810,7 +23810,7 @@ let getTextSize = function (text, font) {
  * A special case arises where the text supplied is a continuous text (e.g. a long name that has no whitespace).
  * 
  * Since TextBox first splits the supplied text into tokens, it is going to have an array of only one word, the same long word.
- * The word will be longer than thesupplied width if it is a really long word. So what TxtBox does is that it calculates the wdth of the long word,
+ * The word will be longer than the supplied width if it is a really long word. So what TextBox does is that it calculates the width of the long word,
  * applies the specified padding and sets it to be the width of the widget. So beware! if your TextBox has a single word that is longer than its width,
  * it is going to expand the width of the TextBox to accomodate the long word.
  * 
@@ -23938,7 +23938,7 @@ function TextBox(options, destCanvas) {
         this.g.setFont(this.font);
 
         this.lines = [];
-        this.textHeight = this.g.textHeight("xxxx");
+        this.textHeight = this.g.textHeight("x");
 
         this.doMetrics();
         this.render();
@@ -23988,7 +23988,10 @@ TextBox.prototype.doMetrics = function () {
         }
     }
 
-    let scaledHeight = ((lineCount * textHeight) + ((lineCount - 1) * lineSpacing) + (2 * padding) + 2);
+    let scaledHeight = ((lineCount * textHeight) + ((lineCount - 1) * lineSpacing) + (2 * padding) + 2) + 0.4 * textHeight;
+    /* Note the + 0.4 * textHeight added to the calc for scaledHeight above. It is to allow the characters g, j, p and q
+      (whose bases do not show when they rest on the bottom border) to show.
+    */
     this.height = scaledHeight / PIXEL_RATIO;
     this.remove();
     this.g = new Graphics(this.width * PIXEL_RATIO, scaledHeight);
@@ -24077,6 +24080,7 @@ TextBox.prototype.remove = function () {
     this.g.getCanvas().remove();
     this.g.destroy();
 };
+
 ///////////////////////////TextBox ends////////////////////////////////////////////////////////////
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
