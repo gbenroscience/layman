@@ -283,9 +283,9 @@ function isWhiteSpaceOrCommentNode(node) {
  * @param node
  * @return {boolean}
  */
-function isWhiteSpaceCommentOrScriptNode(node) {
+function isWhiteSpaceCommentStyleOrScriptNode(node) {
     let name = node.nodeName.toLowerCase();
-    return (name === '#text' || name === '#comment' || name === 'script');
+    return (name === '#text' || name === '#comment' || name === 'script' || name === 'style');
 }
 
 /**
@@ -441,7 +441,7 @@ Page.prototype.layoutFromSheet = function (node) {
             let childNodes = root.children;
             for (let j = 0; j < childNodes.length; j++) {
                 let childNode = childNodes[j];
-                if (!isWhiteSpaceCommentOrScriptNode(childNode)) {
+                if (!isWhiteSpaceCommentStyleOrScriptNode(childNode)) {
                     if (!shouldIgnoreSpecialChildElement(childNode)) {
                         let childId = childNode.getAttribute(attrKeys.id);
                         view.childrenIds.push(childId);//register the child with the parent
@@ -603,7 +603,7 @@ Page.prototype.layoutFromTags = function (node) {
             let childNodes = root.children;
             for (let j = 0; j < childNodes.length; j++) {
                 let childNode = childNodes[j];
-                if (!isWhiteSpaceCommentOrScriptNode(childNode)) {
+                if (!isWhiteSpaceCommentStyleOrScriptNode(childNode)) {
                     if (!shouldIgnoreSpecialChildElement(childNode)) {
                         let childId = childNode.getAttribute(attrKeys.id);
                         view.childrenIds.push(childId);//register the child with the parent
