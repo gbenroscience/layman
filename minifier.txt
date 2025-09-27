@@ -1,0 +1,8 @@
+Use:
+https://www.toptal.com/developers/javascript-minifier
+
+
+
+2nd Best
+or check
+uglifyjs or terse
