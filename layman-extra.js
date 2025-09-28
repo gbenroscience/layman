@@ -6637,44 +6637,71 @@ function attributeEmpty(attrVal) {
  * @returns {Scanner}
  */
 function Scanner(input, includeTokensInOutput, tokens) {
-    this.input = input;
-    this.includeTokensInOutput = includeTokensInOutput;
-    this.tokens = tokens;
+	this.input = input;
+	this.includeTokensInOutput = includeTokensInOutput;
+
+	// 1. Optimize Initialization: Filter out empty strings and sort by length once.
+	this.tokens = tokens
+		.filter(token => token && token.length > 0)
+		.sort((a, b) => b.length - a.length); // Descending length for greedy matching
 }
 
 Scanner.prototype.scan = function () {
-    let inp = this.input;
+	const input = this.input;
+	const tokens = this.tokens;
+	const output = [];
 
-    let parse = [];
-    this.tokens.sort(function (a, b) {
-        return b.length - a.length; //ASC, For Descending order use: b - a
-    });
-    for (let i = 0; i < inp.length; i++) {
-        for (let j = 0; j < this.tokens.length; j++) {
-            let token = this.tokens[j];
-            let len = token.length;
-            if (len > 0 && i + len <= inp.length) {
-                let portion = inp.substring(i, i + len);
-                if (portion === token) {
-                    if (i !== 0) {//avoid empty spaces
-                        parse[parse.length] = inp.substring(0, i);
-                    }
-                    if (this.includeTokensInOutput) {
-                        parse[parse.length] = token;
-                    }
-                    inp = inp.substring(i + len);
-                    i = -1;
-                    break;
-                }
-            }
-        }
-    }
+	// Tracks the current position in the input string.
+	let cursor = 0;
 
-    if (inp.length !== 0) {
-        parse[parse.length] = inp;
-    }
-    return parse;
+	// Tracks the starting index of the current literal (non-token) string segment.
+	let literalStart = 0;
+
+	// Single-pass loop (O(N) iterations)
+	while (cursor < input.length) {
+		let matchedToken = null;
+
+		// Inner loop: Check all tokens at the current cursor position (O(T) iterations)
+		for (let token of tokens) {
+			const len = token.length;
+			// Check if the token fits and if the substring matches (O(L_max) comparison)
+			if (len > 0 && cursor + len <= input.length &&
+				input.substring(cursor, cursor + len) === token) {
+
+				matchedToken = token;
+
+				// 1. Correctly push the literal string *before* the token
+				if (cursor > literalStart) {
+					output.push(input.substring(literalStart, cursor));
+				}
+
+				// 2. Push the token itself
+				if (this.includeTokensInOutput) {
+					output.push(matchedToken);
+				}
+
+				// 3. Advance cursor past the token and set the new literal starting point
+				cursor += len;
+				literalStart = cursor;
+				break; // Move to the next outer loop iteration
+			}
+		}
+
+		// If no token was matched at the current position, advance the cursor by 1.
+		// This character becomes part of the growing literal string chunk.
+		if (matchedToken === null) {
+			cursor++;
+		}
+	}
+
+	// Final Step: Process any remaining literal string at the very end of the input
+	if (literalStart < input.length) {
+		output.push(input.substring(literalStart, input.length));
+	}
+
+	return output;
 };
+
 
 /**
  *
