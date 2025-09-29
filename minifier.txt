@@ -1,8 +1,8 @@
 Use:
-https://www.toptal.com/developers/javascript-minifier
+terser js library
 
+npm install terser
 
+Then at the CLI:
 
-2nd Best
-or check
-uglifyjs or terse
+terser layman-extra.js --output layman-extra.min.js --compress ecma=2015,computed_props=false --mangle reserved=['loadAll','layoutLoaded','layoutError','loadFile','loadFiles']

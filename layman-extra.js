@@ -876,10 +876,11 @@ Page.prototype.renderInclude = function (includeID, htmlContent) {
     pg.layout();
     this.subPages.set(includeID, pg);
 };
-
+var loadAll;
+/* terser: keep_tree */
 var workerCode = function () {
 
-    function loadAll(basePath, files) {
+    loadAll = function(basePath, files) {
         loadFiles(basePath, files, 0);
     }
 
@@ -7922,28 +7923,68 @@ function parseNumberAndUnits(val, seeNoUnitsAsPx) {
     return { number: number, units: units };
 }
 
-function getUrls() {
-    let scripts = document.getElementsByTagName('script');
-    for (let i = 0; i < scripts.length; i++) {
-        let script = scripts[i];
-        let src = script.src;
-        let ender = 'layman-extra.js';
-        let fullLen = src.length;
-        let endLen = ender.length;
-        //check if script.src ends with script file name
-        if (src.lastIndexOf(ender) === fullLen - endLen) {
-            scriptURL = src.substring(0, fullLen - endLen);
+/**
+ * Gets the filename of the currently executing script.
+ * Prioritizes the modern 'document.currentScript' for reliability and performance,
+ * falling back to examining all script tags for backwards compatibility.
+ * @returns {string|null} The filename (e.g., 'my-file.js') or null if not found.
+ */
+function getScriptFileName() {
+    let scriptUrl = null;
 
-            projectURL = window.location.href;
-            let i = 0;
-            while (projectURL.charAt(i) === scriptURL.charAt(i)) {
-                i += 1;
-            }
-            projectURL = projectURL.substring(0, i);
-            return [projectURL, scriptURL];
+    // 1. Modern Method (Highest Priority)
+    // document.currentScript is the most accurate way to get the executing script element.
+    if (document.currentScript && document.currentScript.src) {
+        scriptUrl = document.currentScript.src;
+    } 
+    
+    // 2. Fallback Method (For older browsers)
+    // This assumes the script is executing immediately after being parsed, 
+    // making it the last script element added to the DOM.
+    else {
+        const scripts = document.getElementsByTagName('script');
+        const lastScript = scripts[scripts.length - 1];
+        
+        if (lastScript && lastScript.src) {
+            scriptUrl = lastScript.src;
         }
     }
+
+    // 3. Extraction
+    if (scriptUrl) {
+        // Use URL constructor for robust parsing (handles protocols, domains, etc.)
+        const url = new URL(scriptUrl, document.location.origin);
+        const fullPath = url.pathname;
+        
+        // Extract the filename (the part after the last '/')
+        return fullPath.substring(fullPath.lastIndexOf('/') + 1);
+    }
+
     return null;
+}
+
+
+function getUrls() {
+	let scripts = document.getElementsByTagName('script');
+	for (let i = 0; i < scripts.length; i++) {
+		let script = scripts[i];
+		let src = script.src;
+		let ender = getScriptFileName(); 
+		let fullLen = src.length;
+		let endLen = ender.length;
+		//check if script.src ends with script file name
+		if (src.lastIndexOf(ender) === fullLen - endLen) {
+			scriptURL = src.substring(0, fullLen - endLen);
+			projectURL = window.location.href;
+			let i = 0;
+			while (projectURL.charAt(i) === scriptURL.charAt(i)) {
+				i += 1;
+			}
+			projectURL = projectURL.substring(0, i);
+			return [projectURL, scriptURL];
+		}
+	}
+	return null;
 }
 
 //////////////////////////////////////////////////////////////////////
