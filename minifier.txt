@@ -1,7 +1,7 @@
 Use:
 terser js library
 
-npm install terser
+npm install terser -g
 
 Then at the CLI:
 
