@@ -21,20 +21,12 @@ What problem does **_layman_** solve?
 content without having to create additional xml files, or having to learn the syntax of android xml.
 In **_layman_**, no new xml files are created.
 
-**_layman_** has 2 files that you may choose from, as they do basically the same thing.
-1. layman.js
-2. layman-extra.js
-   
-   Both files have the functionality of constraint layouts, but layman-extra.js adds some capability of generating backgrounds for divs and other html elements, provides custom elements(TextBox) that work better with the wrap_content specification than
-   the native spans and paragraph tags of html among others.
-
-
-This extra functionality means that layman-extra.js is larger than layman.js.
-
-Henceforth, where we refer to `layman.js`, we are referring to either file, except where otherwise specified.
+ 
 
 Modular design has also been added, with the addition of client-side includes for `tags > 0.1.1`.
 
+### DO NOT USE
+For now, `layman` has banned the use of hyphens in id names.
 
 #### NOTE:
 
@@ -48,7 +40,7 @@ Modular design has also been added, with the addition of client-side includes fo
 
 ### How to use
 
-Download the `layman.js` file and add the script in the head section of your html page e.g.
+Download the `layman.js` file or its minified version and add the script in the head section of your html page e.g.
 
 ```html
 <!DOCTYPE html>
@@ -161,6 +153,16 @@ Here are perfectly valid ways to specify the width of a view:
 21. w:some_id.height+32// sets the view's width to be 32 pixels plus the height of `some_id`
 22. w:some_id.width-120// sets the view's width to be the width of `some_id` minus 120 pixels
 23. w:some_id.height-32// sets the view's width to be the height of `some_id` minus 120 pixels
+24. w:num1%+num2//e.g w:32%+18 width is 32% that of parent plus 18 pixels
+25. w:num1+num2%//e.g w:32+18% width is 18 pixels plus 32% that of parent 
+26. w:num1%-num2//e.g w:32%-18 width is 32% that of parent minus 18 pixels
+27  w:num1-num2%//e.g w:32-18% width is 32 pixels minus 18% that of parent 
+28. h:num1%+num2//e.g h:32%+18 height is 32% that of parent plus 18 pixels
+29. h:num1+num2%//e.g h:32+18% height is 18 pixels plus 32% that of parent 
+30. h:num1%-num2//e.g h:32%-18 height is 32% that of parent minus 18 pixels
+31  h:num1-num2%//e.g h:32-18% height is 32 pixels minus 18% that of parent 
+
+
 ```
 
 These same rules apply to the height also. Note that division operation is not supported, only multiplication, addition
@@ -509,7 +511,7 @@ Then simply call:
 let sideMenuBtn = document.getElementById('open_feeds_icon');// a button on your page
 
             sideMenuBtn.onclick = function (e) {
-                page.openSideMenu('feeds_menu', true, function(){}, function(){});
+                page.openSideMenu('feeds_menu', true, function(){}, function(){}, function(){});
             }; 
 ```
 
@@ -518,6 +520,7 @@ let sideMenuBtn = document.getElementById('open_feeds_icon');// a button on your
 2. The second argument tells the library if you want the sidemenu to be dismissed when the user clicks outside its layout.
 3. The third argument is a function to run when the sidemenu opens.
 4. The fourth argument is a function to run when the sidemenu closes.
+5. The fifth argument is a function that fires when the sidemenu's layout is first attached to the DOM successfully.
 
 
 
