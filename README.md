@@ -103,7 +103,7 @@ layoutCode = function () {
 	};
 };
  ```
- In this commit, we have included the ability to set text in ```Label```.
+ In the latest commits, we have included the ability to set text in ```Label```.
  To do this for the `page_title` above, just do:
  ```Javascript
  	const label = page.getNodeWrapperById("page_title");
