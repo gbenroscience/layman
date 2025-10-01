@@ -24534,11 +24534,27 @@ TextBox.prototype.render = function () {
 TextBox.prototype.transfer = function (destCanvas) {
 	let c = this.g.getCanvas();
 
+	// 1. Set the destination canvas's drawing buffer size (internal resolution)
+	//    to match the source canvas's drawing buffer size.
 	destCanvas.width = c.width;
 	destCanvas.height = c.height;
 
 	let ctx = destCanvas.getContext('2d');
+
+	// 2. Draw the content of the source canvas onto the destination canvas.
 	ctx.drawImage(c, 0, 0, c.width, c.height);
+
+	// 3. Get the computed CSS dimensions of the source canvas (e.g., "600px").
+	const {width: computedWidth, height: computedHeight} = window.getComputedStyle(c);
+	// alert(computedWidth + ", " + computedHeight); // Original alert for debugging
+
+	// 4. Apply the computed CSS dimensions to the destination canvas's style.
+	//    This ensures the visual size on the page matches the source canvas.
+	destCanvas.style.width = computedWidth;
+	destCanvas.style.height = computedHeight;
+	 
+	 
+	// 5. Clean up the source canvas.
 	c.remove();
 };
 /**

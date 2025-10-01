@@ -5,4 +5,4 @@ npm install terser -g
 
 Then at the CLI:
 
-terser layman-extra.js --output layman-extra.min.js --compress ecma=2015,computed_props=false --mangle reserved=['loadAll','layoutLoaded','layoutError','loadFile','loadFiles']
+terser layman.js --output layman.min.js --compress ecma=2015,computed_props=false --mangle reserved=['loadAll','layoutLoaded','layoutError','loadFile','loadFiles'] && cp layman.min.js ../NodeProjects/sfu/client/libs/
