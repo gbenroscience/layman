@@ -69,7 +69,7 @@ A. Support for:
 
 This allows developers to add and subtract pixels from percentages and vice versa when assigning values to the width and heights of elements.
 
-B. Due to the nature of the text elements in html, the wrap_content spec is not well supported, but we have a component called the LABEL in layman, which supports multi-line text. It has been included several commits ago.
+B. Due to the nature of the text elements in html, the wrap_content spec is not well supported, but we have a component called the LABEL in layman, which supports multi-line text. This is the layman.js standard for working with `wrap_content` specs when it comes to text rendering. It has been included several commits ago.
 To use it, define it as a canvas. e.g:
 ```html
  <canvas id="page_title">Page Title</canvas> 
