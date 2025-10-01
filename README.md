@@ -26,7 +26,16 @@ In **_layman_**, no new xml files are created.
 Modular design has also been added, with the addition of client-side includes for `tags > 0.1.1`.
 
 ### DO NOT USE
-For now, `layman` has banned the use of hyphens in id names.
+For now, `layman` has banned the use of hyphens in id names... e.g
+```html
+<p id="open-menu"></p>
+``` 
+or 
+
+```html
+<div id="my-nice-div"></div>
+```
+
 
 #### NOTE:
 
@@ -37,6 +46,71 @@ For now, `layman` has banned the use of hyphens in id names.
 ### 2. [Autolayout from lume/autolayout](https://github.com/lume/autolayout)
 
 ### 3. [ULID from ulid/javascript](https://github.com/ulid/javascript)
+
+
+
+### NOTE:
+
+We have added with the latest commits:
+
+A. Support for:
+
+<ol>
+<li>w:num1%+num2 e.g w: 32%+18 width is 32% that of parent plus 18 pixels
+</li>
+<li> w:num1+num2% e.g w: 32+18% width is 18 pixels plus 32% that of parent </li>
+<li> w:num1%-num2 e.g w: 32%-18 width is 32% that of parent minus 18 pixels</li>
+<li> w:num1-num2% e.g w: 32-18% width is 32 pixels minus 18% that of parent </li>
+<li> h:num1%+num2 e.g h: 32%+18 height is 32% that of parent plus 18 pixels</li>
+<li> h:num1+num2% e.g h: 32+18% height is 18 pixels plus 32% that of parent </li>
+<li> h:num1%-num2 e.g h: 32%-18 height is 32% that of parent minus 18 pixels</li>
+<li>  h:num1-num2% e.g h: 32-18% height is 32 pixels minus 18% that of parent </li>
+</ol>
+
+This allows developers to add and subtract pixels from percentages and vice versa when assigning values to the width and heights of elements.
+
+B. Due to the nature of the text elements in html, the wrap_content spec is not well supported, but we have a component called the LABEL in layman, which supports multi-line text. It has been included several commits ago.
+To use it, define it as a canvas. e.g:
+```html
+ <canvas id="page_title">Page Title</canvas> 
+ ```
+ Then in your layouts, do:
+
+ ```Javascript
+ 
+layoutCode = function () {
+	return {
+		body: {
+
+		},
+
+		elements: {
+			...etc,
+			"page_title": {
+				w: "150px", h: "wrap_content", ss: "parent", tt: "parent", "dim-ratio": "11:4", ms: 8, mt: 24,
+				"mi-gravity": "left",
+				"mi-fg": "black",
+				"mi-bg": "transparent",
+				"mi-font-st": "normal",
+				"mi-font-nm": "Arial",
+				"mi-font-wt": "bold",
+				"mi-font-sz": "1.2em",
+				"mi-text": "Page Title",
+				"mi-line-spacing": 15,
+				"custom-widget": "label"
+			},...etc
+		}
+	};
+};
+ ```
+ In this commit, we have included the ability to set text in ```Label```.
+ To do this for the `page_title` above, just do:
+ ```Javascript
+ 	const label = page.getNodeWrapperById("page_title");
+	label.setText(text);
+ ```
+
+ There are many other optimizations that we have released into the wild with the latest commits.
 
 ### How to use
 
