@@ -606,7 +606,7 @@ However here is a workaround for nested includes. `layman` allows you implement 
 
 ## Dynamic layouts
 The latest commits`(tag v0.1.8)` allow you to dynamically fetch your layout(with inline tags) and render in a page section.
-Say you have a layout file at /includes/section.html and you want to load it in a div whose id is: `remote_section`
+Say you have a layout file at `/includes/section.html` and you want to load it in a `div` whose id is: `remote_section`
 
 
 `Code for section.html:`
