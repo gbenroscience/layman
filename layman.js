@@ -136,7 +136,28 @@ function RemoteLayoutData(path) {
 	 * @type {boolean}
 	 */
 	this.consumed = false;
+	/**
+	 * If true, then in a set lof RemoteLayouts assigned to a div that renders them, this one will be the one to be rendered.
+	 * Others must be set to false.
+	 * This map stores the id of each div that includes this layout(RemoteLayoutData) against a boolean which says if this RemotelayoutData is the current rendered layout on that parent div
+	 */
+	this.currentForInclude = new Map();
 }
+
+RemoteLayoutData.prototype.setCurrent = function (includeID, current) {
+	if (typeof includeID === 'string' && typeof current === 'boolean') {
+		this.currentForInclude.set(includeID, current);
+	} else {
+		throw new Error('Bad arguments for RemoteLayoutData.setCurrent method: includeID must be a string and current must be a boolean.');
+	}
+};
+
+RemoteLayoutData.prototype.getCurrent = function (includeID) {
+	if (typeof includeID !== 'string') {
+		return false;
+	}
+	return this.currentForInclude.get(includeID);
+};
 
 /**
  *
@@ -150,6 +171,8 @@ function Page(rootNode) {
 	 * @type {Map<String, View>}
 	 */
 	this.viewMap = new Map();
+	//save JS wrapper classes(e.g.TextBox) used to customize HTML elements; especially HTMLCanvasElement objects here using the id of the HTMLElement as the key and the wrapper as value.
+	this.nodeWrappers = new Map();
 	this.hideRoot();
 	this.layoutObj = layoutCode();
 	this.sourcesLoaded = true;
@@ -202,9 +225,13 @@ function Page(rootNode) {
 	 *
 	 * Stores all included element ids against their layout path metadata here.
 	 * The key is the id of the included div definition,
-	 * The value is the RemoteLayoutData
-	 * The library lays out the includes with the main page and renders their content in their blank area as the layouts arrive via fetch
-	 * @type {Map<String, RemoteLayoutData>}
+	 * The value is an array of RemoteLayoutData objects; each of them encapsulating a path to a layout defined on the src object.
+	 * We have broadened this definition to allow includes load multiple files instead of just one layout.
+	 * So you may have: <div id="some_div" src="/aa/bb/cc/dd.html, /ee/ff/gg/hh.html, /ee/ff/ii/j.html"></div>, instead of only:
+	 * <div id="some_div" src="/aa/bb/cc/dd.html"></div>
+	 * The library lays out the includes with the main page and renders their content in their blank area as the layouts arrive via fetch.
+	 * This allows us to preload several layouts for some divs whose layout may change dynamically...e.g a main area whose content may change based on a menu of clickable items
+	 * @type {Map<String, RemoteLayoutData[]>}
 	 */
 	this.includes = new Map();
 
@@ -253,6 +280,20 @@ function Page(rootNode) {
 	}
 
 }
+/**
+ * 
+ * @param {string} includeID The id of the div representing the include
+ * @param {Integer} index The index of the RemoteLayoutData in the include's array of remote layouts
+ * @returns {void}
+ */
+Page.prototype.setCurrentLayoutForInclude = function (includeID, index) {
+	var remoteLayoutsArray = this.includes.get(includeID);
+	if (remoteLayoutsArray && remoteLayoutsArray.length > 0) { 
+		for (var i = 0; i < remoteLayoutsArray.length; i++) { 
+			remoteLayoutsArray[i].setCurrent(includeID, index === i); 
+		}
+	}
+};
 
 Page.prototype.findViewById = function (viewId) {
 	return this.viewMap.get(viewId);
@@ -324,8 +365,7 @@ function enforceIdOnChildElements(node) {
  * @returns {e.g: TextBox}
  */
 Page.prototype.getNodeWrapperById = function (id) {
-	const view = this.viewMap.get(id);
-	return view.nodeWrappers.get(id);
+	return this.nodeWrappers.get(id);
 };
 
 Page.prototype.layout = function () {
@@ -392,32 +432,49 @@ Page.prototype.layoutFromSheet = function (node) {
 			}
 		}
 
+		let paths = null;
 		let refIds = new Map();
 		Object.keys(constraints).forEach(function (key) {
 			let val = constraints[key];
 			refIds.set(key, val);
 			if (key === attrKeys.layout_src) {
-				disPage.srcPaths.push(val);
+				paths = new Scanner(val, false, [","]).scan();
+				Array.prototype.push.apply(disPage.srcPaths, paths);
 				disPage.sourcesLoaded = false;
-				let popupData = new RemoteLayoutData(val);
 
-				let isPopup = constraints[attrKeys.layout_popup];
-				let isMenuLeft = constraints[attrKeys.layout_menuLeft];
-				let isMenuRight = constraints[attrKeys.layout_menuRight];
-				if (isMenuLeft === true && isMenuRight === true) {
-					throw `Each html element can only take one of ${attrKeys.layout_menuLeft} or ${attrKeys.layout_menuRight} at once...`;
+				for (var i = 0; i < paths.length; i++) {
+					let popupData = new RemoteLayoutData(paths[i]);
+					let isPopup = constraints[attrKeys.layout_popup];
+					let isMenuLeft = constraints[attrKeys.layout_menuLeft];
+					let isMenuRight = constraints[attrKeys.layout_menuRight];
+					if (isMenuLeft === true && isMenuRight === true) {
+						throw `Each html element can only take one of ${attrKeys.layout_menuLeft} or ${attrKeys.layout_menuRight} at once...`;
+					}
+					if (isMenuLeft === true || isMenuLeft === 'true') {
+						disPage.leftMenus.push(root.id);
+						disPage.sidemenus.set(root.id, popupData);
+					} else if (isMenuRight === true || isMenuRight === 'true') {
+						disPage.rightMenus.push(root.id);
+						disPage.sidemenus.set(root.id, popupData);
+					} else if (isPopup === true || isPopup === 'true') {
+						disPage.popups.set(root.id, popupData);
+					} else {
+						var pathLength = paths ? paths.length : 0;
+						if (pathLength > 0) {
+							var layoutDataArray = [];
+							for (var c = 0; c < pathLength; c++) {
+								layoutDataArray.push(new RemoteLayoutData(paths[c]));
+							}
+							disPage.includes.set(
+								node.id,
+								layoutDataArray
+								);
+							break;
+						}
+					}
 				}
-				if (isMenuLeft === true || isMenuLeft === 'true') {
-					disPage.leftMenus.push(root.id);
-					disPage.sidemenus.set(root.id, popupData);
-				} else if (isMenuRight === true || isMenuRight === 'true') {
-					disPage.rightMenus.push(root.id);
-					disPage.sidemenus.set(root.id, popupData);
-				} else if (isPopup === true || isPopup === 'true') {
-					disPage.popups.set(root.id, popupData);
-				} else {
-					disPage.includes.set(root.id, popupData);
-				}
+
+
 			}
 			if (key === attrKeys.customType && root.nodeName.toLowerCase() !== 'canvas') {
 				throw 'Error: the `customType` attribute can only be defined on canvas elements';
@@ -522,7 +579,7 @@ Page.prototype.layoutFromTags = function (node) {
 		let isMenuLeft = false;
 		let isMenuRight = false;
 
-		let src = null;
+		let paths = null;
 		for (let i = 0; i < constraints.length; i++) {
 			let con = constraints[i];
 			let indexColon;
@@ -531,9 +588,9 @@ Page.prototype.layoutFromTags = function (node) {
 				let val = con.substring(indexColon + 1);
 				refIds.set(attr, val);
 				if (attr === attrKeys.layout_src) {
-					disPage.srcPaths.push(val);
+					paths = new Scanner(val, false, [","]).scan();
+					Array.prototype.push.apply(disPage.srcPaths, paths);
 					disPage.sourcesLoaded = false;
-					src = val;
 				}
 
 				switch (attr) {
@@ -567,19 +624,37 @@ Page.prototype.layoutFromTags = function (node) {
 				throw 'invalid constraint definition... no colon found in ' + con + " on " + root.id;
 			}
 		}
-		if (src) {
-			let popupData = new RemoteLayoutData(src);
-			if (isPopup === true) {
-				disPage.popups.set(root.id, popupData);
-			} else if (isMenuLeft === true) {
-				disPage.leftMenus.push(root.id);
-				disPage.sidemenus.set(root.id, popupData);
-			} else if (isMenuRight === true) {
-				disPage.rightMenus.push(root.id);
-				disPage.sidemenus.set(root.id, popupData);
-			} else {
-				disPage.includes.set(root.id, popupData);
+		if (paths) {
+			///////////////////////////////////////
+			for (var i = 0; i < paths.length; i++) {
+				let popupData = new RemoteLayoutData(paths[i]);
+				if (isMenuLeft === true && isMenuRight === true) {
+					throw `Each html element can only take one of ${attrKeys.layout_menuLeft} or ${attrKeys.layout_menuRight} at once...`;
+				}
+				if (isMenuLeft === true) {
+					disPage.leftMenus.push(root.id);
+					disPage.sidemenus.set(root.id, popupData);
+				} else if (isMenuRight === true) {
+					disPage.rightMenus.push(root.id);
+					disPage.sidemenus.set(root.id, popupData);
+				} else if (isPopup === true) {
+					disPage.popups.set(root.id, popupData);
+				} else {
+					var pathLength = paths ? paths.length : 0;
+					if (pathLength > 0) {
+						var layoutDataArray = [];
+						for (var c = 0; c < pathLength; c++) {
+							layoutDataArray.push(new RemoteLayoutData(paths[c]));
+						}
+						disPage.includes.set(
+							root.id,
+							layoutDataArray
+							);
+						break;
+					}
+				}
 			}
+
 		}
 
 		let view;
@@ -874,23 +949,46 @@ Page.prototype.openPopup = function (popupId, closeOnClickOutSide, onOpen, onClo
 Page.prototype.closePopup = function (popup) {
 	popup.hide();
 };
-
+ 
 /**
- *
- * Render the included html in its include
+ * Will fetch the included html from its cache and render it in the including div.
+ * If 
  * @param includeID The id of the layout that the included html will be attached to
  * @param htmlContent The html sublayout
+ * @param index The index of the array to be accessed... if not supplied, index will be set to zero. 
+ * It means we want the RemoteLayoutData at index 0 e.g. the src of the include has only 1 path.
  */
-Page.prototype.renderInclude = function (includeID, htmlContent) {
-	let layoutData = this.includes.get(includeID);
-	let path = layoutData.path;
-	let html = !htmlContent ? this.sources.get(path) : htmlContent;
-	let elem = document.getElementById(includeID);
-	elem.innerHTML = html;
-	let pg = new Page(elem);
-	pg.layout();
-	this.subPages.set(includeID, pg);
+Page.prototype.renderInclude = function (includeID, htmlContent, index) {
+    // 1. Set index default using a pre-ES6 compatible check
+    if (!index) {
+        index = 0;
+    }
+    
+    // 2. Get resources and element
+    const layoutData = (this.includes.get(includeID) || [])[index]; // Default to [] for safety... returns undefined if the array is empty
+    const elem = document.getElementById(includeID);
+    
+    let html = htmlContent; // Assume htmlContent is the source if available
+    
+    // 3. Fallback to cached content if htmlContent is falsy AND layoutData exists
+    if (!html && layoutData) {
+        html = this.sources.get(layoutData.path);
+	page.setCurrentLayoutForInclude(includeID, index); 
+    }
+    
+    // 4. Final check for content and error handling
+    if (!html) {
+        throw new Error('Bad error! HTML content is missing. Neither htmlContent was supplied nor layoutData was available to fetch it.');
+    }
+    
+    // 5. Render, Layout, and Store (Execution remains the same)
+    elem.innerHTML = html;
+    
+    const pg = new Page(elem);
+    pg.layout();
+    this.subPages.set(includeID, pg);
 };
+
 
 var loadAll;
 /* terser: keep_tree */
@@ -1754,13 +1852,21 @@ var layoutLoaded = function (filePath, htmlContent, allLoaded) {
 		page.sourcesLoaded = allLoaded;
 		onSourcesLoaded();
 	}
-	page.includes.forEach(function (layoutData, id) {
-		if (layoutData.consumed === false) {
-			if (layoutData.path === filePath) {
-				page.renderInclude(id, htmlContent);
-				layoutData.consumed = true;
+
+	page.includes.forEach(function (layoutDataArray, id) {//array of RemoteLayoutData, id is the node id of the element that owns this array of RemoteLayoutData
+		var first = null;
+		for (var i = 0; i < layoutDataArray.length; i++) {
+			var remoteLayout = layoutDataArray[i];
+			remoteLayout.setCurrent(id, false);
+			first = first === null ? remoteLayout : first;
+			if (remoteLayout.consumed === false) {
+				if (remoteLayout.path === filePath) {
+					page.renderInclude(id, htmlContent, i);
+					remoteLayout.consumed = true;
+				}
 			}
 		}
+		if(first){first.setCurrent(id, true);} 
 	});
 
 	if (allLoaded) {
@@ -1999,15 +2105,13 @@ function View(page, node, refIds, parentId) {
 	if (typeof page.findViewById(zaId) !== 'undefined') {
 		throw 'A view with this id(`' + zaId + '`) exists already';
 	}
-	
-	if(zaId.indexOf('-') !== -1){
+
+	if (zaId.indexOf('-') !== -1) {
 		//detect ids with hyphens(minuses) in their values here, it affects the operation, so see what to do...
-		throw "troublesome id here: layman does not support hyphens(-) in ids for now id=("+zaId+")";
+		throw "troublesome id here: layman does not support hyphens(-) in ids for now id=(" + zaId + ")";
 	}
 
 	this.htmlNode = node;
-	//save JS wrapper classes(e.g.TextBox) used to customize HTML elements; especially HTMLCanvasElement objects here using the id of the HTMLElement as the key and the wrapper as value.
-	this.nodeWrappers = new Map();
 	this.topLevel = page.viewMap.size === 0 || !parentId;
 	this.id = zaId;
 	this.parentId = parentId; //(node.parentNode.getAttribute) ? node.parentNode.getAttribute(attrKeys.id).trim() : (parentId && typeof parentId === 'string' ? parentId : null);
@@ -2041,7 +2145,7 @@ function View(page, node, refIds, parentId) {
 				let t = parseNumberAndUnitsNoValidation(this.top, true);
 				let b = parseNumberAndUnitsNoValidation(this.bottom, true);
 				if (!this.verUnitsSame) {
-					throw 'top and bottom margins must be same when using `cy, tcy, cyt` etc.'
+					throw 'top and bottom margins must be same when using `cy, tcy, cyt` etc.';
 				}
 				return (parseFloat(t.number) - parseFloat(b.number)) + t.units;
 			}
@@ -2413,7 +2517,7 @@ function renderTextBox(page, view) {
 				padding: padding,
 				lineSpacing: lineSpacing
 			}, view.htmlNode);
-			view.nodeWrappers.set(view.id, tbox);
+			page.nodeWrappers.set(view.id, tbox);
 
 
 			view.refIds.set(attrKeys.layout_width, tbox.width + 'px');
@@ -5613,11 +5717,11 @@ View.prototype.setWidthConstraints = function (page, constraints, id, w, priorit
 	let dotInd = w.indexOf(".");
 	let parseObj;
 	let selectedDimensionForAttr2IsWidth;
-	 
-	
-	if(subInd !== -1 && w.lastIndexOf("-") !== subInd){
+
+
+	if (subInd !== -1 && w.lastIndexOf("-") !== subInd) {
 		//detect ids with hyphens(minuses) in their values here, it affects the operation, so see what to do...
-		throw "troublesome id here: conflicts with - "+w;
+		throw "troublesome id here: conflicts with - " + w;
 	}
 
 
@@ -5779,8 +5883,7 @@ View.prototype.setWidthConstraints = function (page, constraints, id, w, priorit
 				priority: priority
 			});
 
-		} 
-		else if (sumIndex !== -1) {
+		} else if (sumIndex !== -1) {
 			let vid;
 			let number;
 			if (hasPct) {//w:50%+100 || 100+50%
@@ -5808,7 +5911,7 @@ View.prototype.setWidthConstraints = function (page, constraints, id, w, priorit
 					}
 
 					// Push the constraint once with the determined values
-					if (constantValue !== undefined && multiplierValue !== undefined) { 
+					if (constantValue !== undefined && multiplierValue !== undefined) {
 						constraints.push({
 							view1: id,
 							attr1: 'width',
@@ -6100,7 +6203,7 @@ View.prototype.setHeightConstraints = function (page, constraints, id, h, priori
 		let sumIndex = tokens.indexOf("+");
 		let subIndex = tokens.indexOf("-");
 
-let hasPct = false;
+		let hasPct = false;
 		for (let i = 0; i < tokens.length; i++) {
 			hasPct = endsWith(tokens[i], '%');
 			if (hasPct) {
@@ -6151,7 +6254,7 @@ let hasPct = false;
 
 		} else if (sumIndex !== -1) {
 			let vid;
-			let number; 
+			let number;
 			if (hasPct) {//h:50%+100 || 100+50%
 				if (tokens.length === 3) {
 					// Assume sumIndex is the index of the '+' operator
@@ -6177,7 +6280,7 @@ let hasPct = false;
 					}
 
 					// Push the constraint once with the determined values
-					if (constantValue !== undefined && multiplierValue !== undefined) { 
+					if (constantValue !== undefined && multiplierValue !== undefined) {
 						constraints.push({
 							view1: id,
 							attr1: 'height',
@@ -6191,8 +6294,7 @@ let hasPct = false;
 					}
 					return;
 				}
-			}
-			else if (isNumber(number = tokens[0])) {//format is number+elemid or number+elemid.width or number+elemid.height
+			} else if (isNumber(number = tokens[0])) {//format is number+elemid or number+elemid.width or number+elemid.height
 				vid = tokens[2] === 'width' ? id : tokens[2];
 				if (vid === 'height') {
 					throw 'the height is not yet initialized';
@@ -6235,7 +6337,8 @@ let hasPct = false;
 			let vid;
 			let number;
 			if (hasPct) {//h:50%-100 || 100-50%
-				if (tokens.length === 3) {console.log("---tokens", tokens);
+				if (tokens.length === 3) {
+					console.log("---tokens", tokens);
 					const left = tokens[subIndex - 1];
 					const right = tokens[subIndex + 1];
 					var constantValue, multiplierValue;
@@ -6274,8 +6377,7 @@ let hasPct = false;
 					}
 					return;
 				}
-			}
-			else if (isNumber(number = tokens[0])) {
+			} else if (isNumber(number = tokens[0])) {
 				//format is number-elemid or number-elemid.width or number-elemid.height
 				throw '`value-elem[.width|height]` is not allowed, but `elem[.width|height]-value is allowed on ` view.id=' + id + '... expression ' + w;
 			} else if (isNumber(number = tokens[tokens.length - 1])) {//format is elemid+number or elemid.width+number or elemid.height+number
@@ -7301,7 +7403,7 @@ const attrKeys = {
 	layout_popup: "popup", //true or false..default on any element is false
 	layout_menuLeft: "menu-left", //true or false..default on any element is false
 	layout_menuRight: "menu-right", //true or false..default on any element is false
-	layout_src: "src", // fetch the sub-layout to include in a popup or an include from the path specified here.
+	layout_src: "src", // fetch the sub-layout to include in a popup or an include from the path specified here. 
 	layout_constraintGuide_percent: "guide-pct",
 	layout_constraintGuide_begin: "guide-begin",
 	layout_constraintGuide_end: "guide-end",
@@ -24646,7 +24748,7 @@ var BuildBridgedWorker = function (workerFunction, workerExportNames, mainExport
 		} else {
 			throw (new Error("Worker requested function " + e.data.foo + ". But it is not available."));
 		}
-	}
+	};
 
 	// build an array of functions for the main part of main-thread-calls-function-in-worker operation
 	var ret = {blobURL: url};//this is useful to know for debugging if you have loads of bridged workers in blobs with random names
@@ -24656,13 +24758,13 @@ var BuildBridgedWorker = function (workerFunction, workerExportNames, mainExport
 				var args = Array.prototype.slice.call(arguments);
 				var buffers = args.pop();
 				worker.postMessage({foo: name, args: args}, buffers);
-			}
+			};
 		else
 			return function (/*args...*/) {
 				var args = Array.prototype.slice.call(arguments);
 				worker.postMessage({foo: name, args: args});
 			};
-	}
+	};
 
 	for (var i = 0; i < workerExportNames.length; i++) {
 		var name = workerExportNames[i];
