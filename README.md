@@ -627,7 +627,7 @@ Say you have a layout file at /includes/section.html and you want to load it in 
 </div>
 ```
 
-``Javascript
+```Javascript
 var btn = document.getElementById('some_btn'); 
 		btn.addEventListener('click', function (e) {
 			page.loadRemoteAndShow("includes/section.html", 'remote_section', function (html) { 
