@@ -288,9 +288,9 @@ function Page(rootNode) {
  */
 Page.prototype.setCurrentLayoutForInclude = function (includeID, index) {
 	var remoteLayoutsArray = this.includes.get(includeID);
-	if (remoteLayoutsArray && remoteLayoutsArray.length > 0) { 
-		for (var i = 0; i < remoteLayoutsArray.length; i++) { 
-			remoteLayoutsArray[i].setCurrent(includeID, index === i); 
+	if (remoteLayoutsArray && remoteLayoutsArray.length > 0) {
+		for (var i = 0; i < remoteLayoutsArray.length; i++) {
+			remoteLayoutsArray[i].setCurrent(includeID, index === i);
 		}
 	}
 };
@@ -949,7 +949,7 @@ Page.prototype.openPopup = function (popupId, closeOnClickOutSide, onOpen, onClo
 Page.prototype.closePopup = function (popup) {
 	popup.hide();
 };
- 
+
 /**
  * Will fetch the included html from its cache and render it in the including div.
  * If 
@@ -959,38 +959,165 @@ Page.prototype.closePopup = function (popup) {
  * It means we want the RemoteLayoutData at index 0 e.g. the src of the include has only 1 path.
  */
 Page.prototype.renderInclude = function (includeID, htmlContent, index) {
-    // 1. Set index default using a pre-ES6 compatible check
-    if (!index) {
-        index = 0;
-    }
-    
-    // 2. Get resources and element
-    const layoutData = (this.includes.get(includeID) || [])[index]; // Default to [] for safety... returns undefined if the array is empty
-    const elem = document.getElementById(includeID);
-    
-    let html = htmlContent; // Assume htmlContent is the source if available
-    
-    // 3. Fallback to cached content if htmlContent is falsy AND layoutData exists
-    if (!html && layoutData) {
-        html = this.sources.get(layoutData.path);
-	page.setCurrentLayoutForInclude(includeID, index); 
-    }
-    
-    // 4. Final check for content and error handling
-    if (!html) {
-        throw new Error('Bad error! HTML content is missing. Neither htmlContent was supplied nor layoutData was available to fetch it.');
-    }
-    
-    // 5. Render, Layout, and Store (Execution remains the same)
-    elem.innerHTML = html;
-    
-    const pg = new Page(elem);
-    pg.layout();
-    this.subPages.set(includeID, pg);
+	// 1. Set index default using a pre-ES6 compatible check
+	if (!index) {
+		index = 0;
+	}
+
+	// 2. Get resources and element
+	const layoutData = (this.includes.get(includeID) || [])[index]; // Default to [] for safety... returns undefined if the array is empty
+	const elem = document.getElementById(includeID);
+
+	let html = htmlContent; // Assume htmlContent is the source if available
+
+	// 3. Fallback to cached content if htmlContent is falsy AND layoutData exists
+	if (!html && layoutData) {
+		html = this.sources.get(layoutData.path);
+		page.setCurrentLayoutForInclude(includeID, index);
+	}
+
+	// 4. Final check for content and error handling
+	if (!html) {
+		throw new Error('Bad error! HTML content is missing. Neither htmlContent was supplied nor layoutData was available to fetch it.');
+	}
+
+	// 5. Render, Layout, and Store (Execution remains the same)
+	elem.innerHTML = html;
+
+	const pg = new Page(elem);
+	pg.layout();
+	this.subPages.set(includeID, pg);
 };
 
+/**
+ * Loads a layout resource in a background worker and moves it to the UI thread, but does not render it
+ * @param {type} path The relative path to the layout resource
+ * @param {type} includeID The id of the including div... even though it wont be shown, but it is needed for reference
+ * @param {type} loadSucc A function to run when the layout is loaded
+ * @param {type} loadErr A function to run if an error occurs during loading
+ * @returns {undefined}
+ */
+Page.prototype.loadRemote = function (path, includeID, loadSucc, loadErr) {
+
+	// --- 1. Argument Validation ---
+	if (typeof loadSucc !== 'function') {
+		throw new Error('`loadSucc` must be a function');
+	}
+	if (typeof loadErr !== 'function') {
+		throw new Error('`loadErr` must be a function');
+	}
+
+	// --- 2. Caching Check ---
+	var source = page.sources.get(path);
+	if (source) {
+		loadSucc(source);
+		return;
+	}
+
+	// --- 3. Worker Setup & Callback Bridge ---
+
+	// Define the success function that will execute on the main thread 
+	// when the worker calls back using 'main.loadSucc'.
+	var bridgeSuccessHandler = function (html, receivedIncludeID) {
+		page.srcPaths.push(path);
+		page.sources.set(path, html);
+		var layoutDataArray = [];
+		layoutDataArray.push(new RemoteLayoutData(path));
+		page.includes.set(includeID, layoutDataArray);
+
+		// Execute the original user-provided callback
+		loadSucc(html);
+	};
+
+	// The error handler can be the original loadErr function, 
+	// but the worker must pass back the error and the includeID.
+	var bridgeErrorHandler = function (err, receivedIncludeID) {
+		loadErr(err);
+	};
+
+	// Build the worker. It exposes 'loadFile' to the main thread, 
+	// and registers 'loadSucc'/'loadErr' as functions the worker can call back.
+	var worker = BuildBridgedWorker(
+		workerCode,
+		["loadSingleFile"], // Functions main can call in worker
+		["loadSucc", "loadErr"], // Functions worker can call in main
+		[bridgeSuccessHandler, bridgeErrorHandler] // Actual function objects for main thread
+		);
+
+	// --- 4. Call Worker Method (Data Only) ---
+
+	// CRITICAL FIX: Pass only serializable data (primitives/strings/IDs).
+	// The worker knows to call the appropriate *bridged* functions upon completion.
+	worker.loadSingleFile(projectURL, path, includeID);
+};
+
+/**
+ * Loads a layout resource in a background worker and moves it to the UI thread, and renders it
+ * @param {type} path The relative path to the layout resource
+ * @param {type} includeID The id of the including div... even though it wont be shown, but it is needed for reference
+ * @param {type} loadSucc A function to run when the layout is loaded
+ * @param {type} loadErr A function to run if an error occurs during loading
+ * @returns {undefined}
+ */
+Page.prototype.loadRemoteAndShow = function (path, includeID, loadSucc, loadErr) {
+
+	// --- 1. Argument Validation ---
+	if (typeof loadSucc !== 'function') {
+		throw new Error('`loadSucc` must be a function');
+	}
+	if (typeof loadErr !== 'function') {
+		throw new Error('`loadErr` must be a function');
+	}
+
+	// --- 2. Caching Check ---
+	var source = page.sources.get(path);
+	if (source) {
+		page.renderInclude(includeID, source);
+		loadSucc(source);
+		return;
+	}
+
+	// --- 3. Worker Setup & Callback Bridge ---
+
+	// Define the success function that will execute on the main thread 
+	// when the worker calls back using 'main.loadSucc'.
+	var bridgeSuccessHandler = function (html, receivedIncludeID) {
+		// This is the logic previously in the inline function.
+		page.srcPaths.push(path);
+		page.sources.set(path, html);
+		var layoutDataArray = [];
+		layoutDataArray.push(new RemoteLayoutData(path));
+		page.includes.set(receivedIncludeID, layoutDataArray);
+		page.renderInclude(receivedIncludeID, html);
+
+		// Execute the original user-provided callback
+		loadSucc(html);
+	};
+
+	// The error handler can be the original loadErr function, 
+	// but the worker must pass back the error and the includeID.
+	var bridgeErrorHandler = function (err, receivedIncludeID) {
+		loadErr(err);
+	};
+
+	// Build the worker. It exposes 'loadFile' to the main thread, 
+	// and registers 'loadSucc'/'loadErr' as functions the worker can call back.
+	var worker = BuildBridgedWorker(
+		workerCode,
+		["loadSingleFile"], // Functions main can call in worker
+		["loadSucc", "loadErr"], // Functions worker can call in main
+		[bridgeSuccessHandler, bridgeErrorHandler] // Actual function objects for main thread
+		);
+
+	// --- 4. Call Worker Method (Data Only) ---
+
+	// CRITICAL FIX: Pass only serializable data (primitives/strings/IDs).
+	// The worker knows to call the appropriate *bridged* functions upon completion.
+	worker.loadSingleFile(projectURL, path, includeID);
+};
 
 var loadAll;
+var loadSingleFile;
 /* terser: keep_tree */
 var workerCode = function () {
 
@@ -1005,6 +1132,8 @@ var workerCode = function () {
 				loadFile(basePath, path, function (html) {
 					main.layoutLoaded(path, html, false);
 					loadFiles(basePath, files, i + 1);
+				}, function (err) {
+					main.layoutError(err);
 				});
 			} else {
 				main.layoutLoaded(null, '', true);
@@ -1014,8 +1143,7 @@ var workerCode = function () {
 		}
 	}
 
-	function loadFile(basePath, layoutFile, callback) {
-
+	var loadFile = function (basePath, layoutFile, succBack, errorBack) {
 		const absolute = new URL(layoutFile, basePath);
 		fetch(absolute, {
 			credentials: 'same-origin'
@@ -1024,14 +1152,40 @@ var workerCode = function () {
 		}).then(function (data) {
 			return data.text();
 		}).then(function (xmlLayout) {
-			callback(xmlLayout);
+			succBack(xmlLayout);
 		}).catch(function (err) {
 			setTimeout(function () {
-				main.layoutError(err);
+				errorBack(err);
 				throw err;
 			});
 		});
-	}
+	};
+
+
+	loadSingleFile = function (basePath, layoutFile, includeID) {
+		// 1. Removed: succBack and errorBack arguments.
+		// 2. Added: includeID argument to pass context back to the main thread.
+
+		const absolute = new URL(layoutFile, basePath);
+
+		fetch(absolute, {
+			credentials: 'same-origin'
+		}).then(function (response) {
+			if (!response.ok) {
+				// Throw an error if the HTTP status is not successful
+				throw new Error(`HTTP error! status: ${response.status} for file: ${layoutFile}`);
+			}
+			return response.text();
+		}).then(function (xmlLayout) {
+			// SUCCESS: Use the bridged function to send data back to the main thread.
+			// The main thread's 'bridgeSuccessHandler' will receive these two arguments.
+			main.loadSucc(xmlLayout, includeID);
+		}).catch(function (err) {
+			// ERROR: Use the bridged function to send the error back.
+			// Pass the error message (or the string representation of the error) and the ID.
+			main.loadErr(err.message || String(err), includeID);
+		});
+	};
 
 	//////////////////////////Promise-polyfill/////////////////////////////
 	!function (e, t) {
@@ -1866,7 +2020,9 @@ var layoutLoaded = function (filePath, htmlContent, allLoaded) {
 				}
 			}
 		}
-		if(first){first.setCurrent(id, true);} 
+		if (first) {
+			first.setCurrent(id, true);
+		}
 	});
 
 	if (allLoaded) {
@@ -5889,8 +6045,10 @@ View.prototype.setWidthConstraints = function (page, constraints, id, w, priorit
 			if (hasPct) {//w:50%+100 || 100+50%
 				if (tokens.length === 3) {
 					// Assume sumIndex is the index of the '+' operator
-					const left = tokens[sumIndex - 1];
-					const right = tokens[sumIndex + 1];
+					var l = tokens[sumIndex - 1];
+					var r = tokens[sumIndex + 1];
+					var left = l === 'parent' ? '100%' : l;
+					var right = r === 'parent' ? '100%' : r;
 					var constantValue, multiplierValue;
 
 					// --- Case 1: 100 + 50% (Number + Percentage) ---
@@ -5970,8 +6128,11 @@ View.prototype.setWidthConstraints = function (page, constraints, id, w, priorit
 			let number;
 			if (hasPct) {//w:50%-100 || 100-50%
 				if (tokens.length === 3) {
-					const left = tokens[subIndex - 1];
-					const right = tokens[subIndex + 1];
+					var l = tokens[subIndex - 1];
+					var r = tokens[subIndex + 1];
+					var left = l === 'parent' ? '100%' : l;
+					var right = r === 'parent' ? '100%' : r;
+
 					var constantValue, multiplierValue;
 
 					if (isNumber(left) && endsWith(right, '%')) { // 100-50% (Number - Percentage)
@@ -6053,7 +6214,7 @@ View.prototype.setWidthConstraints = function (page, constraints, id, w, priorit
 		} else if (this.childrenIds.indexOf(lhs) !== -1) {
 			v2 = lhs; //you have the sibling!
 		} else {
-			throw 'Bad expression found for width on id: ' + id + ', expression is: ' + w
+			throw 'Bad expression found for width on id: ' + id + ', expression is: ' + w;
 		}
 
 		constraints.push({
@@ -6258,8 +6419,10 @@ View.prototype.setHeightConstraints = function (page, constraints, id, h, priori
 			if (hasPct) {//h:50%+100 || 100+50%
 				if (tokens.length === 3) {
 					// Assume sumIndex is the index of the '+' operator
-					const left = tokens[sumIndex - 1];
-					const right = tokens[sumIndex + 1];
+					var l = tokens[sumIndex - 1];
+					var r = tokens[sumIndex + 1];
+					var left = l === 'parent' ? '100%' : l;
+					var right = r === 'parent' ? '100%' : r;
 					var constantValue, multiplierValue;
 
 					// --- Case 1: 100 + 50% (Number + Percentage) ---
@@ -6338,9 +6501,11 @@ View.prototype.setHeightConstraints = function (page, constraints, id, h, priori
 			let number;
 			if (hasPct) {//h:50%-100 || 100-50%
 				if (tokens.length === 3) {
-					console.log("---tokens", tokens);
-					const left = tokens[subIndex - 1];
-					const right = tokens[subIndex + 1];
+
+					var l = tokens[subIndex - 1];
+					var r = tokens[subIndex + 1];
+					var left = l === 'parent' ? '100%' : l;
+					var right = r === 'parent' ? '100%' : r;
 					var constantValue, multiplierValue;
 
 					if (isNumber(left) && endsWith(right, '%')) { // 100-50% (Number - Percentage)

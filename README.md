@@ -602,6 +602,47 @@ let sideMenuBtn = document.getElementById('open_feeds_icon');// a button on your
 When using included files, do not define additional includes in included files. We do not support
 nested includes for performance reasons.
 If a good case can be made for it, we will include its support.
+However here is a workaround for nested includes. `layman` allows you implement it yourself with `Dynamic layouts`
+
+## Dynamic layouts
+The latest commits allow you to dynamically fetch your layout(with inline tags) and render in a page section.
+Say you have a layout file at /includes/section.html and you want to load it in a div whose id is: `remote_section`
+
+
+`Code for section.html:`
+```html
+<style>
+    #some_div{
+        border: 1px solid black;
+    }
+</style>
+<div id="some_div" data-const="w:300;h:300;cx:parent;cy:parent;">
+    
+    <canvas id="form_label" data-const="w:140;h:42;cx:parent;tt:40;custom-widget:label;mi-bg:transparent;mi-font-wt:bold;mi-font-nm:Kartika;mi-font-st:normal;mi-fg:black;mi-gravity:center;mi-font-sz:1em;">Enter Details</canvas>
+    <input id="email" type="email" placeholder="Enter Email" data-const="w:parent-40;h:32;cx:parent; tb:form_label;mt:40">
+    <input id="pwd" type="password" placeholder="Enter Password" data-const="w:email;h:email;cx:parent;tb:email;mt:8;">
+    <input id="confpwd" type="password" placeholder="Confirm Password" data-const="w:email;h:email;cx:parent;tb:pwd;mt:8;">
+    <input id="submit_details" type="button" value="SEND DETAILS" data-const="w:email;h:email;cx:parent;tb:confpwd;mt:8;">
+    
+</div>
+```
+
+``Javascript
+var btn = document.getElementById('some_btn'); 
+		btn.addEventListener('click', function (e) {
+			page.loadRemoteAndShow("includes/section.html", 'remote_section', function (html) { 
+			}, function (err) {
+				console.log("err: " + JSON.stringify(err));
+			});
+		});
+```
+
+When the button is clicked, it loads the layout and shows it in the div.
+
+### NOTE:
+There is another method: Page#loadRemote with same signature as Page#loadRemoteAndShow.
+It loads a remote layout and stores it, but does not show it.
+All these make preloading of remote views really convenient.
 
 
 ## More on Pages
@@ -615,5 +656,5 @@ You may switch between the layouts like this:
 ```Javascript
 page.renderInclude('page_holder', null, index);
 ```
-Where index is the zero based index of a given layout in the comma separated list of layout paths assigned to the
+Where `index` is the zero based index of a given layout in the comma separated list of layout paths assigned to the
 src of the including div.
