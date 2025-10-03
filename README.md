@@ -598,9 +598,27 @@ let sideMenuBtn = document.getElementById('open_feeds_icon');// a button on your
 
 
 
+## More on Pages
+Included layout rendering for sections of the document (or to be used on a popup or on a sidemenu) is handled by the Page class.
+
+For true includes that involve loading remote layouts to be used in a section of the document, you may even specify more than 1 layout. This is not allowed for popups, neither for sidemenus.
+So you may do 
+```html
+<div id="some_div" data-const="...;src:/aa/bb/cc.html,/dd/ee/ff.html,/dd/gg/mm.html"></div>
+```
+This will allow you to use multiple layouts on 1 document area.
+This is useful for controlling the content seen in a page section by the simple use of a menu(list).
+Once layouts are loaded, they are in memory and may be called for use by other layouts.
+You may switch between the layouts like this:
+```Javascript
+page.renderInclude('page_holder', null, index);
+```
+Where `index` is the zero based index of a given layout in the comma separated list of layout paths assigned to the
+src of the including div.
+
+
 ## Nested Includes Disallowed
-When using included files, do not define additional includes in included files. We do not support
-nested includes for performance reasons.
+When using included files, do not define additional includes in included files. We do not support nested includes for performance reasons.
 If a good case can be made for it, we will include its support.
 However here is a workaround for nested includes. `layman` allows you implement it yourself with `Dynamic layouts`
 
@@ -637,24 +655,21 @@ var btn = document.getElementById('some_btn');
 		});
 ```
 
+
+
+So use:
+```Javascript
+page.loadRemoteAndShow(path, includeID, loadSucc, loadErr) ;
+```
+to load a layout from your server(must be a layman layout with inline tags...data-const="args") and render in a div whose id is `includeID`. loadSucc and loadErr are both callbacks that take 1 argument each. loadSucc's argument is the html layout loaded from the server and loadErr's argument is the error that occurred when loading the layout.
+
 When the button is clicked, it loads the layout and shows it in the div.
 
-### NOTE:
-There is another method: Page#loadRemote with same signature as Page#loadRemoteAndShow.
-It loads a remote layout and stores it, but does not show it.
+
+Also, you may use:
+```Javascript
+page.loadRemote(path, includeID, loadSucc, loadErr) ;
+```
+to load the remote layout for later use. This wont render the loaded file in the including div.
 All these make preloading of remote views really convenient.
 
-
-## More on Pages
-Included files for sections of the document or to be used on a popup or on a sidemenu are all modeled by the Page class.
-For true includes that involve loading remote layouts to be used in a section of the document, you may even specify more than 1 layout. This is not allowed for popups, neither for sidemenus.
-So you may do <div id="some_div" data-const="...;src:/aa/bb/cc.html,/dd/ee/ff.html,/dd/gg/mm.html"></div>
-This will allow you to use multiple layouts on 1 document area.
-This is useful for controlling the content seen in a page section by the simple use of a menu(list).
-Once layouts are loaded, they are in memory and may be called for use by other layouts.
-You may switch between the layouts like this:
-```Javascript
-page.renderInclude('page_holder', null, index);
-```
-Where `index` is the zero based index of a given layout in the comma separated list of layout paths assigned to the
-src of the including div.
