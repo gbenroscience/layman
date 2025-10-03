@@ -480,39 +480,42 @@ Page.prototype.layoutFromSheet = function (node) {
 				throw 'Error: the `customType` attribute can only be defined on canvas elements';
 			}
 		});
-		let view;
 
-		let attr = constraints[attrKeys.layout_constraintGuide];
-		if (!attr) {//not a Guideline
-			enforceIdOnChildElements(root);
-			if (root === document.body) {
-				view = new View(this, root, refIds, undefined);
-			} else {
-				view = new View(this, root, refIds, root.parentNode.id);
-			}
-		} else {
-			if (attr === 'true' || attr === true) {
-				//The next 2 lines forces the Guidelines size to be determined by our code. Take control from the user.
-				refIds.set(attrKeys.layout_width, sizes.WRAP_CONTENT);
-				refIds.set(attrKeys.layout_height, sizes.WRAP_CONTENT);
-				view = new Guideline(this, root, refIds, root.parentNode.id);
-			} else {
-				throw 'Invalid value for guide';
-			}
-		}
+		var view = this.findViewById(root.id);
 
-		if (root.hasChildNodes()) {
-			let childNodes = root.children;
-			for (let j = 0; j < childNodes.length; j++) {
-				let childNode = childNodes[j];
-				if (!isWhiteSpaceCommentStyleOrScriptNode(childNode)) {
-					if (!shouldIgnoreSpecialChildElement(childNode)) {
-						let childId = childNode.getAttribute(attrKeys.id);
-						view.childrenIds.push(childId);//register the child with the parent
-					}
-					this.layoutFromSheet(childNode);
+		if (!view) {
+			let attr = constraints[attrKeys.layout_constraintGuide];
+			if (!attr) {//not a Guideline
+				enforceIdOnChildElements(root);
+				if (root === document.body) {
+					view = new View(this, root, refIds, undefined);
+				} else {
+					view = new View(this, root, refIds, root.parentNode.id);
 				}
-			}//end for loop
+			} else {
+				if (attr === 'true' || attr === true) {
+					//The next 2 lines forces the Guidelines size to be determined by our code. Take control from the user.
+					refIds.set(attrKeys.layout_width, sizes.WRAP_CONTENT);
+					refIds.set(attrKeys.layout_height, sizes.WRAP_CONTENT);
+					view = new Guideline(this, root, refIds, root.parentNode.id);
+				} else {
+					throw 'Invalid value for guide';
+				}
+			}
+
+			if (root.hasChildNodes()) {
+				let childNodes = root.children;
+				for (let j = 0; j < childNodes.length; j++) {
+					let childNode = childNodes[j];
+					if (!isWhiteSpaceCommentStyleOrScriptNode(childNode)) {
+						if (!shouldIgnoreSpecialChildElement(childNode)) {
+							let childId = childNode.getAttribute(attrKeys.id);
+							view.childrenIds.push(childId);//register the child with the parent
+						}
+						this.layoutFromSheet(childNode);
+					}
+				}//end for loop
+			}
 		}
 		if (view) {
 			if (view.topLevel === true) {
@@ -657,39 +660,41 @@ Page.prototype.layoutFromTags = function (node) {
 
 		}
 
-		let view;
+		var view = this.findViewById(root.id);
 
-		let attr = root.getAttribute(attrKeys.layout_constraintGuide);
-		if (!attr) {
-			enforceIdOnChildElements(root);
-			if (root === document.body) {
-				view = new View(this, root, refIds, undefined);
-			} else {
-				view = new View(this, root, refIds, root.parentNode.id);
-			}
-		} else {
-			if (attr === 'true') {
-				//The next 2 lines forces the Guidelines size to be determined by our code. Take control from the user.
-				refIds.set(attrKeys.layout_width, sizes.WRAP_CONTENT);
-				refIds.set(attrKeys.layout_height, sizes.WRAP_CONTENT);
-				view = new Guideline(this, root, refIds, root.parentNode.id);
-			} else {
-				throw 'Invalid value for data-guide';
-			}
-		}
-
-		if (root.hasChildNodes()) {
-			let childNodes = root.children;
-			for (let j = 0; j < childNodes.length; j++) {
-				let childNode = childNodes[j];
-				if (!isWhiteSpaceCommentStyleOrScriptNode(childNode)) {
-					if (!shouldIgnoreSpecialChildElement(childNode)) {
-						let childId = childNode.getAttribute(attrKeys.id);
-						view.childrenIds.push(childId);//register the child with the parent
-					}
-					this.layoutFromTags(childNode);
+		if (!view) {
+			let attr = root.getAttribute(attrKeys.layout_constraintGuide);
+			if (!attr) {
+				enforceIdOnChildElements(root);
+				if (root === document.body) {
+					view = new View(this, root, refIds, undefined);
+				} else {
+					view = new View(this, root, refIds, root.parentNode.id);
 				}
-			}//end for loop
+			} else {
+				if (attr === 'true') {
+					//The next 2 lines forces the Guidelines size to be determined by our code. Take control from the user.
+					refIds.set(attrKeys.layout_width, sizes.WRAP_CONTENT);
+					refIds.set(attrKeys.layout_height, sizes.WRAP_CONTENT);
+					view = new Guideline(this, root, refIds, root.parentNode.id);
+				} else {
+					throw 'Invalid value for data-guide';
+				}
+			}
+
+			if (root.hasChildNodes()) {
+				let childNodes = root.children;
+				for (let j = 0; j < childNodes.length; j++) {
+					let childNode = childNodes[j];
+					if (!isWhiteSpaceCommentStyleOrScriptNode(childNode)) {
+						if (!shouldIgnoreSpecialChildElement(childNode)) {
+							let childId = childNode.getAttribute(attrKeys.id);
+							view.childrenIds.push(childId);//register the child with the parent
+						}
+						this.layoutFromTags(childNode);
+					}
+				}//end for loop
+			}
 		}
 
 		if (view) {
@@ -6583,7 +6588,7 @@ View.prototype.setHeightConstraints = function (page, constraints, id, h, priori
 		} else if (rhs === 'width') {
 			selectedDimensionForAttr2IsHeight = false;
 		} else {
-			throw 'Strange expression found for height on id: ' + id + ', expression is: ' + h
+			throw 'Strange expression found for height on id: ' + id + ', expression is: ' + h;
 		}
 		let v2;
 		if (lhs === 'parent' || rhs === 'parent') {
@@ -6591,7 +6596,7 @@ View.prototype.setHeightConstraints = function (page, constraints, id, h, priori
 		} else if (this.childrenIds.indexOf(lhs) !== -1) {
 			v2 = lhs; //you have the sibling!
 		} else {
-			throw 'Bad expression found for height on id: ' + id + ', expression is: ' + h
+			throw 'Bad expression found for height on id: ' + id + ', expression is: ' + h;
 		}
 
 		constraints.push({
@@ -6751,7 +6756,7 @@ Guideline.prototype.layoutGuide = function (constraints) {
 
 	if (!isEmpty(guidePct)) {
 		if (!isEmpty(guideBegin) || !isEmpty(guideEnd)) {
-			throw 'Conflicting guide constraints! only one of guide_percent, guide_begin and guide_end hould be set!'
+			throw 'Conflicting guide constraints! only one of guide_percent, guide_begin and guide_end hould be set!';
 		}
 
 		if (endsWith(guidePct, '%')) {
@@ -6884,17 +6889,17 @@ Guideline.prototype.layoutGuide = function (constraints) {
 
 	if (!isEmpty(guideBegin)) {
 		if (!isEmpty(guidePct) || !isEmpty(guideEnd)) {
-			throw 'Conflicting guide constraints! only one of `guide_percent`, `guide_begin` and `guide_end` should be set!'
+			throw 'Conflicting guide constraints! only one of `guide_percent`, `guide_begin` and `guide_end` should be set!';
 		}
 
 		if (isNumber(guideBegin) || (endsWith(guideBegin, "px") && isNumber(parseInt(guideBegin)))) {
 			guideBegin = parseFloat(guideBegin);
 		} else {
-			throw "`guide_begin` must be a unitless number or be specified in pixels"
+			throw "`guide_begin` must be a unitless number or be specified in pixels";
 		}
 
 		if (isNaN(guideBegin)) {
-			throw "please specify a number for `guide_begin`"
+			throw "please specify a number for `guide_begin`";
 		}
 
 		val = guideBegin;
@@ -6975,18 +6980,18 @@ Guideline.prototype.layoutGuide = function (constraints) {
 
 	if (!isEmpty(guideEnd)) {
 		if (!isEmpty(guidePct) || !isEmpty(guideBegin)) {
-			throw 'Conflicting guide constraints! only one of `guide_percent`, `guide_begin` and `guide_end` should be set!'
+			throw 'Conflicting guide constraints! only one of `guide_percent`, `guide_begin` and `guide_end` should be set!';
 		}
 
 		if (isNumber(guideEnd) || (endsWith(guideEnd, "px") && isNumber(parseInt(guideEnd)))) {
 			guideEnd = parseFloat(guideEnd);
 		} else {
-			throw "`guide_end` must be a unitless number or be specified in pixels"
+			throw "`guide_end` must be a unitless number or be specified in pixels";
 		}
 
 
 		if (isNaN(guideEnd)) {
-			throw "please specify a number for `guide_end`"
+			throw "please specify a number for `guide_end`";
 		}
 
 		val = guideEnd;
@@ -7606,7 +7611,7 @@ const attrKeys = {
 	mi_numShapes: "mi-num-shapes",
 	mi_textOnly: "mi-text-only", // bool
 	mi_textArray: "mi-text-arr", //'["NGN","GBP","USD","EUR","CAD"]'
-	mi_cacheAfterDraw: "mi-cache-image", //bool
+	mi_cacheAfterDraw: "mi-cache-image" //bool
 
 };
 
@@ -8720,7 +8725,8 @@ function SideMenuX(options) {
 
 	this.shouldOpen = false;
 
-
+// 🔥 New: Attach the reflow logic to the window's resize event 🔥
+	//window.addEventListener('resize', debounce(this.reflow.bind(this), 30));
 }
 
 
@@ -8809,10 +8815,10 @@ SideMenuX.prototype.build = function () {
 		}
 		style.innerHTML = css.toString();
 		document.getElementsByTagName('head')[0].appendChild(style);
-
-		let p = new Page(frame);
-		p.layout();
-		page.subPages.set(frame.id, p);
+ 
+		let p = new Page(frame); 
+		p.layout(); 
+		page.subPages.set(frame.id, p); 
 
 		popup.openMenu();
 		popup.rootView = frame;
@@ -8832,6 +8838,35 @@ SideMenuX.prototype.build = function () {
 
 	return this;
 };
+
+
+SideMenuX.prototype.reflow = function () {
+	var body = document.body,
+		html = document.documentElement;
+
+	// Recalculate the window/document height
+	var newBgHeight = Math.max(
+		body.scrollHeight, body.offsetHeight,
+		html.clientHeight, html.scrollHeight, html.offsetWidth
+		);
+
+	// Get the frame element (if it exists)
+	var frame = document.getElementById(this.containerId());
+
+	// Update the height of the side menu element
+	if (frame) {
+		frame.style.height = newBgHeight + 'px';
+		this.parsedWidth = parseInt(window.getComputedStyle(frame).width);
+	}
+
+	// If you had any other elements that rely on a full-screen size (like the overlay), 
+	// you would update them here as well. The overlay uses `top/left/bottom/right: 0`, 
+	// so it's probably fine, but checking is good practice.
+
+	// If using the page.subPages system, you may need to call its layout/reflow as well
+	// page.subPages.get(this.containerId()).layout(); 
+};
+
 
 SideMenuX.prototype.addDragEvents = function (overlay, frame) {
 
@@ -8938,7 +8973,38 @@ SideMenuX.prototype.containerId = function () {
 
 
 SideMenuX.prototype.openMenu = function () {
-	document.getElementById(this.containerId()).style.width = this.width;
+
+	var frame = document.getElementById(this.containerId());
+	frame.style.width = this.width;
+
+	// Listen for the transition to finish
+	var handleTransitionEnd = function () {
+		// 1. Manually call the internal layout function
+		var menuPage = page.subPages.get(frame.id);
+		if (menuPage && menuPage.layout) {
+			menuPage.layout();
+			console.log("menuPage.layout() called");
+		}
+		console.log("transitionend or transitioncancel called");
+		// 2. Remove the listener to prevent memory leaks/duplicate calls
+		
+		frame.removeEventListener('transitionend', handleTransitionEnd);
+		frame.removeEventListener('transitioncancel', handleTransitionEnd);
+	};
+	
+	var handleTransitionStart = function(){
+		var menuPage = page.subPages.get(frame.id);
+		if (menuPage && menuPage.layout) {
+			menuPage.layout();
+			console.log("menuPage.layout() called");
+		}
+		window.setTimeout( function(){frame.removeEventListener('transitionstart', handleTransitionStart);}, 500 );
+	};
+	// Add listeners for successful end or cancellation
+	frame.addEventListener('transitionstart', handleTransitionStart);
+	frame.addEventListener('transitionend', handleTransitionEnd);
+	frame.addEventListener('transitioncancel', handleTransitionEnd);
+
 	addClass(document.body, this.noScrollStyle.name.substring(1));
 	this.onOpen();
 };
@@ -8947,6 +9013,37 @@ SideMenuX.prototype.closeMenu = function () {
 	document.getElementById(this.containerId()).style.width = "0";
 };
 
+// 2. A helper to limit (debounce) how often the resize logic runs for performance
+// Add this helper function outside of the SideMenuX object/prototype.
+function debounce(func, timeout) {
+	var timer;
+	timeout = timeout || 150; // Default to 150ms
+
+	// Returns a new function that acts as the debounced handler
+	return function () {
+		var context = this;
+		var args = arguments;
+
+		// 1. Logic to set the 'isResizing' flag (requires the 'this' context)
+		if (context.isResizing === false) {
+			context.isResizing = true;
+			// Optional: You could pause transitions here if needed
+			// document.getElementById(context.containerId()).style.transition = 'none';
+		}
+
+		clearTimeout(timer);
+
+		// Sets a new timer
+		timer = setTimeout(function () {
+			// 2. Execute the original function (reflow)
+			func.apply(context, args);
+			// 3. Reset the flag after the reflow is complete
+			context.isResizing = false;
+			// Optional: Restore transitions here
+			// document.getElementById(context.containerId()).style.transition = '0.5s';
+		}, timeout);
+	};
+}
 
 
 
@@ -9873,9 +9970,9 @@ Popup.prototype.closeBtnId = function () {
  */
 (function (f) {
 	if (typeof exports === "object" && typeof module !== "undefined") {
-		module.exports = f()
+		module.exports = f();
 	} else if (typeof define === "function" && define.amd) {
-		define([], f)
+		define([], f);
 	} else {
 		var g;
 		if (typeof window !== "undefined") {
