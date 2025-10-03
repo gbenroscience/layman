@@ -59,15 +59,23 @@ We have added with the latest commits:
 A. Support for:
 
 <ol>
-<li>w:num1%+num2 e.g w: 32%+18 width is 32% that of parent plus 18 pixels
-</li>
+<li>w:num1%+num2 e.g w: 32%+18 width is 32% that of parent plus 18 pixels</li>
 <li> w:num1+num2% e.g w: 32+18% width is 18 pixels plus 32% that of parent </li>
 <li> w:num1%-num2 e.g w: 32%-18 width is 32% that of parent minus 18 pixels</li>
-<li> w:num1-num2% e.g w: 32-18% width is 32 pixels minus 18% that of parent </li>
-<li> h:num1%+num2 e.g h: 32%+18 height is 32% that of parent plus 18 pixels</li>
-<li> h:num1+num2% e.g h: 32+18% height is 18 pixels plus 32% that of parent </li>
-<li> h:num1%-num2 e.g h: 32%-18 height is 32% that of parent minus 18 pixels</li>
-<li>  h:num1-num2% e.g h: 32-18% height is 32 pixels minus 18% that of parent </li>
+<li> w:num1-num2% e.g w: 32-18%, width is 32 pixels minus 18% that of parent </li>
+<li>  w:parent+num1 e.g w: parent+32, width is parent width plus 32 pixels </li>
+<li>  w:num1+parent e.g w: 32+parent, width is 32 pixels plus that of parent </li>
+<li>  w:parent-num1 e.g w: parent-32, width is parent width - 32 pixels </li>
+<li>  w:num1-parent e.g w: 32-parent, width is 32 pixels minus that of parent </li>
+
+<li> h:num1%+num2 e.g h: 32%+18, height is 32% that of parent plus 18 pixels</li>
+<li> h:num1+num2% e.g h: 32+18%, height is 18 pixels plus 32% that of parent </li>
+<li> h:num1%-num2 e.g h: 32%-18, height is 32% that of parent minus 18 pixels</li>
+<li>  h:num1-num2% e.g h: 32-18%, height is 32 pixels minus 18% that of parent </li>
+<li>  h:parent+num1 e.g h: parent+32, height is parent height plus 32 pixels </li>
+<li>  h:num1+parent e.g h: 32+parent, height is 32 pixels plus that of parent </li>
+<li>  h:parent-num1 e.g h: parent-32, height is parent height - 32 pixels </li>
+<li>  h:num1-parent e.g h: 32-parent, height is 32 pixels minus that of parent </li>
 </ol>
 
 This allows developers to add and subtract pixels from percentages and vice versa when assigning values to the width and heights of elements.
@@ -237,7 +245,15 @@ Here are perfectly valid ways to specify the width of a view:
 28. h:num1%+num2//e.g h:32%+18 height is 32% that of parent plus 18 pixels
 29. h:num1+num2%//e.g h:32+18% height is 18 pixels plus 32% that of parent 
 30. h:num1%-num2//e.g h:32%-18 height is 32% that of parent minus 18 pixels
-31  h:num1-num2%//e.g h:32-18% height is 32 pixels minus 18% that of parent 
+31.  h:num1-num2%//e.g h:32-18% height is 32 pixels minus 18% that of parent
+32.  w:parent+num1 e.g w: parent+32, width is parent width plus 32 pixels
+33.  w:num1+parent e.g w: 32+parent, width is 32 pixels plus that of parent
+34.  w:parent-num1 e.g w: parent-32, width is parent width - 32 pixels
+35.  w:num1-parent e.g w: 32-parent, width is 32 pixels minus that of parent
+36.  h:parent+num1 e.g h: parent+32, height is parent height plus 32 pixels
+37.  h:num1+parent e.g h: 32+parent, height is 32 pixels plus that of parent
+38.  h:parent-num1 e.g h: parent-32, height is parent height - 32 pixels
+39.  h:num1-parent e.g h: 32-parent, height is 32 pixels minus that of parent
 
 
 ```
