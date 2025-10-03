@@ -17,3 +17,5 @@ welcometo.png
 bridged-worker.js
 bridged-worker-compatible.js
 *.code-workspace
+package.json
+.npmignore

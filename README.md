@@ -4,7 +4,10 @@
 
 **_layman_** is a constraint layout library for html pages.
 
-Client side includes, popups, side menus and more design goodies(lol)
+Client side includes, dynamic loading and rendering of html sections, popups, side menus and more design goodies(lol)
+
+## npm?
+`npm install laymanjs`
 
 Here are some example pages designed using `layman`:
 
