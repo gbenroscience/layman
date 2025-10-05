@@ -5169,7 +5169,95 @@ View.prototype.setTopAlignTB = function (view1, marginTop, view2, priority, cons
  * @param {number} priority The priority of the bottom-bottom anchor constraint
  * @param {Array} constraints The array that holds the constraints generated here
  */
-View.prototype.setBottomAlignBB = function (view1, marginBottom, view2, priority, constraints) {
+View.prototype.setBottomAlignBB = function(view1, marginBottom, view2, priority, constraints) {
+    // 1. Prepare Variables and Normalize Input
+    // Constraint: view1.bottom = view2.bottom - margin
+    var targetView = view2 === 'parent' ? null : view2;
+    var mbStr = String(marginBottom);
+    var isNum = typeof marginBottom === 'number' || isNumber(marginBottom);
+    var isPx = endsWith(mbStr, 'px');
+    var isPct = endsWith(mbStr, '%');
+
+    // 2. Handle Numeric or Pixel Values (Simple, Direct Constraint)
+    if (isNum || isPx) {
+        var value = parseFloat(marginBottom);
+        
+        if (isNaN(value)) {
+            throw 'Invalid numeric margin-bottom on id: ' + view1;
+        }
+
+        // Push the single constraint: view1.bottom = view2.bottom - value
+        constraints.push({
+            view1: view1,
+            attr1: 'bottom',
+            relation: 'equ',
+            view2: targetView,
+            attr2: 'bottom', // Target is view2's BOTTOM
+            constant: -value,
+            multiplier: 1,
+            priority: priority
+        });
+        return;
+    }
+
+    // 3. Handle Percentage Values (Using Dummy View for Percentage Spacing)
+    if (isPct) {
+        var val = parseFloat(marginBottom);
+        
+        if (isNaN(val)) {
+            throw 'Invalid percentage margin-bottom on id: ' + view1;
+        }
+
+        var multiplier = val / 100.0;
+        var dummyId = view1 + '_dummy_' + ULID.ulid();
+        
+        // This logic is complex because it uses the dummy to define a percentage distance 
+        // from view2.bottom, and then positions view1.bottom at the top of that dummy.
+        
+        // C1: Anchor dummy's bottom to target's bottom
+        constraints.push({
+            view1: dummyId,
+            attr1: 'bottom',
+            relation: 'equ',
+            view2: targetView,
+            attr2: 'bottom', // Target is view2's BOTTOM
+            constant: 0,
+            multiplier: 1,
+            priority: priority
+        });
+        
+        // C2: Set dummy's height as a percentage of a reference dimension (parent width)
+        constraints.push({
+            view1: dummyId,
+            attr1: 'height',
+            relation: 'equ',
+            view2: null,      
+            attr2: 'width',   
+            constant: 0,      // *Correction*: Set to 0 for pure percentage
+            multiplier: multiplier,
+            priority: priority
+        });
+        
+        // C3: Align view1's bottom to dummy's top. 
+        // (view1.bottom = dummy.top means view1 is placed *above* the dummy's height)
+        constraints.push({
+            view1: view1,
+            attr1: 'bottom',
+            relation: 'equ',
+            view2: dummyId,
+            attr2: 'top', 
+            constant: 0,      // *Correction*: Set to 0 for exact alignment
+            multiplier: 1,
+            priority: priority
+        });
+        return;
+    }
+
+    // 4. Error Handling
+    throw 'margin-bottom must be px, %, or unitless on id: ' + view1;
+};
+
+View.prototype.setBottomAlignBB1 = function (view1, marginBottom, view2, priority, constraints) {
 
 	if (typeof marginBottom === 'number') {
 		constraints.push({
