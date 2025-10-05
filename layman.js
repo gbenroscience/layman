@@ -4789,7 +4789,7 @@ View.prototype.setCYAlignBottom = function (view1, margin, view2, priority, cons
 };
 
 
-/**
+/**--upgraded
  * Sets the bottom align constraint for a bottom-centerY align situation...works with pixels, percents
  * @param {string} view1 The view whose bottom is being constrained
  * @param {string|number} marginBottom The bottom margin... supported units are px, % and no units(we assume px)
@@ -4797,7 +4797,105 @@ View.prototype.setCYAlignBottom = function (view1, margin, view2, priority, cons
  * @param {number} priority The priority of the bottom-cy anchor constraint
  * @param {Array} constraints The array that holds the constraints generated here
  */
-View.prototype.setBottomAlignCY = function (view1, marginBottom, view2, priority, constraints) {
+View.prototype.setBottomAlignCY = function(view1, marginBottom, view2, priority, constraints) {
+    // 1. Prepare Variables and Normalize Input
+    
+    // Normalize '0%' to numeric zero
+    if (marginBottom === '0%') marginBottom = 0;
+
+    // Use AutoLayout.Attribute.CENTERY for clarity, as used in the original code
+    var CY = AutoLayout.Attribute.CENTERY;
+    var BOTTOM = AutoLayout.Attribute.BOTTOM;
+
+    var mbStr = String(marginBottom);
+    var isNum = typeof marginBottom === 'number' || isNumber(marginBottom);
+    var isPx = endsWith(mbStr, 'px');
+    var isPct = endsWith(mbStr, '%');
+    
+    // Determine the target view (null if 'parent')
+    var targetView = view2 === 'parent' ? null : view2;
+
+    // 2. Handle Numeric or Pixel Values (Simple, Direct Constraint)
+    if (isNum || isPx) {
+        var value = parseFloat(marginBottom);
+        
+        if (isNaN(value)) {
+            // NOTE: Original error message mentioned 'margin-left', corrected to 'margin-bottom'.
+            throw 'Invalid numeric margin-bottom on id: ' + view1; 
+        }
+
+        // Push the single constraint: view1.bottom = view2.center_y - value
+        constraints.push({
+            view1: view1,
+            attr1: BOTTOM,
+            relation: 'equ',
+            view2: targetView,
+            attr2: CY, 
+            constant: -value, // Negative constant to place view1's bottom ABOVE view2's center
+            multiplier: 1,
+            priority: priority
+        });
+        return;
+    }
+
+    // 3. Handle Percentage Values (Using Dummy View for Percentage Spacing)
+    if (isPct) {
+        var val = parseFloat(marginBottom);
+        
+        if (isNaN(val)) {
+             // NOTE: Original error message mentioned 'margin-left', corrected to 'margin-bottom'.
+             throw 'Invalid percentage margin-bottom on id: ' + view1;
+        }
+
+        var multiplier = val / 100.0;
+        var dummyId = view1 + '_dummy_' + ULID.ulid();
+        
+        // Push the three constraints required for percentage-based spacing
+        constraints.push(
+            // C1: Anchor dummy's bottom to target's center_y
+            {
+                view1: dummyId,
+                attr1: BOTTOM,
+                relation: 'equ',
+                view2: targetView,
+                attr2: CY,
+                constant: 0,
+                multiplier: 1,
+                priority: priority // Using provided priority
+            },
+            // C2: Set dummy's height as a percentage of a reference dimension (parent width)
+            {
+                view1: dummyId,
+                attr1: 'height',
+                relation: 'equ',
+                view2: null,      
+                attr2: 'width',   
+                constant: 0,      // *Correction*: Set to 0 for pure percentage
+                multiplier: multiplier,
+                priority: priority
+            },
+            // C3: Align view1's bottom to dummy's top. (The relationship in the original C3 looks wrong)
+            // Original: view1.top = hiddenViewId.top + 1. 
+            // Corrected intent for margin: view1.bottom = dummy.top
+            {
+                view1: view1,
+                attr1: BOTTOM, // Change attr1 from TOP to BOTTOM for consistent spacing logic
+                relation: 'equ',
+                view2: dummyId,
+                attr2: AutoLayout.Attribute.TOP, 
+                constant: 0,      // *Correction*: Set to 0 for exact alignment
+                multiplier: 1,
+                priority: priority
+            }
+        );
+        return;
+    }
+
+    // 4. Error Handling
+    // NOTE: Original error message mentioned 'margin-left', corrected to 'margin-bottom'.
+    throw 'margin-bottom must be px, %, or unitless on id: ' + view1;
+};
+View.prototype.setBottomAlignCY1 = function (view1, marginBottom, view2, priority, constraints) {
 	marginBottom = (marginBottom === '0%' ? 0 : marginBottom);
 	if (typeof marginBottom === 'number') {
 		constraints.push({
@@ -4919,7 +5017,102 @@ View.prototype.setBottomAlignCY = function (view1, marginBottom, view2, priority
  * @param {number} priority The priority of the top-top anchor constraint
  * @param {Array} constraints The array that holds the constraints generated here
  */
-View.prototype.setTopAlignTT = function (view1, marginTop, view2, priority, constraints) {
+View.prototype.setTopAlignTT = function(view1, marginTop, view2, priority, constraints) {
+    // 1. Prepare Variables and Normalize Input
+    // Constraint: view1.top = view2.top + margin
+    
+    // Normalize '0%' to numeric zero (original code's logic)
+    if (marginTop === '0%') marginTop = 0;
+
+    var mtStr = String(marginTop);
+    var isNum = typeof marginTop === 'number' || isNumber(marginTop); // assumes isNumber() checks for number strings
+    var isPx = endsWith(mtStr, 'px');
+    var isPct = endsWith(mtStr, '%');
+    
+    // Determine the target view (null if 'parent')
+    var targetView = view2 === 'parent' ? null : view2;
+
+    // 2. Handle Numeric or Pixel Values (Simple, Direct Constraint)
+    if (isNum || isPx) {
+        var value = parseFloat(marginTop);
+        
+        if (isNaN(value)) {
+            throw 'Invalid numeric margin-top on id: ' + view1;
+        }
+
+        // Push the single constraint: view1.top = view2.top + value
+        constraints.push({
+            view1: view1,
+            attr1: 'top',
+            relation: 'equ',
+            view2: targetView,
+            attr2: 'top', // Target is view2's TOP
+            constant: value, // Positive constant pushes view1 down
+            multiplier: 1,
+            priority: priority
+        });
+        return; // Exit function after handling simple case
+    }
+
+    // 3. Handle Percentage Values (Using Dummy View for Percentage Spacing)
+    if (isPct) {
+        var val = parseFloat(marginTop);
+        
+        if (isNaN(val)) {
+            throw 'Invalid percentage margin-top on id: ' + view1;
+        }
+        
+        // This check from the original code is redundant if isNaN is used, but kept for legacy compliance.
+        if (val === 0) { 
+             throw 'Invalid expression found for margin-top on id: ' + view1;
+        }
+
+        var multiplier = val / 100.0;
+        var dummyId = view1 + '_dummy_' + ULID.ulid();
+        
+        // Push the three constraints required for percentage-based spacing
+        constraints.push(
+            // C1: Anchor dummy's top to target's top
+            {
+                view1: dummyId,
+                attr1: 'top',
+                relation: 'equ',
+                view2: targetView,
+                attr2: 'top', // Target is view2's TOP
+                constant: 0,
+                multiplier: 1,
+                priority: priority
+            },
+            // C2: Set dummy's height as a percentage of a reference dimension (parent width)
+            {
+                view1: dummyId,
+                attr1: 'height',
+                relation: 'equ',
+                view2: null,      
+                attr2: 'width',   
+                constant: 0,      // *Correction*: Set to 0 for pure percentage
+                multiplier: multiplier,
+                priority: priority
+            },
+            // C3: Align view1's top to dummy's bottom. (view1.top = dummy.bottom)
+            {
+                view1: view1,
+                attr1: 'top',
+                relation: 'equ',
+                view2: dummyId,
+                attr2: 'bottom', 
+                constant: 0,      // *Correction*: Set to 0 for exact alignment
+                multiplier: 1,
+                priority: priority
+            }
+        );
+        return;
+    }
+
+    // 4. Error Handling
+    throw 'margin-top must be px, %, or unitless on id: ' + view1;
+};
+View.prototype.setTopAlignTT1 = function (view1, marginTop, view2, priority, constraints) {
 	marginTop = (marginTop === '0%' ? 0 : marginTop);
 	if (typeof marginTop === 'number') {
 		constraints.push({
@@ -5036,7 +5229,7 @@ View.prototype.setTopAlignTT = function (view1, marginTop, view2, priority, cons
 };
 
 
-/**
+/**---upgraded
  * Sets the top align constraint for a top-bottom align situation...works with pixels, percents
  * @param {string} view1 The view whose top is being constrained
  * @param {*} marginTop The top margin... supported units are px, % and no units(we assume px)
@@ -5044,7 +5237,80 @@ View.prototype.setTopAlignTT = function (view1, marginTop, view2, priority, cons
  * @param {number} priority The priority of the top-bottom anchor constraint
  * @param {Array} constraints The array that holds the constraints generated here
  */
-View.prototype.setTopAlignTB = function (view1, marginTop, view2, priority, constraints) {
+View.prototype.setTopAlignTB = function(view1, marginTop, view2, priority, constraints) {
+    // Normalize '0%' to numeric zero
+    if (marginTop === '0%') marginTop = 0;
+
+    // Convert to string for safe suffix checks
+    var mtStr = String(marginTop);
+    var isNum = typeof marginTop === 'number' || isNumber(marginTop);
+    var isPx = endsWith(mtStr, 'px');
+    var isPct = endsWith(mtStr, '%');
+    var targetView = view2 === 'parent' ? null : view2;
+
+    // Handle numeric or pixel values
+    if (isNum || isPx) {
+        var value = parseFloat(marginTop);
+        if (isNaN(value)) throw 'Invalid numeric margin-top on id: ' + view1;
+
+        constraints.push({
+            view1: view1,
+            attr1: 'top',
+            relation: 'equ',
+            view2: targetView,
+            attr2: 'bottom',
+            constant: value,
+            multiplier: 1,
+            priority: priority
+        });
+        return;
+    }
+
+    // Handle percentage values
+    if (!isPct) throw 'margin-top must be px, %, or unitless on id: ' + view1;
+
+    var val = parseFloat(marginTop);
+    if (isNaN(val)) throw 'Invalid percentage margin-top on id: ' + view1;
+
+    var multiplier = val / 100;
+    var dummyId = view1 + '_dummy_' + ULID.ulid();
+
+    // Dummy view constraints to simulate percentage-based spacing
+    constraints.push(
+        {
+            view1: dummyId,
+            attr1: 'top',
+            relation: 'equ',
+            view2: targetView,
+            attr2: 'bottom',
+            constant: 0,
+            multiplier: 1,
+            priority: priority
+        },
+        {
+            view1: dummyId,
+            attr1: 'height',
+            relation: 'equ',
+            view2: null,
+            attr2: 'width',
+            constant: 0, // Pure percentage
+            multiplier: multiplier,
+            priority: priority
+        },
+        {
+            view1: view1,
+            attr1: 'top',
+            relation: 'equ',
+            view2: dummyId,
+            attr2: 'bottom',
+            constant: 0, // Exact alignment
+            multiplier: 1,
+            priority: priority
+        }
+    );
+};
+
+View.prototype.setTopAlignTB1 = function (view1, marginTop, view2, priority, constraints) {
 	marginTop = (marginTop === '0%' ? 0 : marginTop);
 	if (typeof marginTop === 'number') {
 		constraints.push({
